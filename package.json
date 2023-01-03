@@ -1,0 +1,38 @@
+{
+  "name": "egos",
+  "private": true,
+  "author": "Tommy Wei <mulberry10th@gmail.com>",
+  "scripts": {
+    "dev:m": "pnpm --filter=./packages/main run dev",
+    "dev:r": "pnpm --filter=./packages/renderer run dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@umijs/plugins": "^4.0.41",
+    "cross-env": "^7.0.3",
+    "electron": "^18.3.15",
+    "eslint": "^8.31.0",
+    "husky": "^8",
+    "lint-staged": "^13",
+    "prettier": "^2",
+    "prettier-plugin-organize-imports": "^2",
+    "prettier-plugin-packagejson": "^2",
+    "stylelint": "^14.16.1",
+    "turbo": "^1.6.3",
+    "typescript": "^4",
+    "umi": "^4.0.41"
+  },
+  "pnpm": {
+    "overrides": {
+      "egos": "workspace:*"
+    },
+    "peerDependencyRules": {
+      "allowAny": [
+        "@babel/*",
+        "eslint"
+      ]
+    }
+  }
+}

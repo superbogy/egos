@@ -1,0 +1,32 @@
+**/node_modules
+**/dist
+**/.env.local
+/packages/renderer/.umirc.local.ts
+/packages/renderer/config/config.local.ts
+/packages/renderer/src/.umi
+.turbo
+# visual studio code
+.history
+*.log
+functions/*
+.temp/**
+
+# misc
+.DS_Store
+npm-debug.log*
+yarn-error.log
+
+# umi
+.umi
+.umi-production
+
+# screenshot
+screenshot
+.firebase
+.eslintcache
+
+/logs
+*.db
+.mfsu-dev/*
+.mfsu-prod/*
+release/
