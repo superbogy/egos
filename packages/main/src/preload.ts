@@ -11,7 +11,7 @@ class ModelProxy {
   lock: Lock;
   constructor(name: string) {
     this.modelName = name;
-    this.channel = `2gos.model.${name}`;
+    this.channel = `egos.model.${name}`;
     this.lock = new Lock();
   }
 
@@ -39,7 +39,6 @@ class ModelProxy {
         method,
         args: data,
       };
-      console.log('ipc renderer execute', payload, this.channel);
       const res = await ipcRenderer.invoke(this.channel, payload);
       return res;
     } catch (err) {

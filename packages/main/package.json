@@ -7,8 +7,8 @@
   "author": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run watch\" \" npm run start\" ",
-    "start": "cross-env NODE_ENV=development nodemon --delay 1000ms --watch dist --exec \"electron  dist/index.js\"",
+    "dev": "concurrently 'npm run watch'  'npm run start' ",
+    "start": "cross-env NODE_ENV=development nodemon --delay 1000ms --watch dist --exec electron  dist/index.js",
     "watch": "tsc -w"
   },
   "dependencies": {
