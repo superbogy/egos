@@ -1,15 +1,39 @@
-import { Schema } from "./interface";
+export enum FieldTypes {
+  INT = 'INTEGER',
+  REAL = 'REAL',
+  NULL = 'NULL',
+  TEXT = 'TEXT',
+  BLOB = 'BLOB',
+}
 
+export interface ColumnSchema {
+  type: FieldTypes;
+  name?: string;
+  nullable?: boolean;
+  encode?: (value: any) => any;
+  decode?: (value: any) => any;
+  pk?: boolean;
+  autoIncrement?: boolean;
+  default?: any;
+  onChange?: (value: any) => any;
+}
+export interface Schema {
+  [key: string]: ColumnSchema;
+}
 
 export const TimestampSchema: Schema = {
-  createdAt: { type: 'string', default: () => new Date().toISOString() },
-  updatedAt: { type: 'string', default: () => new Date().toISOString(), onChange: () => new Date().toISOString() }
-}
+  createdAt: { type: FieldTypes.TEXT, default: () => new Date().toISOString() },
+  updatedAt: {
+    type: FieldTypes.TEXT,
+    default: () => new Date().toISOString(),
+    onChange: () => new Date().toISOString(),
+  },
+};
 
 export const PrimarySchema = {
-  id: { type: 'string', pk: true }
-}
+  id: { type: FieldTypes.INT, pk: true },
+};
 
 export const merge = (schema: Schema): Schema => {
-  return { ...PrimarySchema, ...TimestampSchema, ...schema }
-}
+  return { ...PrimarySchema, ...TimestampSchema, ...schema };
+};

@@ -1,8 +1,5 @@
 import sqlite3 from 'sqlite3';
 import { open, Database, ISqlite } from 'sqlite';
-import Debug from 'debug';
-
-const debug = Debug('@egos/lite');
 
 export default class DB {
   static instances: { [key: string]: DB } = {};
@@ -56,9 +53,6 @@ export default class DB {
 
   async call(method: string, sql, params): Promise<any> {
     await this.connect();
-    if (this.debug) {
-      debug('exec sql: %s %j', sql, params);
-    }
     const stmt = await this.db.prepare(sql);
     return stmt[method](params);
   }

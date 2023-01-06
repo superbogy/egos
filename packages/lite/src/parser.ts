@@ -1,155 +1,142 @@
-import { sprintf } from 'printj'
+import { sprintf } from 'printj';
 import { Dict } from './interface';
+import { objToKVPairs } from './utils';
 
-
-const OPERATOR: Dict = {
-  '$eq': '=',
-  '$neq': '!=',
-  '$gt': '>',
-  '$lt': '<',
-  '$gte': '>=',
-  '$lte': '<=',
-  '$like': 'LIKE',
-  '$isNull': 'IS NULL',
-  '$isNotNull': 'IS NOT NULL',
-  '$inc': true,
+const OPERATOR = {
+  $eq: '=',
+  $neq: '!=',
+  $gt: '>',
+  $lt: '<',
+  $gte: '>=',
+  $lte: '<=',
+  $like: 'LIKE',
+  $isNull: 'IS NULL',
+  $isNotNull: 'IS NOT NULL',
+  $inc: true,
 };
 
 const LOGICAL: Dict = {
   $and: 'AND',
   $or: 'OR',
-  $xor: 'XOR'
-}
+  $xor: 'XOR',
+};
 
 interface Node {
   type: string;
   name: string;
   value: any;
-  isChild: boolean;
+  isChild?: boolean;
+  children?: any[];
   connector?: string;
 }
 
 export class Parser {
-  private tree: Node[];
-  constructor() {
-    this.tree = [];
-  }
-
-  getNodeByKV(key: string, value: any): void {
-    Object.entries(value).map(([op, v]) => {
-      const node: Node = {
-        type: 'field',
-        name: key,
-        value: { [op]: v },
-        isChild: true,
-        connector: ' AND '
-      };
-      this.tree.push(node);
-    });
-  }
-
-  genNode(entities: Dict, isChild = false): void {
-    Object.entries(entities).forEach(([key, v]: [key: string, v: any]) => {
-      const value = v && typeof v === 'object' ? v : { $eq: v };
-      if (!(key in LOGICAL)) {
-        if (Array.isArray(value)) {
-          value.forEach(i => {
-            this.genNode(i, true);
-          });
-        } else {
-          this.getNodeByKV(key, value);
-        }
-      } else {
-        const node: Node = {
-          type: 'logical',
-          name: LOGICAL[key],
-          value,
-          isChild,
-        };
-        this.tree.push(node);
-
-        this.genNode(value, true);
-      }
-    });
-  }
-
-  getDefaultNode(isChild: boolean): Node {
-    return {
-      type: 'operator',
-      name: 'and',
-      value: isChild ? 0 : 1,
-      isChild,
-    };
-  }
-
-
-  parse(entities: any): { sql: string, params: any[] } {
-    this.genNode(entities);
-    const sql: string[] = [];
-    let prev: Node;
-    let level = 0;
-    const params = [];
-    this.tree.forEach((node: Node) => {
-      if (node.type === 'field') {
-        if (prev && prev.type !== 'field') {
-          sql.push(')')
-        }
-        const res = this.parseFieldNode(node);
-        sql.push(res.sql);
-        res.values.map((v: any) => params.push(v));
-      } else {
-        sql.push(this.parseLogicalNode(node));
-        if (!node.isChild) {
-          sql.push('(');
-          level += 1;
-        } else if (level) {
-          sql.push(')');
-          level -= 1;
-        }
-      }
-      prev = node;
-    });
-    if (level) {
-      sql.push(')');
+  buildTree(query: Dict | Dict[], op = '$and') {
+    const data: Record<string, any> = { [op]: [] };
+    // [{a: 1}]
+    if (Array.isArray(query)) {
+      const res = (query as Dict[]).reduce(
+        (acc, cur) => {
+          acc[op] = acc[op].concat(cur);
+          return acc;
+        },
+        { [op]: [] },
+      );
+      return [res];
     }
-    this.free();
-    return { sql: sql.join('').replace(/(.*)and/i, '$1'), params };
-  }
-
-  parseFieldNode(node: Node): Dict {
-    let fieldStr = '';
-    const field = '`' + node.name + '`';
-    const connector = node.connector?.toUpperCase().substr(1);
-    const values = [];
-    Object.entries(node.value).forEach(element => {
-      const operator: string = element[0];
-      const value = element[1];
-      // const name = `$${node.name}`;
-      const temp = [field];
-      if (operator === '$inc') {
-        temp.push(this.increment(node.name, value));
-      } else if (OPERATOR[operator]) {
-        temp.push(OPERATOR[operator]);
-        temp.push('?')
-        values.push(value);
-      } else {
-        const func = this.sqlFunction(operator);
-        if (Array.isArray(value)) {
-          temp.push(sprintf(func, Array(value.length).fill('?').join(',')));
-          value.map(v => values.push(v));
-        } else {
-          temp.push(sprintf(func, '?'));
-          values.push(value?.toString());
-        }
+    if (typeof query === 'object') {
+      // {$and: [{ mail: 2 }, { gender: 'male' }],$or: [{ name: 1 }, { age: 2 }]}
+      if (Object.keys(query).length > 1 && (query.$and || query.$or)) {
+        return this.buildTree({ $and: query });
       }
-      temp.push(connector);
-      fieldStr += temp.join(' ');
-    });
-    return { sql: fieldStr, values };
+      // const q = {
+      //   $or: [
+      //     { $and: [{ name: 1 }, { age: 2 }] },
+      //     { $or: [{ mail: 2 }, { gender: 'male' }] },
+      //   ],
+      // };
+      return Object.entries(query).reduce((acc, cur) => {
+        const [k, v] = cur;
+        if (k in LOGICAL) {
+          if (!acc[k]) {
+            acc[k] = [];
+          }
+          const t = this.buildTree(v, k);
+          return Object.assign(acc, t);
+        } else {
+          acc[op].push({ [k]: v });
+        }
+        return acc;
+      }, data);
+    }
+
+    return data;
   }
 
-  parseLogicalNode(node: Node): string {
-    return ` ${node.name} `;
+  transform(tree: Dict[], lp?: string) {
+    const result: { sql: string[]; params: any[] } = {
+      sql: [],
+      params: [],
+    };
+    for (const node of tree) {
+      for (const lo in node) {
+        const item = node[lo];
+        const logicLayer = item.find((i: any) => i.$and || i.$or);
+        if (logicLayer) {
+          return this.transform(item, lo);
+        }
+        const res = item.map((n) => {
+          const { sql, params } = this.pairToSql(n);
+          result.params = result.params.concat(params);
+          return sql;
+        });
+        const connector = ` ${LOGICAL[lo]} `;
+        result.sql.push(`(${res.join(connector)})`);
+      }
+    }
+    const c = lp ? ` ${LOGICAL[lp]} ` : '';
+    result.sql = [`(${result.sql.join(c)})`];
+    return { sql: result.sql.join(''), params: result.params };
+  }
+
+  pairToSql(pair: Dict) {
+    const sql: any[] = [];
+    const values: any[] = [];
+    Object.entries(pair).map(([k, v]) => {
+      if (typeof v === 'object') {
+        Object.entries(v).map((cur) => {
+          const [op, v] = cur;
+          const [s, val] = this.joinKV(op, k, v);
+          sql.push(s);
+          values.push(val);
+        }, []);
+      } else {
+        const [s, val] = this.joinKV('$eq', k, v);
+        sql.push(s);
+        values.push(val);
+      }
+    });
+    return { sql: sql.join('and'), params: values };
+  }
+
+  joinKV(op: string, key: string, value: any): [s: string, v: any] {
+    if (op === '$inc') {
+      return [this.increment(key, value), undefined];
+    }
+    if (op in OPERATOR) {
+      return [`${key} ${OPERATOR[op]} ?`, value];
+    }
+    const func = this.sqlFunction(op);
+    const placeholder = Array.isArray(value)
+      ? Array(value.length).fill('?').join(',')
+      : '?';
+    return [func.replace('%s', placeholder), value];
+  }
+
+  parse(entities: any): { sql: string; params: any[] } {
+    const tree = this.buildTree(objToKVPairs(entities));
+    console.log(' treeeeee%j', tree);
+    return this.transform(tree);
   }
 
   private increment(field: string, value: any) {
@@ -164,7 +151,5 @@ export class Parser {
     return name.toUpperCase().replace('$', '') + '(%s)';
   }
 
-  free(): void {
-    this.tree = [];
-  }
+  free(): void {}
 }

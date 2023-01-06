@@ -1,90 +1,102 @@
 import { Builder } from './builder';
-import { Dict, Schema, ModelOpts, ColumnSchema } from './interface';
-import DB from './db';
+import { Dict } from './interface';
 import { isEmpty, pick, has } from 'ramda';
-import { ISqlite } from 'sqlite';
-import { TimestampSchema, PrimarySchema } from './schema';
-
+import { Database, ISqlite } from 'sqlite';
+import { TimestampSchema, ColumnSchema } from './schema';
 
 export class Model {
-  private _db: DB;
-  protected _table: string;
-  protected _schema: Schema = {};
-  protected _dbFile: string;
-  private _changed: Dict;
+  private db: Database;
+  private table: string;
   private _pk: string[];
-  readonly _options: ModelOpts;
+  readonly _options: any;
   private _attributes: Dict;
+  private _connected: boolean;
   [key: string]: any;
-  constructor(options: ModelOpts) {
+  constructor(options?: any) {
     this._attributes = {};
-    this._changed = {};
     this._pk = [];
     this._options = options;
     this._connected = false;
-    this.initialize(options);
+    this.initialize();
   }
 
-  get db(): DB | null {
-    return this._db;
+  get schema() {
+    return Reflect.getMetadata('model:schema', this);
   }
 
+  get indices() {
+    return Reflect.getMetadata('model:indices', this);
+  }
 
-
-  initialize(config: ModelOpts): void {
-    if (this._db) {
-      return;
-    }
-    if (config.schema) {
-      this._schema = config.schema;
-    } else {
-      this._schema = {
-        ...TimestampSchema,
-        ...PrimarySchema
-      }
-    }
-    if (config.table) {
-      this._table = config.table;
-    }
-    for (const key in this._schema) {
-      if (this._schema[key].pk) {
+  initialize(): Model {
+    const schema = this.schema;
+    for (const key in schema) {
+      if (schema[key].pk) {
         this._pk.push(key);
       }
     }
-    this._db = DB.getInstance({ filename: this._dbFile, debug: this._options.debug, options: this._options.connection as ISqlite.Config });
-    return;
-  }
-
-  getFieldSchema(field: string): ColumnSchema | undefined {
-    return this._schema[field];
-  }
-
-
-  encodeFieldValue<T>(filed: string, value: T): T {
-    if (value === undefined) {
-      return this._schema[filed]?.default;
+    if (this._options?.timestamp) {
+      Reflect.defineMetadata(
+        'model:schema',
+        { schema, ...TimestampSchema },
+        this,
+      );
     }
-    const schema = this.getFieldSchema(filed);
-    if (schema) {
-      const md = typeof value === schema.type ? 'encode' : 'decode';
-      if (schema[md]) {
-        return schema[md](value);
-      }
+    return this;
+  }
+
+  async connect() {
+    if (!this._connected) {
+      this.db = await Promise.resolve(this.db);
+      this._connected = true;
+    }
+    return this.db;
+  }
+
+  getColumn(field: string): ColumnSchema | undefined {
+    return this.schema[field];
+  }
+
+  encode<T>(filed: string, value: T): T {
+    if (value === undefined) {
+      return this.schema[filed]?.default;
+    }
+    const column = this.getColumn(filed);
+    if (column?.encode) {
+      return column.encode(value);
+    }
+    return value;
+  }
+
+  decode<T>(filed: string, value: T): T {
+    if (value === undefined) {
+      return value;
+    }
+    const column = this.getColumn(filed);
+    if (column?.decode) {
+      return column.decode(value);
     }
     return value;
   }
 
   getAttrs(): Dict {
-    return { ...this._attributes, ...this._changed };
+    const schema = this.schema;
+    const data: Record<string, any> = {};
+    Object.keys(schema).forEach((k: string) => {
+      data[k] = this[k];
+    });
+    return { ...this._attributes, ...data };
   }
 
   getAttr(name: string): any {
     const data = this.getAttrs();
-    return this.encodeFieldValue(name, data[name]);
+    return this.decode(name, data[name]);
   }
 
   setAttr(name: string, value: any): void {
-    if (this._attributes[name] !== value) {
+    const schema = this.schema;
+    if (name in schema) {
+      this[name] = value;
       this._attributes[name] = value;
     }
   }
@@ -92,53 +104,56 @@ export class Model {
   purify(data: Dict): Dict {
     const res: Dict = {};
     for (const key in data) {
-      res[key] = this.encodeFieldValue(key, data[key]);
+      res[key] = this.encode(key, data[key]);
     }
     return res;
   }
 
-  change(name: string, value: any): void {
-    this._changed[name] = value;
-  }
-
   clone(): Model {
-    return new (this.constructor as new (options: ModelOpts) => this)(this._options as ModelOpts)
+    return new (this.constructor as new () => this)();
   }
 
   instance(data: Dict): Model {
     const instance = this.clone();
+    console.log(data);
     for (const key in data) {
-      instance.setAttr(key, data[key]);
-      Object.defineProperty(instance, key, {
-        set: (value: any) => {
-          instance.change(key, value);
-        },
-        get: () => {
-          return instance.getAttr(key);
-        }
-      });
+      const column = this.schema[key];
+      const val = column?.decode ? column.decode(data[key]) : data[key];
+      instance.setAttr(key, val);
     }
+
     return instance;
   }
 
   toObject(): Dict {
-    const attrs = this.getAttrs();
-    return this.purify(attrs);
+    return this.getAttrs();
   }
 
   toJSON(): Dict {
     return this.toObject();
   }
 
-  exec(sql: string): Promise<void> {
+  async exec(sql: string): Promise<void> {
+    await this.connect();
     return this.db.exec(sql);
   }
 
+  async call(
+    method: string,
+    sql: string,
+    params: Record<string, any>,
+  ): Promise<any> {
+    await this.connect();
+    console.log(sql, params);
+    const stmt = await this.db.prepare(sql);
+    return stmt[method](params);
+  }
 
   async find(where: Dict, options: Dict = {}): Promise<Model[]> {
     const { limit, offset, order, fields, group } = options;
     const builder = new Builder({});
-    const { sql, params } = builder.table(this._table)
+    const { sql, params } = builder
+      .table(this.table)
       .where(where)
       .fields(fields)
       .order(order)
@@ -146,13 +161,13 @@ export class Model {
       .limit(limit)
       .offset(offset)
       .select();
-    const res = await this.db.call('all', sql, params);
+    const res = await this.call('all', sql, params);
     if (options.rows) {
       return res;
     }
-    return res.map((item) => {
+    return res.map((item: Record<string, any>) => {
       return this.instance(item);
-    })
+    });
   }
 
   async count(where: Dict): Promise<number> {
@@ -173,35 +188,32 @@ export class Model {
     return this.find(where, options);
   }
 
-  findById(id: bigint | number): Promise<Model | null> {
+  findById(id: number | string): Promise<Model | null> {
     return this.findOne({ id });
   }
 
   findByIds(ids: number[]): Promise<Model[]> {
-    return this.find({ id: { '$in': ids } });
+    return this.find({ id: { $in: ids } });
   }
 
   defaultData(): Dict {
     const payload: Dict = {};
-    Object.entries(this._schema).map(([k, col]: [k: string, col: ColumnSchema]) => {
-      const def = col.default
-      if (typeof def === 'undefined') {
-        return;
-      }
-      if (typeof def === 'function') {
-        const v = def();
-        payload[k] = v;
-      } else {
-        payload[k] = def;
-      }
-    });
+    Object.entries(this.schema).map(
+      ([k, col]: [k: string, col: ColumnSchema]) => {
+        const def = col.default;
+        if (typeof def === 'undefined') {
+          return;
+        }
+        payload[k] = typeof def === 'function' ? def() : def;
+      },
+    );
     return payload;
   }
 
   async onChange(): Promise<Dict> {
     const payload: Dict = {};
-    for (const k in this._schema) {
-      const col: ColumnSchema = this._schema[k];
+    for (const k in this.schema) {
+      const col: ColumnSchema = this.schema[k];
       const onChange = col.onChange;
       if (!onChange) {
         continue;
@@ -220,8 +232,10 @@ export class Model {
     const builder = new Builder({});
     const data = this.purify(payload);
     const defaultData = this.defaultData();
-    const { sql, params } = builder.table(this._table).insert({ ...data, ...defaultData });
-    const { lastID } = await this.db.call('run', sql, params);
+    const { sql, params } = builder
+      .table(this.table)
+      .insert({ ...data, ...defaultData });
+    const { lastID } = await this.call('run', sql, params);
     return this.findById(lastID);
   }
 
@@ -229,10 +243,11 @@ export class Model {
     const builder = new Builder({});
     const data = this.purify(payload);
     const changed = await this.onChange();
-    const { sql, params } = builder.table(this._table)
+    const { sql, params } = builder
+      .table(this.table)
       .where(where)
       .update({ ...changed, ...data });
-    return await this.db.call('run', sql, params);
+    return await this.call('run', sql, params);
   }
 
   updateAttributes(payload: Dict): Promise<Model> {
@@ -240,10 +255,10 @@ export class Model {
       throw new Error('updateAttributes must be called on instance');
     }
     const current = this._attributes;
-    Object.entries(payload).map(item => {
+    Object.entries(payload).map((item) => {
       const [key, value] = item;
       if (has(key, current)) {
-        this.change(key, value);
+        this[key] = value;
       }
     });
 
@@ -261,21 +276,32 @@ export class Model {
     return this.insert(data);
   }
 
+  getChange() {
+    return Object.entries(this._attributes).reduce((acc: Dict, cur: any[]) => {
+      const [k, v] = cur;
+      if (this[k] !== v) {
+        acc[k] = this[k];
+      }
+      return acc;
+    }, {});
+  }
+
   async save(): Promise<Model> {
     const pk = pick(this._pk, this.getAttrs());
     if (!this._pk || isEmpty(pk)) {
       throw new Error('save must be called on instance');
     }
-    if (!Object.keys(this._changed).length) {
+    const changed = this.getChange();
+    console.log(changed);
+    if (!Object.keys(changed).length) {
       return this;
     }
-    await this.update(pk, this._changed);
+    await this.update(pk, changed);
     return this.findOne(pk);
   }
 
-
   remove(): Promise<ISqlite.RunResult> {
-    const pk = pick(this._pk, this._attributes)
+    const pk = pick(this._pk, this._attributes);
     if (!this._pk || isEmpty(pk)) {
       throw new Error('save must be called on instance');
     }
@@ -289,19 +315,14 @@ export class Model {
       return false;
     }
     const builder = new Builder({});
-    const { sql, params } = builder.table(this._table)
-      .where({ id })
-      .delete();
-    await this.db.call('run', sql, params);
+    const { sql, params } = builder.table(this.table).where({ id }).delete();
+    await this.call('run', sql, params);
     return true;
   }
 
   async delete(where: Dict): Promise<ISqlite.RunResult> {
     const builder = new Builder({});
-    const { sql, params } = builder.table(this._table)
-      .where(where)
-      .delete();
-    return await this.db.call('run', sql, params);
+    const { sql, params } = builder.table(this.table).where(where).delete();
+    return await this.call('run', sql, params);
   }
 }
-

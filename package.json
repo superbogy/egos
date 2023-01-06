@@ -6,7 +6,6 @@
     "dev:m": "pnpm --filter=./packages/main run dev",
     "dev:r": "pnpm --filter=./packages/renderer run dev"
   },
-  "dependencies": {},
   "devDependencies": {
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",
