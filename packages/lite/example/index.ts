@@ -4,6 +4,7 @@ import path from 'path';
 import assert from 'assert';
 import { FieldTypes, merge } from '../src/schema';
 import 'reflect-metadata';
+import { genSql } from '../src/utils';
 
 const dbFile = path.resolve('./test.db');
 const connection = {
@@ -14,10 +15,10 @@ const connection = {
 class User extends Model {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
-  @column({ type: FieldTypes.TEXT })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   name: string;
-  @column({ type: FieldTypes.INT })
-  age: number;
+  @column({ type: FieldTypes.INT, default: () => 'A' })
+  userAge: number;
   @column({ type: FieldTypes.TEXT })
   gender: string;
   @column({ type: FieldTypes.TEXT })
@@ -27,39 +28,32 @@ class User extends Model {
 }
 
 const main = async () => {
-  const user = new User();
-  await user.exec(`CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  name CHAR(50) NOT NULL,
-  gender CHAR(10) CHECK(gender IN('male', 'female', 'unknown')) NOT NULL,
-  mail CHAR(128) NOT NULL,
-  age INT NOT NULL,
-  profile  TEXT NOT NULL DEFAULT '',
-  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-`);
-  await user.create({
-    name: 'tommy',
-    gender: 'male',
-    age: 30,
-    mail: 'tommy@hello.cc',
-    profile: { bar: 'foo', quiz: 'biz' },
-  });
-  const con = {
-    $or: [
-      { $and: [{ name: 1 }, { age: 2 }] },
-      { $or: [{ mail: 2 }, { gender: 'male' }] },
-    ],
-  };
-  const c1 = {
-    $and: [{ mail: 2 }, { gender: 'male' }],
-    $or: [{ name: 1 }, { age: 2 }],
-  };
-  console.log('%j', con);
-  const c = { age: 1, name: 2, gender: 3 };
-  const orQuery = await user.findOne(con);
-  console.log(orQuery);
+  const user = new User({ debug: true, timestamp: true });
+  const sql = genSql(user.table, user.schema);
+  await user.exec(sql);
+  // const current = await user.create({
+  //   name: 'tommy',
+  //   gender: 'male',
+  //   age: 30,
+  //   mail: 'tommy@hello.cc',
+  //   profile: { bar: 'foo', quiz: 'biz' },
+  // });
+  // const cur = await user.findById(current.id);
+  // console.log(cur.toObject());
+  // const con = {
+  //   $or: [
+  //     { $and: [{ name: 1 }, { age: 2 }] },
+  //     { $or: [{ mail: 2 }, { gender: 'male' }] },
+  //   ],
+  // };
+  // const c1 = {
+  //   $and: [{ mail: 2 }, { gender: 'male' }],
+  //   $or: [{ name: 1 }, { age: 2 }],
+  // };
+  // console.log('%j', con);
+  // const c = { age: 1, name: 2, gender: 3 };
+  // const orQuery = await user.findOne(con);
+  // console.log(orQuery);
   return;
   const user1 = (await user.findOne(
     { id: { $gte: 1, $lte: 200 } },

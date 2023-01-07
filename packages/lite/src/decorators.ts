@@ -7,7 +7,8 @@ export function column(params: ColumnSchema): PropertyDecorator {
   return function (target, key) {
     const name = toSnakeCase(params.name || (key as string));
     const prop = Reflect.getMetadata('model:schema', target) || {};
-    prop[name] = params;
+    params.name = name;
+    prop[key] = params;
     Reflect.defineMetadata('model:schema', prop, target);
   };
 }
@@ -133,27 +134,6 @@ export function connect(config: { name: string; filename?: string }) {
 //   };
 // }
 
-function toSnakeCase(s: string) {
-  if (s.includes('_')) {
-    return s;
-  }
-
-  const phrases: string[] = [];
-  let word = '';
-  s.split('').map((c) => {
-    if (c.toLocaleUpperCase() === c) {
-      if (word) {
-        phrases.push(word);
-        word = '';
-      }
-    }
-
-    word += c;
-  });
-
-  if (word) {
-    phrases.push(word);
-  }
-
-  return phrases.join('_');
+function toSnakeCase(str: string) {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }

@@ -7,3 +7,10 @@ export interface Connection {
   mode?: number;
   driver?: any;
 }
+
+export interface ModelOpts {
+  onInsert?: (row: Dict) => any;
+  onRemove?: (row: Dict) => any;
+  timestamp?: boolean;
+  debug?: boolean;
+}

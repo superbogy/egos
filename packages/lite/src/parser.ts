@@ -1,4 +1,3 @@
-import { sprintf } from 'printj';
 import { Dict } from './interface';
 import { objToKVPairs } from './utils';
 
@@ -21,19 +20,10 @@ const LOGICAL: Dict = {
   $xor: 'XOR',
 };
 
-interface Node {
-  type: string;
-  name: string;
-  value: any;
-  isChild?: boolean;
-  children?: any[];
-  connector?: string;
-}
-
 export class Parser {
   buildTree(query: Dict | Dict[], op = '$and') {
     const data: Record<string, any> = { [op]: [] };
-    // [{a: 1}]
+    // [{a: 1}, {b: 1}]
     if (Array.isArray(query)) {
       const res = (query as Dict[]).reduce(
         (acc, cur) => {
@@ -135,7 +125,6 @@ export class Parser {
 
   parse(entities: any): { sql: string; params: any[] } {
     const tree = this.buildTree(objToKVPairs(entities));
-    console.log(' treeeeee%j', tree);
     return this.transform(tree);
   }
 

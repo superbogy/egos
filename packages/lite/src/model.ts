@@ -1,18 +1,21 @@
+import Debug from 'debug';
 import { Builder } from './builder';
-import { Dict } from './interface';
-import { isEmpty, pick, has } from 'ramda';
+import { Dict, ModelOpts } from './interface';
+import { isEmpty, pick, has, equals } from 'ramda';
 import { Database, ISqlite } from 'sqlite';
 import { TimestampSchema, ColumnSchema } from './schema';
+import { column } from './decorators';
 
+const debug = Debug('@egos/lite:model');
 export class Model {
   private db: Database;
-  private table: string;
+  public table: string;
   private _pk: string[];
   readonly _options: any;
   private _attributes: Dict;
   private _connected: boolean;
   [key: string]: any;
-  constructor(options?: any) {
+  constructor(options?: ModelOpts) {
     this._attributes = {};
     this._pk = [];
     this._options = options;
@@ -38,7 +41,7 @@ export class Model {
     if (this._options?.timestamp) {
       Reflect.defineMetadata(
         'model:schema',
-        { schema, ...TimestampSchema },
+        { ...schema, ...TimestampSchema },
         this,
       );
     }
@@ -115,7 +118,6 @@ export class Model {
 
   instance(data: Dict): Model {
     const instance = this.clone();
-    console.log(data);
     for (const key in data) {
       const column = this.schema[key];
       const val = column?.decode ? column.decode(data[key]) : data[key];
@@ -144,7 +146,9 @@ export class Model {
     params: Record<string, any>,
   ): Promise<any> {
     await this.connect();
-    console.log(sql, params);
+    if (this._options?.debug) {
+      debug('[sql]: %s, [params]: %j', sql, params);
+    }
     const stmt = await this.db.prepare(sql);
     return stmt[method](params);
   }
@@ -210,18 +214,17 @@ export class Model {
     return payload;
   }
 
-  async onChange(): Promise<Dict> {
-    const payload: Dict = {};
-    for (const k in this.schema) {
+  async onChange(changed: Dict): Promise<void> {
+    for (const k in changed) {
       const col: ColumnSchema = this.schema[k];
-      const onChange = col.onChange;
-      if (!onChange) {
+      if (!col) {
         continue;
       }
-      const v = await Promise.resolve(onChange.call(this));
-      payload[k] = v;
+      if (!col.onChange) {
+        continue;
+      }
+      const v = await Promise.resolve(col.onChange.call(this, changed[k]));
     }
-    return payload;
   }
 
   async create(data: Dict): Promise<Model> {
@@ -236,18 +239,23 @@ export class Model {
       .table(this.table)
       .insert({ ...data, ...defaultData });
     const { lastID } = await this.call('run', sql, params);
+    if (this._options?.onInsert) {
+      await Promise.resolve(this._options.onInsert);
+    }
     return this.findById(lastID);
   }
 
   async update(where: Dict, payload: Dict): Promise<ISqlite.RunResult> {
     const builder = new Builder({});
     const data = this.purify(payload);
-    const changed = await this.onChange();
+    const changed = this.getChange();
     const { sql, params } = builder
       .table(this.table)
       .where(where)
       .update({ ...changed, ...data });
-    return await this.call('run', sql, params);
+    const res = await this.call('run', sql, params);
+    await this.onChange(changed);
+    return res;
   }
 
   updateAttributes(payload: Dict): Promise<Model> {
@@ -292,7 +300,6 @@ export class Model {
       throw new Error('save must be called on instance');
     }
     const changed = this.getChange();
-    console.log(changed);
     if (!Object.keys(changed).length) {
       return this;
     }
@@ -300,13 +307,17 @@ export class Model {
     return this.findOne(pk);
   }
 
-  remove(): Promise<ISqlite.RunResult> {
+  async remove(): Promise<ISqlite.RunResult> {
     const pk = pick(this._pk, this._attributes);
     if (!this._pk || isEmpty(pk)) {
       throw new Error('save must be called on instance');
     }
 
-    return this.delete(pk);
+    const res = await this.delete(pk);
+    if (this._options?.onRemove) {
+      await Promise.resolve(this._options.onRemove);
+    }
+    return res;
   }
 
   async deleteById(id: number): Promise<boolean> {

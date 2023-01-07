@@ -22,8 +22,13 @@ export interface Schema {
 }
 
 export const TimestampSchema: Schema = {
-  createdAt: { type: FieldTypes.TEXT, default: () => new Date().toISOString() },
+  createdAt: {
+    name: 'created_at',
+    type: FieldTypes.TEXT,
+    default: () => new Date().toISOString(),
+  },
   updatedAt: {
+    name: 'updated_at',
     type: FieldTypes.TEXT,
     default: () => new Date().toISOString(),
     onChange: () => new Date().toISOString(),
