@@ -17,10 +17,10 @@ export const columnToSql = (column: ColumnSchema) => {
   let dft: string = column.default
     ? typeof column.default === 'function'
       ? ''
-      : `DEFAULT ${column.default}`
+      : `DEFAULT "${column.default}"`
     : '';
   const colSql = [
-    column.name,
+    `\`${column.name}\``,
     column.type,
     column.nullable ? '' : 'NOT NULL',
     dft,

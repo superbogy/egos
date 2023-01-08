@@ -13,13 +13,11 @@ export class Model {
   private _pk: string[];
   readonly _options: any;
   private _attributes: Dict;
-  private _connected: boolean;
   [key: string]: any;
   constructor(options?: ModelOpts) {
     this._attributes = {};
     this._pk = [];
-    this._options = options;
-    this._connected = false;
+    this._options = options || {};
     this.initialize();
   }
 
@@ -31,6 +29,10 @@ export class Model {
     return Reflect.getMetadata('model:indices', this);
   }
 
+  get options() {
+    return this._options;
+  }
+
   initialize(): Model {
     const schema = this.schema;
     for (const key in schema) {
@@ -38,20 +40,22 @@ export class Model {
         this._pk.push(key);
       }
     }
-    if (this._options?.timestamp) {
+    if (this.options?.timestamp) {
       Reflect.defineMetadata(
         'model:schema',
         { ...schema, ...TimestampSchema },
         this,
       );
     }
+    if (this.options?.db) {
+      this.db = this.options.db;
+    }
     return this;
   }
 
   async connect() {
-    if (!this._connected) {
+    if (this.db instanceof Promise) {
       this.db = await Promise.resolve(this.db);
-      this._connected = true;
     }
     return this.db;
   }
@@ -112,13 +116,45 @@ export class Model {
     return res;
   }
 
+  toRowData(props: Dict) {
+    const schema = this.schema;
+    return Object.entries(props).reduce((acc, cur) => {
+      const [k, v] = cur;
+      const col = schema[k];
+      if (props[k]) {
+        acc[col.name || k] = v;
+      } else {
+        acc[k] = v;
+      }
+
+      return acc;
+    }, {});
+  }
+
+  toProps(row: Dict) {
+    const fieldPairs = Object.entries(this.schema);
+    return Object.entries(row).reduce((acc, cur) => {
+      const [k, v] = cur;
+      const item = fieldPairs.find(([key, col]: [string, ColumnSchema]) => {
+        return col.name === k || key === k;
+      });
+      if (item) {
+        acc[item[0]] = v;
+      } else {
+        acc[k] = v;
+      }
+
+      return acc;
+    }, {});
+  }
+
   clone(): Model {
     return new (this.constructor as new () => this)();
   }
 
   instance(data: Dict): Model {
     const instance = this.clone();
-    for (const key in data) {
+    for (const key in this.toProps(data)) {
       const column = this.schema[key];
       const val = column?.decode ? column.decode(data[key]) : data[key];
       instance.setAttr(key, val);
@@ -146,9 +182,10 @@ export class Model {
     params: Record<string, any>,
   ): Promise<any> {
     await this.connect();
-    if (this._options?.debug) {
+    if (this.options?.debug) {
       debug('[sql]: %s, [params]: %j', sql, params);
     }
+    console.log(this.db);
     const stmt = await this.db.prepare(sql);
     return stmt[method](params);
   }
@@ -233,28 +270,28 @@ export class Model {
 
   async insert(payload: Dict): Promise<Model> {
     const builder = new Builder({});
-    const data = this.purify(payload);
-    const defaultData = this.defaultData();
+    const date = new Date().toISOString();
+    const data = this.toRowData(this.purify({ ...payload }));
+    const defaultData = this.toRowData(this.defaultData());
     const { sql, params } = builder
       .table(this.table)
-      .insert({ ...data, ...defaultData });
+      .insert({ ...defaultData, ...data });
     const { lastID } = await this.call('run', sql, params);
-    if (this._options?.onInsert) {
-      await Promise.resolve(this._options.onInsert);
+    if (this.options?.onInsert) {
+      await Promise.resolve(this.options.onInsert);
     }
     return this.findById(lastID);
   }
 
   async update(where: Dict, payload: Dict): Promise<ISqlite.RunResult> {
     const builder = new Builder({});
-    const data = this.purify(payload);
-    const changed = this.getChange();
+    const data = this.toRowData(this.attachTimestamp(this.purify(payload)));
     const { sql, params } = builder
       .table(this.table)
       .where(where)
-      .update({ ...changed, ...data });
+      .update({ ...data });
     const res = await this.call('run', sql, params);
-    await this.onChange(changed);
+    await this.onChange(data);
     return res;
   }
 
@@ -285,13 +322,27 @@ export class Model {
   }
 
   getChange() {
-    return Object.entries(this._attributes).reduce((acc: Dict, cur: any[]) => {
-      const [k, v] = cur;
-      if (this[k] !== v) {
-        acc[k] = this[k];
-      }
-      return acc;
-    }, {});
+    const res = Object.entries(this._attributes).reduce(
+      (acc: Dict, cur: any[]) => {
+        const [k, v] = cur;
+        if (this[k] !== v) {
+          acc[k] = this[k];
+        }
+        return acc;
+      },
+      {},
+    );
+    if (this.options?.timestamp && Object.keys(res).length) {
+      return this.attachTimestamp(res);
+    }
+    return res;
+  }
+
+  attachTimestamp(data: Dict) {
+    if (!this.options?.timestamp) {
+      return data;
+    }
+    return { ...data, updatedAt: new Date().toISOString() };
   }
 
   async save(): Promise<Model> {
@@ -314,8 +365,8 @@ export class Model {
     }
 
     const res = await this.delete(pk);
-    if (this._options?.onRemove) {
-      await Promise.resolve(this._options.onRemove);
+    if (this.options?.onRemove) {
+      await Promise.resolve(this.options.onRemove);
     }
     return res;
   }

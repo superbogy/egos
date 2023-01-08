@@ -1,4 +1,3 @@
-console.log(123);
 import { Model, connect, table, column } from '../src';
 import path from 'path';
 import assert from 'assert';
@@ -6,10 +5,7 @@ import { FieldTypes, merge } from '../src/schema';
 import 'reflect-metadata';
 import { genSql } from '../src/utils';
 
-const dbFile = path.resolve('./test.db');
-const connection = {
-  filename: dbFile,
-};
+const dbFile = '';
 @connect({ name: 'default', filename: dbFile })
 @table('users')
 class User extends Model {
@@ -17,8 +13,8 @@ class User extends Model {
   id: number;
   @column({ type: FieldTypes.TEXT, default: '""' })
   name: string;
-  @column({ type: FieldTypes.INT, default: () => 'A' })
-  userAge: number;
+  @column({ type: FieldTypes.INT })
+  age: number;
   @column({ type: FieldTypes.TEXT })
   gender: string;
   @column({ type: FieldTypes.TEXT })
@@ -29,17 +25,18 @@ class User extends Model {
 
 const main = async () => {
   const user = new User({ debug: true, timestamp: true });
+  console.log(user.schema);
   const sql = genSql(user.table, user.schema);
   await user.exec(sql);
-  // const current = await user.create({
-  //   name: 'tommy',
-  //   gender: 'male',
-  //   age: 30,
-  //   mail: 'tommy@hello.cc',
-  //   profile: { bar: 'foo', quiz: 'biz' },
-  // });
-  // const cur = await user.findById(current.id);
-  // console.log(cur.toObject());
+  const current = await user.create({
+    name: 'tommy',
+    gender: 'male',
+    age: 30,
+    mail: 'tommy@hello.cc',
+    profile: { bar: 'foo', quiz: 'biz' },
+  });
+  const cur = await user.findById(current.id);
+  console.log(cur.toObject());
   // const con = {
   //   $or: [
   //     { $and: [{ name: 1 }, { age: 2 }] },

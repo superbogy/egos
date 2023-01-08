@@ -10,15 +10,7 @@
     "esModuleInterop": true,
     "removeComments": false,
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "noUncheckedIndexedAccess": false,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "useUnknownInCatchVariables": false,
-    "skipDefaultLibCheck": true,
-    "skipLibCheck": true,
-    "emitDeclarationOnly": true,
-    "resolveJsonModule": true
+    "emitDecoratorMetadata": true
   },
   "include": ["src/**/*", "example"],
   "exclude": ["node_modules", "dist", "**/__test__", "test", "docs", "tests"]

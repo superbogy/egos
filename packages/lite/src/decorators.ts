@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { Database } from 'sqlite3';
-import { open } from 'sqlite';
+import { open, ISqlite } from 'sqlite';
 import { ColumnSchema } from './schema';
 
 export function column(params: ColumnSchema): PropertyDecorator {
@@ -36,6 +36,7 @@ const connections: Record<string, any> = {};
 
 export function connect(config: { name: string; filename?: string }) {
   return function (constructor: Function) {
+    console.log('connections', connections);
     if (!connections[config.name]) {
       const conn = open({
         filename: config.filename,
@@ -46,6 +47,19 @@ export function connect(config: { name: string; filename?: string }) {
     constructor.prototype.db = connections[config.name];
   };
 }
+
+export const addConnection = async (
+  config: { name: string } & ISqlite.Config,
+) => {
+  if (!connections[config.name]) {
+    const conn = open({
+      filename: config.filename,
+      driver: Database,
+    });
+    connections[config.name] = conn;
+  }
+  return connections[config.name];
+};
 
 // export function Entity<T>(
 //   params: {
