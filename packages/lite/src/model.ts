@@ -5,11 +5,12 @@ import { isEmpty, pick, has, equals } from 'ramda';
 import { Database, ISqlite } from 'sqlite';
 import { TimestampSchema, ColumnSchema } from './schema';
 import { column } from './decorators';
+import { assert } from 'console';
 
 const debug = Debug('@egos/lite:model');
 export class Model {
-  private db: Database;
-  public table: string;
+  private _db: Database;
+  public _table: string;
   private _pk: string[];
   readonly _options: any;
   private _attributes: Dict;
@@ -33,6 +34,14 @@ export class Model {
     return this._options;
   }
 
+  get table(): string {
+    return this._table;
+  }
+
+  get db() {
+    return this._db;
+  }
+
   initialize(): Model {
     const schema = this.schema;
     for (const key in schema) {
@@ -48,14 +57,14 @@ export class Model {
       );
     }
     if (this.options?.db) {
-      this.db = this.options.db;
+      this._db = this.options.db;
     }
     return this;
   }
 
   async connect() {
     if (this.db instanceof Promise) {
-      this.db = await Promise.resolve(this.db);
+      this._db = await Promise.resolve(this.db);
     }
     return this.db;
   }
@@ -119,8 +128,8 @@ export class Model {
   toRowData(props: Dict) {
     const schema = this.schema;
     return Object.entries(props).reduce((acc, cur) => {
-      const [k, v] = cur;
-      const col = schema[k];
+      const [k, v]: [string, any] = cur;
+      const col: ColumnSchema = schema[k];
       if (props[k]) {
         acc[col.name || k] = v;
       } else {
@@ -128,14 +137,14 @@ export class Model {
       }
 
       return acc;
-    }, {});
+    }, {} as Record<string, any>);
   }
 
   toProps(row: Dict) {
     const fieldPairs = Object.entries(this.schema);
     return Object.entries(row).reduce((acc, cur) => {
-      const [k, v] = cur;
-      const item = fieldPairs.find(([key, col]: [string, ColumnSchema]) => {
+      const [k, v]: [string, any] = cur;
+      const item = fieldPairs.find(([key, col]: [string, any]) => {
         return col.name === k || key === k;
       });
       if (item) {
@@ -145,7 +154,7 @@ export class Model {
       }
 
       return acc;
-    }, {});
+    }, {} as Record<string, any>);
   }
 
   clone(): Model {
@@ -173,7 +182,7 @@ export class Model {
 
   async exec(sql: string): Promise<void> {
     await this.connect();
-    return this.db.exec(sql);
+    return this.db?.exec(sql);
   }
 
   async call(
@@ -185,8 +194,8 @@ export class Model {
     if (this.options?.debug) {
       debug('[sql]: %s, [params]: %j', sql, params);
     }
-    console.log(this.db);
-    const stmt = await this.db.prepare(sql);
+    console.log('???? this.db', this.db);
+    const stmt: any = await this.db.prepare(sql);
     return stmt[method](params);
   }
 
@@ -212,7 +221,9 @@ export class Model {
   }
 
   async count(where: Dict): Promise<number> {
-    const res = await this.findOne(where, { fields: ['count(*) as count'] });
+    const res = (await this.findOne(where, {
+      fields: ['count(*) as count'],
+    })) as Model;
     return Number(res.count);
   }
 
@@ -239,15 +250,13 @@ export class Model {
 
   defaultData(): Dict {
     const payload: Dict = {};
-    Object.entries(this.schema).map(
-      ([k, col]: [k: string, col: ColumnSchema]) => {
-        const def = col.default;
-        if (typeof def === 'undefined') {
-          return;
-        }
-        payload[k] = typeof def === 'function' ? def() : def;
-      },
-    );
+    Object.entries(this.schema).map(([k, col]: [string, any]) => {
+      const def = col.default;
+      if (typeof def === 'undefined') {
+        return;
+      }
+      payload[k] = typeof def === 'function' ? def() : def;
+    });
     return payload;
   }
 
@@ -280,7 +289,7 @@ export class Model {
     if (this.options?.onInsert) {
       await Promise.resolve(this.options.onInsert);
     }
-    return this.findById(lastID);
+    return (await this.findById(lastID)) as Model;
   }
 
   async update(where: Dict, payload: Dict): Promise<ISqlite.RunResult> {
@@ -355,7 +364,7 @@ export class Model {
       return this;
     }
     await this.update(pk, changed);
-    return this.findOne(pk);
+    return (await this.findOne(pk)) as Model;
   }
 
   async remove(): Promise<ISqlite.RunResult> {

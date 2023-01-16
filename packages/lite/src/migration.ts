@@ -74,7 +74,6 @@ export class Migration {
     this.db = db;
     this.folder = folder;
     this.history = new MigrationHistory({ db: this.db });
-    console.log('hhhhistory', this.history);
   }
 
   async stepUp() {
@@ -89,8 +88,12 @@ export class Migration {
     await this.db.exec(sql);
     const files = await fsp.readdir(this.folder);
     for (const file of files) {
-      const { default: cls } = await import(path.join(this.folder, file));
+      console.log('ffffffile---->', path.join(this.folder, file));
+      const { default: cls } = await import(path.join(this.folder, file)).catch(
+        (err) => console.log(err),
+      );
       const instance: Job = new cls(this.db);
+      console.log('clssss', cls, instance instanceof Job);
       if (!(instance instanceof Job)) {
         throw new Error(
           'Migration class must implement MigrationInterImplement',

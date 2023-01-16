@@ -6,6 +6,7 @@ import installExtension, {
 } from 'electron-devtools-installer';
 import contextMenu from 'electron-context-menu';
 import { LOCAL_FILE_HOST } from './constants';
+import prepare from './prepare';
 
 let mainWindow: any;
 const fileURL = path.join('file:', __dirname, 'index.html');
@@ -100,6 +101,7 @@ app.whenReady().then(async () => {
       });
     },
   );
+  await prepare();
 });
 
 app.on('window-all-closed', () => {

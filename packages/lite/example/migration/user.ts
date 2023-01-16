@@ -18,8 +18,7 @@ class User extends Model {
   age: number;
   @column({ type: FieldTypes.INT })
   gender: string;
-  @column({ type: FieldTypes.TEXT })
-  mail: string;
+  @column({ type: FieldTypes.TEXT }) mail: string;
   @column({ type: FieldTypes.TEXT, decode: JSON.parse, encode: JSON.stringify })
   profile: string;
 }

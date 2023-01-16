@@ -1,6 +1,6 @@
 import { ColumnSchema } from './schema';
 
-export const objToKVPairs = (obj: any) => {
+export const objToKVPairs = (obj: any): any[] => {
   if (Array.isArray(obj)) {
     return obj.reduce((acc, cur) => {
       return acc.concat(objToKVPairs(cur));
@@ -10,7 +10,7 @@ export const objToKVPairs = (obj: any) => {
     const val = Array.isArray(v) ? objToKVPairs(v) : v;
     acc.push({ [k]: val });
     return acc;
-  }, []);
+  }, [] as any[]);
 };
 
 export const columnToSql = (column: ColumnSchema) => {

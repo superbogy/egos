@@ -2,6 +2,8 @@ import 'reflect-metadata';
 import { Database } from 'sqlite3';
 import { open, ISqlite } from 'sqlite';
 import { ColumnSchema } from './schema';
+import fs from 'fs';
+import path from 'path';
 
 export function column(params: ColumnSchema): PropertyDecorator {
   return function (target, key) {
@@ -14,7 +16,7 @@ export function column(params: ColumnSchema): PropertyDecorator {
 }
 
 export function index(params: any) {
-  return function (target, key: string) {
+  return function (target: any, key: string) {
     const name = toSnakeCase(params.name || key);
     const indices = Reflect.getMetadata('model:indices', target) || {};
     indices[name] = {
@@ -28,7 +30,7 @@ export function index(params: any) {
 
 export function table(table: string) {
   return function (constructor: Function) {
-    constructor.prototype.table = table;
+    constructor.prototype._table = table;
   };
 }
 
@@ -36,15 +38,14 @@ const connections: Record<string, any> = {};
 
 export function connect(config: { name: string; filename?: string }) {
   return function (constructor: Function) {
-    console.log('connections', connections);
     if (!connections[config.name]) {
       const conn = open({
-        filename: config.filename,
+        filename: config.filename || '',
         driver: Database,
       });
       connections[config.name] = conn;
     }
-    constructor.prototype.db = connections[config.name];
+    constructor.prototype._db = connections[config.name];
   };
 }
 
@@ -52,6 +53,9 @@ export const addConnection = async (
   config: { name: string } & ISqlite.Config,
 ) => {
   if (!connections[config.name]) {
+    if (config.filename && !fs.existsSync(path.dirname(config.filename))) {
+      fs.mkdirSync(path.dirname(config.filename));
+    }
     const conn = open({
       filename: config.filename,
       driver: Database,

@@ -1,7 +1,6 @@
-import { Parser } from "./parser";
+import { Parser } from './parser';
 import { Dict } from './interface';
 import { sprintf } from 'printj';
-
 
 export class Builder {
   sql: Dict;
@@ -57,9 +56,9 @@ export class Builder {
       return this;
     }
     const orderClause: string[] = [];
-    Object.entries(orderBy).forEach(((elm: string[]) => {
-      orderClause.push(elm.join(' '))
-    }))
+    Object.entries(orderBy).forEach((elm: string[]) => {
+      orderClause.push(elm.join(' '));
+    });
     this.sql.order = { sql: `ORDER BY ${orderClause.join(',')}`, params: [] };
     return this;
   }
@@ -86,12 +85,12 @@ export class Builder {
     }
     this.sql.group = {
       sql: `GROUP BY ${field.toString()}`,
-      params: []
+      params: [],
     };
     return this;
   }
 
-  select(options: Dict | null = null): { sql: string, params: any[] } {
+  select(options: Dict | null = null): { sql: string; params: any[] } {
     const select = 'SELECT %s FROM `%s` %s';
     const fields = this.isEmpty(this._fields) ? '*' : this._fields.join(',');
     const { sql, params } = this.toSql();
@@ -100,35 +99,35 @@ export class Builder {
     return { sql: sqlStr, params };
   }
 
-  delete(): { sql: string, params: any[] } {
-    const delSql = 'DELETE FROM `%s` %s'
+  delete(): { sql: string; params: any[] } {
+    const delSql = 'DELETE FROM `%s` %s';
     const { sql, params } = this.toSql();
     const sqlStr = sprintf(delSql, this.tableName, sql);
     this.free();
     return { sql: sqlStr, params };
   }
 
-  update(data: Dict, options: Dict = {}): { sql: string, params: any[] } {
+  update(data: Dict, options: Dict = {}): { sql: string; params: any[] } {
     const setSql: string[] = [];
-    const changed = [];
-    Object.entries(data).forEach(elm => {
+    const changed: string[] = [];
+    Object.entries(data).forEach((elm) => {
       const [field, value] = elm;
       if (value && value.$inc) {
         setSql.push(`\`${field}\`=\`${field}\` + ${value.inc}`);
       } else {
         setSql.push(`${field}=?`);
-        changed.push(value?.toString())
+        changed.push(value?.toString());
       }
     });
     const { sql, params } = this.toSql();
-    params.map(i => changed.push(i));
+    params.map((i) => changed.push(i));
     const upSql = `UPDATE \`%s\` SET %s %s`;
     const sqlStr = sprintf(upSql, this.tableName, setSql.join(','), sql);
     this.free();
     return { sql: sqlStr, params: changed };
   }
 
-  insert(data: Dict): { sql: string, params: any[] } {
+  insert(data: Dict): { sql: string; params: any[] } {
     const fields: string[] = [];
     const params: any[] = [];
     for (const field in data) {
@@ -142,18 +141,18 @@ export class Builder {
     return { sql: preSql, params };
   }
 
-  toSql(): { sql: string, params: any[] } {
+  toSql(): { sql: string; params: any[] } {
     const sqlObj: string[] = [];
     const values: any[] = [];
     const sequence = ['where', 'group', 'order', 'offset', 'limit'];
-    sequence.forEach(item => {
+    sequence.forEach((item) => {
       if (!this.sql[item]) {
         return;
       }
       const { sql, params } = this.sql[item];
       sqlObj.push(sql);
       if (Array.isArray(params)) {
-        params.map(v => values.push(v));
+        params.map((v) => values.push(v));
       } else {
         values.push(params);
       }

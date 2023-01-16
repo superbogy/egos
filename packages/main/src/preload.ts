@@ -23,21 +23,12 @@ class ModelProxy {
     return containers[name];
   }
 
-  async execute({
-    url,
-    method,
-    data,
-  }: {
-    url: string;
-    method: string;
-    data: any;
-  }) {
+  async execute({ method, args }: { method: string; args?: any }) {
     try {
       await this.lock.acquireAsync();
       const payload = {
-        table: url,
         method,
-        args: data,
+        args,
       };
       const res = await ipcRenderer.invoke(this.channel, payload);
       return res;

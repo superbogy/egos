@@ -1,7 +1,7 @@
 import { Dict } from './interface';
 import { objToKVPairs } from './utils';
 
-const OPERATOR = {
+const OPERATOR: Record<string, string> = {
   $eq: '=',
   $neq: '!=',
   $gt: '>',
@@ -11,7 +11,7 @@ const OPERATOR = {
   $like: 'LIKE',
   $isNull: 'IS NULL',
   $isNotNull: 'IS NOT NULL',
-  $inc: true,
+  $inc: 'in',
 };
 
 const LOGICAL: Dict = {
@@ -21,7 +21,7 @@ const LOGICAL: Dict = {
 };
 
 export class Parser {
-  buildTree(query: Dict | Dict[], op = '$and') {
+  buildTree(query: Dict | Dict[], op = '$and'): any[] {
     const data: Record<string, any> = { [op]: [] };
     // [{a: 1}, {b: 1}]
     if (Array.isArray(query)) {
@@ -45,7 +45,7 @@ export class Parser {
       //     { $or: [{ mail: 2 }, { gender: 'male' }] },
       //   ],
       // };
-      return Object.entries(query).reduce((acc, cur) => {
+      const res = Object.entries(query).reduce((acc, cur) => {
         const [k, v] = cur;
         if (k in LOGICAL) {
           if (!acc[k]) {
@@ -58,12 +58,13 @@ export class Parser {
         }
         return acc;
       }, data);
+      return [res];
     }
 
-    return data;
+    return [data];
   }
 
-  transform(tree: Dict[], lp?: string) {
+  transform(tree: Dict[], lp?: string): { sql: string; params: any[] } {
     const result: { sql: string[]; params: any[] } = {
       sql: [],
       params: [],
@@ -75,7 +76,7 @@ export class Parser {
         if (logicLayer) {
           return this.transform(item, lo);
         }
-        const res = item.map((n) => {
+        const res = item.map((n: any) => {
           const { sql, params } = this.pairToSql(n);
           result.params = result.params.concat(params);
           return sql;
@@ -114,7 +115,8 @@ export class Parser {
       return [this.increment(key, value), undefined];
     }
     if (op in OPERATOR) {
-      return [`${key} ${OPERATOR[op]} ?`, value];
+      const opStr = OPERATOR[op] as string;
+      return [`${key} ${opStr} ?`, value];
     }
     const func = this.sqlFunction(op);
     const placeholder = Array.isArray(value)
