@@ -1,11 +1,9 @@
 import Debug from 'debug';
 import { Builder } from './builder';
 import { Dict, ModelOpts } from './interface';
-import { isEmpty, pick, has, equals } from 'ramda';
+import { isEmpty, pick, has } from 'ramda';
 import { Database, ISqlite } from 'sqlite';
 import { TimestampSchema, ColumnSchema } from './schema';
-import { column } from './decorators';
-import { assert } from 'console';
 
 const debug = Debug('@egos/lite:model');
 export class Model {
@@ -194,7 +192,6 @@ export class Model {
     if (this.options?.debug) {
       debug('[sql]: %s, [params]: %j', sql, params);
     }
-    console.log('???? this.db', this.db);
     const stmt: any = await this.db.prepare(sql);
     return stmt[method](params);
   }

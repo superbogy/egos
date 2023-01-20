@@ -4,6 +4,7 @@ dist
 .umirc.local.ts
 config/config.local.ts
 .umi
+.umi-production
 .turbo
 # visual studio code
 .history
