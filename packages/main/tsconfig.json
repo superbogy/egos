@@ -1,23 +1,29 @@
 {
   "compilerOptions": {
-    "target": "es2020",
-    "module": "Node16",
-    "moduleResolution": "node",
-    "importHelpers": true,
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020", "ES2021.WeakRef", "DOM"],
     "esModuleInterop": true,
-    "allowJs": true,
+    "isolatedModules": true,
     "sourceMap": false,
-    "baseUrl": "./",
-    "outDir": "dist",
+    "declaration": false,
     "strict": true,
-    "resolveJsonModule": true,
-    "allowSyntheticDefaultImports": true,
+    "rootDirs": ["./src"],
+    "outDir": "dist",
+    "noUncheckedIndexedAccess": false,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "useUnknownInCatchVariables": false,
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
     "emitDeclarationOnly": false,
+    "resolveJsonModule": true,
     "experimentalDecorators": true,
     "strictPropertyInitialization": false,
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["./src/**/*"],
+  "exclude": ["node_modules", "dist", "test", "docs", "tests"]
 }

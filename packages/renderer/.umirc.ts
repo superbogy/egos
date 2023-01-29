@@ -1,7 +1,11 @@
-import { defineConfig } from "umi";
+import { defineConfig } from 'umi';
 
 export default defineConfig({
-  npmClient: "pnpm",
-  dva: {},
-  plugins: ["@umijs/plugins/dist/dva"],
+  nodeModulesTransform: {
+    type: 'none',
+  },
+  routes: [
+    { path: '/', component: '@/pages/index' },
+  ],
+  fastRefresh: {},
 });

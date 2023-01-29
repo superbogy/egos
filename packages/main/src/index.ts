@@ -7,9 +7,13 @@ import installExtension, {
 import contextMenu from 'electron-context-menu';
 import { LOCAL_FILE_HOST } from './constants';
 import prepare from './prepare';
+import fs from 'fs';
+import url from 'url';
+import { getFileMeta } from './lib/helper';
 
 let mainWindow: any;
-const fileURL = path.join('file:', __dirname, 'index.html');
+const publicDir = path.join(__dirname, '../renderer');
+const fileURL = path.join('file:', publicDir, 'index.html');
 const isDev = process.env.NODE_ENV === 'development';
 const winURL = isDev ? 'http://localhost:8000' : new URL(fileURL).href;
 
@@ -87,9 +91,32 @@ app.whenReady().then(async () => {
     showSearchWithGoogle: false,
     showInspectElement: false,
   });
-  protocol.registerFileProtocol('file', (request, callback) => {
+  protocol.interceptFileProtocol('file', (request, callback) => {
     const url = request.url.substring(8);
-    callback({ path: decodeURI(url) });
+    const file = decodeURI(url);
+    const publicFile = path.join(publicDir, url);
+    console.log('>>>>>>>>-----', url, publicFile);
+    if (fs.existsSync(publicFile)) {
+      callback({ path: publicFile });
+    } else {
+      callback({ path: file });
+    }
+  });
+
+  protocol.registerFileProtocol('atom', async (request, callback) => {
+    const filePath = url.fileURLToPath(
+      'file://' + request.url.slice('atom://'.length),
+    );
+    const meta = await getFileMeta(filePath);
+    const readable = fs.createReadStream(filePath);
+    console.log('ppppp', filePath);
+    callback({
+      statusCode: 200,
+      data: readable,
+      method: 'GET',
+      mimeType: meta.mime,
+      path: filePath,
+    });
   });
 
   session.defaultSession.webRequest.onBeforeRequest(

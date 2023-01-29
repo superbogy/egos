@@ -3,7 +3,8 @@
   "private": true,
   "author": "Tommy Wei <mulberry10th@gmail.com>",
   "scripts": {
-    "build": "pnpm --filter=./packages/main run app:dist",
+    "build:m": "pnpm --filter=./packages/main run app:dist",
+    "build:r": "pnpm --filter=./packages/renderer run build",
     "dev:m": "pnpm --filter=./packages/main run dev",
     "dev:r": "pnpm --filter=./packages/renderer run dev"
   },
@@ -27,6 +28,13 @@
   "pnpm": {
     "overrides": {
       "egos": "workspace:*"
+    },
+    "packageExtensions": {
+      "sqlite3": {
+        "dependencies": {
+          "node-gyp": "7"
+        }
+      }
     },
     "peerDependencyRules": {
       "allowAny": [
