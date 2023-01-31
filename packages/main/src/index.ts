@@ -12,7 +12,7 @@ import url from 'url';
 import { getFileMeta } from './lib/helper';
 
 let mainWindow: any;
-const publicDir = path.join(__dirname, '../renderer');
+const publicDir = path.join(__dirname, './public');
 const fileURL = path.join('file:', publicDir, 'index.html');
 const isDev = process.env.NODE_ENV === 'development';
 const winURL = isDev ? 'http://localhost:8000' : new URL(fileURL).href;
@@ -45,6 +45,7 @@ const createWindow = () => {
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 5, y: 10 },
   });
+
   mainWindow.loadURL(winURL);
   mainWindow.webContents.openDevTools();
   mainWindow.on('closed', () => {
@@ -95,21 +96,25 @@ app.whenReady().then(async () => {
     const url = request.url.substring(8);
     const file = decodeURI(url);
     const publicFile = path.join(publicDir, url);
-    console.log('>>>>>>>>-----', url, publicFile);
     if (fs.existsSync(publicFile)) {
       callback({ path: publicFile });
     } else {
       callback({ path: file });
     }
   });
+  protocol.registerFileProtocol('app', (request, respond) => {
+    let pathName = new URL(request.url).pathname;
+    pathName = decodeURI(pathName); // Needed in case URL contains spaces
 
+    const filePath = path.join(__dirname, pathName);
+    respond({ path: filePath });
+  });
   protocol.registerFileProtocol('atom', async (request, callback) => {
     const filePath = url.fileURLToPath(
       'file://' + request.url.slice('atom://'.length),
     );
     const meta = await getFileMeta(filePath);
     const readable = fs.createReadStream(filePath);
-    console.log('ppppp', filePath);
     callback({
       statusCode: 200,
       data: readable,
@@ -130,6 +135,9 @@ app.whenReady().then(async () => {
   );
   await prepare();
 });
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { secure: true, standard: true } },
+]);
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

@@ -1,10 +1,104 @@
-.navs {
-  ul {
-    padding: 0;
-    list-style: none;
-    display: flex;
+@import '~antd/es/style/themes/default.less';
+@import '~react-contexify/dist/ReactContexify.css';
+@import '~file-icons-js/css/style.css';
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+.colorWeak {
+  filter: invert(80%);
+}
+
+canvas {
+  display: block;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+@media (max-width: @screen-xs) {
+  .ant-table {
+    width: 100%;
+    overflow-x: auto;
+
+    &-thead>tr,
+    &-tbody>tr {
+
+      >th,
+      >td {
+        white-space: pre;
+
+        >span {
+          display: block;
+        }
+      }
+    }
   }
-  li {
-    margin-right: 1em;
+}
+
+// 兼容IE11
+@media screen and(-ms-high-contrast: active),
+(-ms-high-contrast: none) {
+  body .ant-layout {
+    min-height: 100vh;
   }
+}
+
+.main {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  margin-top: 0;
+  flex-direction: column;
+  background-color: #fff;
+}
+
+section>.ant-layout {
+  background-color: #fff;
+}
+
+.ant-page-header {
+  display: none;
+}
+
+span[contenteditable="true"] {
+  outline: none;
+}
+
+span[contenteditable="true"]:focus {
+  outline: none;
+  border: 1px dashed #aaa;
+  line-height: 16px;
+}
+
+.crumb {
+  padding-left: 12px;
+  color: #b2b2b2;
+  font-size: 12px;
+  background-color: #f0f2f5;
+
+  .peace {
+    padding: 4px;
+    cursor: pointer;
+  }
+}
+
+*:focus {
+  outline: none;
+}
+
+.am-engine p,
+.am-engine-view p {
+  padding: 2px;
 }

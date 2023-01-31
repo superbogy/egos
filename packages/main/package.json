@@ -12,7 +12,7 @@
     "app:dist": "electron-builder",
     "build": "tsc",
     "dev": "concurrently 'npm run watch'  'npm run start' ",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall:todo": "electron-builder install-app-deps",
     "rebuild-db": "electron-rebuild -f -w sqlite3",
     "start": "cross-env NODE_ENV=development DEBUG=@egos/lite:* nodemon --delay 1000ms --watch dist --exec electron  dist/index.js",
     "watch": "tsc -w"
@@ -21,6 +21,7 @@
     "@egos/lite": "workspace:^0.0.1",
     "ajv": "^8.12.0",
     "await-lock": "^2.2.2",
+    "concurrently": "^7.6.0",
     "electron-context-menu": "^3.6.1",
     "electron-debug": "^3.2.0",
     "electron-devtools-installer": "^3.2.0",

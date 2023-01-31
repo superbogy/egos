@@ -1,20 +1,27 @@
 import { defineConfig } from 'umi';
+import router from './router';
 
 export default defineConfig({
-  // title: 'egos',
-  // base: './',
-  // manifest: {
-  //   basePath: '/',
-  // },
+  title: 'egos',
+  base: './',
+  manifest: {
+    basePath: '/',
+  },
   dynamicImport: false,
   routes: [
+    router,
     {
-      exact: false,
-      path: '/',
-      component: '@/layouts/index',
-      routes: [{ exact: true, path: '/', component: '@/pages/index' }],
+      component: './404',
     },
   ],
+  // routes: [
+  //   {
+  //     exact: false,
+  //     path: '/',
+  //     component: '@/layouts/index',
+  //     routes: [{ exact: true, path: '/', component: '@/pages/index' }],
+  //   },
+  // ],
   // chainWebpack: (config, { webpack }) => {
   //   config.target('electron-renderer');
   //   // mfsu

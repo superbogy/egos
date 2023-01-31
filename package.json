@@ -42,5 +42,8 @@
         "eslint"
       ]
     }
+  },
+  "dependencies": {
+    "concurrently": "^7.6.0"
   }
 }
