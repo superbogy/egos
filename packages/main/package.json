@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@egos/lite": "workspace:^0.0.1",
+    "@egos/storage": "workspace:^1.0.0",
     "ajv": "^8.12.0",
     "await-lock": "^2.2.2",
     "concurrently": "^7.6.0",

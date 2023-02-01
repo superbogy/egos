@@ -5,13 +5,24 @@ import React, { useRef } from 'react';
 import classNames from 'classnames';
 import styles from './index.less';
 
-const HeaderSearch = (props) => {
+interface SearchProps {
+  className?: string;
+  defaultValue?: any;
+  value?: any;
+  onChange?: () => void;
+  onVisibleChange?: (mode: any) => void;
+  placeholder?: string;
+  open?: any;
+  defaultOpen?: any;
+  options?: Record<string, any>[];
+  onSearch?: (word: string) => void;
+}
+const HeaderSearch: React.FC<SearchProps> = (props) => {
   const {
     className,
     defaultValue,
     onVisibleChange,
     placeholder,
-    open,
     defaultOpen,
     ...restProps
   } = props;
@@ -34,7 +45,7 @@ const HeaderSearch = (props) => {
         setSearchMode(true);
 
         if (searchMode && inputRef.current) {
-          inputRef.current.focus();
+          (inputRef.current as any).focus();
         }
       }}
       onTransitionEnd={({ propertyName }) => {

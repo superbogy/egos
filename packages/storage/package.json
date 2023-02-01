@@ -1,0 +1,19 @@
+{
+  "name": "@egos/storage",
+  "version": "1.0.0",
+  "description": "",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc ",
+    "clean": "tsc --build --clean"
+  },
+  "dependencies": {
+    "ali-oss": "^6.17.1"
+  },
+  "devDependencies": {
+    "@types/ali-oss": "^6.16.7"
+  }
+}

@@ -22,16 +22,45 @@ const schema = {
     },
   },
 };
+
+export interface Configuration {
+  db: string;
+  configFile: string;
+  fileHost: string;
+  storage: string;
+  plugins: string;
+  setup: boolean;
+  privateKey: string;
+  algorithm: string;
+  trashTTL: number;
+  defaultBucket: string;
+  translators: string[];
+  articleUploadUrl: string;
+  buckets: Record<string, any>[];
+}
+
+export interface BucketItem {
+  alias: string;
+  name: string;
+  type: string;
+  prefix: string;
+  status: BUCKET_STATUS;
+  driver: Drivers;
+  synchronize: [];
+  config: Record<string, string>;
+}
+
 export const homedir = path.join(os.homedir(), '.egos');
 
-export const config = {
+export const base = {
   db: path.join(homedir, 'database/egos.db'),
   configFile: path.join(homedir, 'config/egos.yaml'),
   fileHost: 'http://egos.local',
   storage: path.join(homedir, 'storage'),
   plugins: path.join(homedir, 'plugins'),
 } as Record<string, any>;
-const defaultSetting = {
+
+const defaultConfig = {
   setup: true,
   privateKey: 'bar',
   algorithm: 'aes-256-cbc',
@@ -49,7 +78,7 @@ const defaultSetting = {
       driver: Drivers.LOCAL,
       synchronize: [],
       config: {
-        path: path.join(config.storage, 'files'),
+        path: path.join(base.storage, 'files'),
       },
     },
     {
@@ -61,50 +90,48 @@ const defaultSetting = {
       driver: Drivers.LOCAL,
       synchronize: [],
       config: {
-        path: path.join(config.storage, 'images'),
+        path: path.join(base.storage, 'images'),
       },
     },
   ],
 };
 
-let setting: Record<string, any> | null = null;
+let config: Configuration | null = null;
 export const loadSetting = async (): Promise<any> => {
-  if (setting) {
-    return setting;
+  if (config) {
+    return config;
   }
-  if (fs.existsSync(config.configFile)) {
-    setting = yaml.load(fs.readFileSync(config.configFile, 'utf8')) as Record<
-      string,
-      any
-    >;
+  if (fs.existsSync(base.configFile)) {
+    config = yaml.load(
+      fs.readFileSync(base.configFile, 'utf8'),
+    ) as Configuration;
   } else {
-    await writeConfig(defaultSetting);
-    return defaultSetting;
+    await writeConfig(defaultConfig);
+    return defaultConfig;
   }
 
-  return setting;
+  return config;
 };
 
-export const getSetting = () => {
-  return setting;
+export const getConfig = (): Configuration => {
+  return config as Configuration;
 };
 
-export const writeConfig = async (cfg: any) => {
-  if (!cfg) {
+export const writeConfig = async (config: any) => {
+  if (!config) {
     return;
   }
   try {
     await lock.acquireAsync();
     const validate = ajv.compile(schema);
-    console.log(validate);
-    if (validate(cfg)) {
-      const data = yaml.dump(cfg);
-      const configPath = path.dirname(config.configFile);
+    if (validate(config)) {
+      const data = yaml.dump(config);
+      const configPath = path.dirname(base.configFile);
       if (!fs.existsSync(configPath)) {
         await fs.promises.mkdir(configPath, { recursive: true });
       }
-      await fs.promises.writeFile(config.configFile, data, { flag: 'w+' });
-      setting = null;
+      await fs.promises.writeFile(base.configFile, data, { flag: 'w+' });
+      config = null;
       lock.release();
     } else {
       console.log(validate.errors);

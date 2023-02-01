@@ -1,13 +1,26 @@
 import { defineConfig } from 'umi';
 import router from './router';
 
-export default defineConfig({
-  title: 'egos',
-  base: './',
-  manifest: {
-    basePath: '/',
+console.log([
+  {
+    component: './404',
   },
-  dynamicImport: false,
+]);
+export default defineConfig({
+  antd: {},
+  access: {},
+  model: {},
+  dva: {},
+  initialState: {},
+  request: {},
+  layout: false,
+  clientLoader: {},
+  npmClient: 'pnpm',
+  title: 'egos',
+  // base: './',
+  // manifest: {
+  //   basePath: '/',
+  // },
   routes: [
     router,
     {

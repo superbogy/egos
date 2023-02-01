@@ -1,29 +1,24 @@
 import RightContent from '@/components/Header/RightContent';
 // import Translator from '@/components/Translator';
-import { Outlet } from 'umi';
+import { Dispatch, Outlet, useLocation, Link, connect } from 'umi';
 import Icon, {
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  CloseCircleOutlined,
-  CopyOutlined,
   FileImageOutlined,
   FolderOutlined,
   HighlightOutlined,
   NodeIndexOutlined,
   RestOutlined,
   SwapOutlined,
-  SyncOutlined,
 } from '@ant-design/icons';
 import { Layout, Menu, Popover } from 'antd';
-import { useEffect, useRef } from 'react';
-import { useModel, Link, connect, useClientLoaderData } from 'umi';
+import { useEffect } from 'react';
 import router from '../../config/router';
 import './index.less';
 import logo from '@/assets/logo.svg';
 import styles from './basic.less';
+import { MenuItemType } from 'antd/lib/menu/hooks/useItems';
 
 const { Sider } = Layout;
-const routeIcons = {
+const routeIcons: Record<string, any> = {
   FolderOutlined,
   FileImageOutlined,
   HighlightOutlined,
@@ -35,28 +30,34 @@ const routeIcons = {
 /**
  * use Authorized check all menu item
  */
-const menuDataRender = (menuList) => {
-  return menuList.map((item) => {
-    const localItem = {
-      ...item,
-      key: item.path,
-      children: item.children ? menuDataRender(item.children) : undefined,
-    };
-    return localItem;
-  });
-};
+// const menuDataRender: MenuProps['items'] = (menuList: MenuItemProps[]) => {
+//   return menuList.map((item: MenuItemProps) => {
+//     const localItem = {
+//       ...item,
+//       key: item.path,
+//       children: item.children ? menuDataRender(item.children) : undefined,
+//     };
+//     return localItem;
+//   });
+// };
 
-export default connect(({ global, route, dispatch }) => ({
+interface LayoutProps {
+  dispatch: Dispatch;
+  global: {
+    translateResult: any;
+    translateVisible: boolean;
+    translator: string;
+  };
+}
+
+export default connect(({ global, dispatch }: LayoutProps) => ({
   global,
-  route,
   dispatch,
-}))((props) => {
-  console.log('basic layout', props);
+}))((props: LayoutProps) => {
   const { dispatch } = props;
-  const global = useModel('globalModel');
-  console.log(global, useModel('count'));
-  const { translateResult, translateVisible, translator } = props.global;
-  console.log(translator, translateVisible, translateResult);
+  const location = useLocation();
+  console.log(location);
+  // const { translateResult, translateVisible, translator } = props.global;
   // const colors = {
   //   done: { color: 'green', icon: <CheckCircleOutlined /> },
   //   pending: { color: 'blue', icon: <ClockCircleOutlined /> },
@@ -80,7 +81,7 @@ export default connect(({ global, route, dispatch }) => ({
       },
     });
   };
-  const menuItems = router.routes
+  const menuItems: MenuItemType[] = router.routes
     .filter((item) => item.icon)
     .map((item) => {
       return {
@@ -88,12 +89,12 @@ export default connect(({ global, route, dispatch }) => ({
         style: { padding: 0, textAlign: 'center' },
         label: (
           <Popover placement="right" content={item.name}>
-            <Link to={item.path}>
-              <Icon component={routeIcons[item.icon]} />
+            <Link to={item.path as string}>
+              <Icon component={routeIcons[item.icon as string]} />
             </Link>
           </Popover>
         ),
-      };
+      } as MenuItemType;
     });
   return (
     <Layout style={{ height: '100%' }}>
