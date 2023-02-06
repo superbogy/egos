@@ -8,44 +8,43 @@ import Driver from './abstract';
 import { BucketItem, FileObject } from './interface';
 
 export class OssDriver extends Driver {
-  name = 'OSS';
-  static schema = {
-    bucket: {
-      type: 'string',
-      require: true,
-      label: 'bucket',
-      description: 'Bucket name',
+  static serviceName = 'OSS';
+  static _schema = {
+    type: 'object',
+    properties: {
+      bucket: {
+        type: 'string',
+        label: 'bucket',
+        description: 'Bucket name',
+      },
+      accessKeyId: {
+        type: 'string',
+        label: 'accessKeyId',
+        description: 'Access key ID',
+      },
+      accessKeySecret: {
+        type: 'string',
+        label: 'accessKeySecret',
+        description: 'Access key secret',
+      },
+      region: {
+        type: 'string',
+        label: 'region',
+        description: 'Region',
+      },
+      domain: {
+        type: 'string',
+        label: 'domain',
+        description: 'External request domain name',
+      },
+      secure: {
+        type: 'boolean',
+        require: false,
+        label: 'secure',
+        description: 'HTTPS (secure: true) or HTTP (secure: false)',
+      },
     },
-    accessKeyId: {
-      type: 'string',
-      require: true,
-      label: 'accessKeyId',
-      description: 'Access key ID',
-    },
-    accessKeySecret: {
-      type: 'string',
-      require: true,
-      label: 'accessKeySecret',
-      description: 'Access key secret',
-    },
-    region: {
-      type: 'string',
-      require: false,
-      label: 'region',
-      description: 'Region',
-    },
-    domain: {
-      type: 'string',
-      require: false,
-      label: 'domain',
-      description: 'External request domain name',
-    },
-    secure: {
-      type: 'boolean',
-      require: false,
-      label: 'secure',
-      description: 'HTTPS (secure: true) or HTTP (secure: false)',
-    },
+    required: ['bucket', 'accessKeyId', 'accessKeySecret'],
   };
   private client: OSS;
   constructor(bucket: BucketItem) {

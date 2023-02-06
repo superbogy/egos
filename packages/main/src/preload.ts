@@ -46,7 +46,7 @@ const api = {
   },
 };
 
-(window as any).Egos = api;
+(window as any).Api = api;
 
 (window as any).Electron = {
   vars: {

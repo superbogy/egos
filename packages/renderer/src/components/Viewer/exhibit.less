@@ -1,0 +1,29 @@
+.exhibit-box {
+  width: 108px;
+  height: 100px;
+  display: flex;
+  padding: 2px;
+
+  .exhibit-media-item {
+    width: 100%;
+  }
+
+  .exhibit-file-item {
+    width: 100%;
+    object-fit: cover;
+    display: flex;
+  }
+
+  .exhibit-file-avatar {
+    display: flex;
+    width: 100%;
+
+    &::before {
+      width: 100%;
+      font-size: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  }
+}

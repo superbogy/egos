@@ -5,8 +5,8 @@ import path from 'path';
 import { v4 as uuid } from 'uuid';
 import { BUCKET_STATUS } from '../constants';
 import { getDriver } from '@egos/storage';
-import { ServiceError } from '@/error';
-import { getConfig, writeConfig, homedir } from '@/config';
+import { ServiceError } from '../error';
+import { getConfig, writeConfig, homedir } from '../config';
 
 let lock = new AwaitLock();
 const ajv = new Ajv();
@@ -26,23 +26,20 @@ const schema = {
 
 export const getBuckets = () => {
   const config = getConfig();
-  return config.buckets.map((item) => {
-    item.defaultBucket = config.defaultBucket === item.name;
-    return item;
-  });
+  return config.buckets;
 };
 
-export const updateBucket = async ({ defaultBucket, ...bucket }: any) => {
+export const updateBucket = async ({ ...bucket }: any) => {
   const driver = getDriver(bucket);
+  console.log('update bucket driver %j ', bucket, driver);
   driver.validate(bucket.config);
   const config = getConfig();
-  if (defaultBucket) {
+  if (bucket.isDefault) {
     if (bucket.status === BUCKET_STATUS.DISABLE) {
       throw new ServiceError({
         message: 'default bucket must be active',
       });
     }
-    config.defaultBucket = defaultBucket;
   }
   const index = config.buckets.findIndex((item) => item.name === bucket.name);
   if (index === -1) {

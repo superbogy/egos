@@ -5,6 +5,7 @@ import yaml from 'js-yaml';
 import { BUCKET_STATUS, Drivers } from './constants';
 import AwaitLock from 'await-lock';
 import Ajv, { ErrorObject } from 'ajv';
+import { getSharedVar } from './global';
 
 const lock = new AwaitLock();
 const ajv = new Ajv();
@@ -61,11 +62,11 @@ export const base = {
 } as Record<string, any>;
 
 const defaultConfig = {
+  ...base,
   setup: true,
   privateKey: 'bar',
   algorithm: 'aes-256-cbc',
   trashTTL: 30,
-  defaultBucket: '',
   translators: ['all'],
   articleUploadUrl: 'data-url',
   buckets: [
@@ -74,6 +75,7 @@ const defaultConfig = {
       name: 'local-file',
       type: 'file',
       prefix: '',
+      isDefault: true,
       status: BUCKET_STATUS.ACTIVE,
       driver: Drivers.LOCAL,
       synchronize: [],
@@ -88,6 +90,7 @@ const defaultConfig = {
       prefix: '',
       status: BUCKET_STATUS.ACTIVE,
       driver: Drivers.LOCAL,
+      isDefault: true,
       synchronize: [],
       config: {
         path: path.join(base.storage, 'images'),
@@ -142,3 +145,9 @@ export const writeConfig = async (config: any) => {
     throw err;
   }
 };
+
+
+export const encryptConfig = () => {
+  const ciphertext = JSON.stringify(config);
+  const pass = getSharedVar('password');
+}

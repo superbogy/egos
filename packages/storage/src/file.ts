@@ -9,17 +9,19 @@ import Driver from './abstract';
 import { FileObject } from './interface';
 
 export class FileDriver extends Driver {
-  name = 'Local';
-  static schema = {
-    path: {
-      type: 'string',
-      required: true,
-      label: 'path',
-      description: 'file storage path',
+  static serviceName = 'LOCAL';
+  static _schema = {
+    type: 'object',
+    properties: {
+      path: {
+        type: 'string',
+        label: 'path',
+        description: 'file storage path',
+      },
     },
+    required: ['path'],
   };
   getPath(dest: string) {
-    console.log('get path ====>>', dest);
     const bucket = this.bucket;
     if (!bucket || !bucket.config) {
       throw new ServiceError({

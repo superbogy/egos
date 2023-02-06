@@ -1,19 +1,45 @@
 import { Avatar, Divider, List, Skeleton, Space } from 'antd';
 import classNames from 'classnames';
-import { Fragment, useState } from 'react';
+import { Fragment, ReactNode, useState } from 'react';
 import './binding.less';
 import BindingForm from './BindingForm';
 
-const BindingView = (props) => {
+interface StoragePros {
+  drivers: any;
+  buckets: any[];
+  onBucketChange: (payload: any) => void;
+}
+
+interface MenuDataItem {
+  title: string;
+  description: string;
+  loading: false;
+  actions: ReactNode[] | string;
+  avatar: string;
+}
+
+const BindingView = (props: StoragePros) => {
   const { drivers, buckets } = props;
   const [currentDriver, setCurrentDriver] = useState('');
   const [activeBucket, setActiveBucket] = useState({});
-  const onEdit = (bucket) => {
+  const [modalVisible, setModalVisible] = useState(false);
+  const bindStorage = (type: string) => {
+    setCurrentDriver(type);
+    setModalVisible(true);
+    setActiveBucket({});
+  };
+  const getDriverBuckets = (driver: any) => {
+    return buckets.filter((item) => item.driver === driver);
+  };
+  const handleOk = async (res: any) => {
+    props.onBucketChange(res);
+  };
+  const onEdit = (bucket: any) => {
     setCurrentDriver(bucket.driver);
     setActiveBucket(bucket);
     setModalVisible(true);
   };
-  const getData = () => {
+  const getData = (): MenuDataItem[] => {
     return Object.entries(drivers).map(([driverName]) => {
       const getDescription = () => {
         const bindings = getDriverBuckets(driverName);
@@ -43,6 +69,7 @@ const BindingView = (props) => {
       return {
         title: driverName,
         description: getDescription(),
+        loading: false,
         actions: [
           <span
             key={driverName}
@@ -53,22 +80,8 @@ const BindingView = (props) => {
           </span>,
         ],
         avatar: driverName,
-      };
+      } as MenuDataItem;
     });
-  };
-  const [modalVisible, setModalVisible] = useState(false);
-
-  const getDriverBuckets = (driver) => {
-    return buckets.filter((item) => item.driver === driver);
-  };
-  const bindStorage = (type) => {
-    setCurrentDriver(type);
-    setModalVisible(true);
-    setActiveBucket({});
-  };
-
-  const handleOk = async (res) => {
-    props.onBucketChange(res);
   };
 
   const formProps = {
@@ -87,9 +100,9 @@ const BindingView = (props) => {
       <List
         itemLayout="horizontal"
         dataSource={getData()}
-        renderItem={(item) => {
+        renderItem={(item: MenuDataItem) => {
           return (
-            <List.Item actions={item.actions}>
+            <List.Item actions={item.actions as ReactNode[]}>
               <Skeleton avatar title={false} loading={item.loading} active>
                 <List.Item.Meta
                   avatar={

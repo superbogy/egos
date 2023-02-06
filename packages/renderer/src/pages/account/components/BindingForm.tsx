@@ -1,23 +1,37 @@
 import { Divider, Form, Input, Modal, Select, Switch } from 'antd';
 import { assocPath, lens, props as Rprops, set } from 'ramda';
 import { useEffect } from 'react';
-export default (props) => {
-  const { driver = {}, name, bucket, buckets } = props;
+
+export interface BindProps {
+  driver: Record<string, any>;
+  name: string;
+  bucket: any;
+  buckets: any[];
+  visible: boolean;
+  handleOk: (payload: any) => void;
+  onCancel: (payload: any) => void;
+}
+const BindingForm: React.FC<BindProps> = (props: BindProps) => {
+  const { driver, name, bucket, buckets } = props;
+  console.log('dddriver', driver);
   const [form] = Form.useForm();
   const handleOk = async () => {
     const res = await form.validateFields();
     let payload = {};
-    for (const key in res) {
-      const val = res[key];
+    Object.entries(res).forEach(([key, val]: [string, any]) => {
       const p = key.split('.');
       payload = set(lens(Rprops(p), assocPath(p)), val, payload);
-    }
+    });
+
     props.handleOk(payload);
   };
   useEffect(() => {
     form.setFieldsValue({ ...bucket, driver: props.name });
   }, [props.name, bucket, form]);
-
+  console.log('bucket info bucket', bucket);
+  if (!driver) {
+    return null;
+  }
   return (
     <Modal
       title={name}
@@ -90,32 +104,36 @@ export default (props) => {
           </Select>
         </Form.Item>
         <Form.Item
-          name="defaultBucket"
+          name="isDefault"
           label="Default"
           valuePropName="checked"
           rules={[
             { required: false, message: 'make bucket as default storage' },
           ]}
         >
-          <Switch defaultChecked={false} />
+          <Switch />
         </Form.Item>
         <Divider plain>Config</Divider>
-        {Object.entries(driver).map(([field, schema]) => {
-          const config = bucket.config || {};
-          return (
-            <Form.Item
-              key={field}
-              name={`config.${field}`}
-              rules={[{ required: schema.required }]}
-              help={schema.description}
-              initialValue={config[field]}
-              label={schema.label}
-            >
-              <Input placeholder={schema.label} />
-            </Form.Item>
-          );
-        })}
+        {Object.entries(driver.properties).map(
+          ([field, schema]: [string, any]) => {
+            const config = bucket.config || {};
+            return (
+              <Form.Item
+                key={field}
+                name={`config.${field}`}
+                rules={[{ required: driver.required?.includes(field) }]}
+                help={schema.description}
+                initialValue={config[field]}
+                label={schema.label}
+              >
+                <Input placeholder={schema.label} />
+              </Form.Item>
+            );
+          },
+        )}
       </Form>
     </Modal>
   );
 };
+
+export default BindingForm;

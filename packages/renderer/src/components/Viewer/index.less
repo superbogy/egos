@@ -1,0 +1,113 @@
+.viewer-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  padding: 0 0 0 60px;
+  height: 100%;
+  width: 100%;
+  opacity: 1;
+}
+
+.viewer-close-bar {
+  position: absolute;
+  left: 60px;
+  top: 12px;
+  padding: 8px;
+  font-size: 18px;
+  color: #fff;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.viewer-content {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  background-color: #0000008b;
+  inset: 0;
+
+  .viewer-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72%;
+    height: 100%;
+    margin: 0 auto;
+    text-align: center;
+
+    .viewer-content {
+      width: 100%;
+      height: 100%;
+    }
+
+    .viewer-file-item {
+      max-height: 90%;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    .viewer-file-cover {
+      color: rgb(43, 89, 89);
+      font-size: 120px;
+      padding: 0;
+      background-color: #fff;
+      border-radius: 4px;
+
+      &::before {
+        font-size: 120px;
+      }
+    }
+
+    .viewer-media-item {
+      width: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .viewer-arrow {
+    display: flex;
+    width: 48px;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    opacity: 0.5;
+    color: #fdf9fe;
+    z-index: 1;
+
+    :hover {
+      color: #fff;
+    }
+  }
+
+  .viewer-description {
+    width: 280px;
+    height: 100%;
+    padding-top: 24px;
+    padding-left: 12px;
+    background-color: #fefefe;
+    overflow: hidden;
+
+    .item-body {
+      display: table;
+      text-align: start;
+
+      .item-label {
+        color: #615f5f;
+        width: 52px;
+        padding: 4px 2px;
+        text-align: left;
+        display: table-cell;
+      }
+
+      .item-value {
+        display: table-cell;
+        padding-left: 8px;
+        overflow-wrap: anywhere;
+      }
+    }
+  }
+}

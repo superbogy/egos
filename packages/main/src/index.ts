@@ -10,6 +10,7 @@ import prepare from './prepare';
 import fs from 'fs';
 import url from 'url';
 import { getFileMeta } from './lib/helper';
+import './global';
 
 let mainWindow: any;
 const publicDir = path.join(__dirname, './public');

@@ -7,6 +7,7 @@ import { BucketItem, ChunkProps, FileObject } from './interface';
 
 export default class Driver {
   static buckets = [];
+  static _schema: any;
   protected bucket: BucketItem;
   protected _cancel: any[];
   protected _inflight: any[];
@@ -19,7 +20,7 @@ export default class Driver {
   }
 
   get schema(): any {
-    return null;
+    return (this.constructor as any)._schema;
   }
 
   cancel(taskId: string, cb: () => any) {
@@ -50,10 +51,9 @@ export default class Driver {
   }
 
   validate(data: any) {
-    const validate = new Ajv({ strict: false } as Ajv.Options).compile({
-      type: 'object',
-      properties: this.schema,
-    });
+    const schema = this.schema;
+    console.log('schema>>', schema, data);
+    const validate = new Ajv({ strict: false } as Ajv.Options).compile(schema);
     const res = validate(data);
     if (!res) {
       console.log('validate error', validate.errors);

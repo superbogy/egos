@@ -1,4 +1,7 @@
 import * as service from './service';
+// import { EffectsCommandMap, SubscriptionAPI } from 'dva';
+import { EffectsCommandMap, SubscriptionAPI, AnyAction } from 'umi';
+console.log('123 mnodel account');
 export default {
   namespace: 'account',
   state: {
@@ -7,23 +10,24 @@ export default {
     buckets: [],
   },
   subscriptions: {
-    setup({ dispatch, history }) {
-      history.listen((location) => {
-        const query = location.query;
+    setup({ dispatch, history }: SubscriptionAPI) {
+      return history.listen(({ location }: any) => {
+        console.log('????? setup', location);
         if (
           location.pathname === '/account/setting' ||
           location.pathname === '/'
         ) {
           dispatch({
             type: 'init',
-            payload: { ...query },
+            payload: location.state || {},
           });
         }
       });
     },
   },
   effects: {
-    *init({ payload }, { put, call }) {
+    *init({ payload }: any, { put, call }: EffectsCommandMap) {
+      console.log('init payload', payload);
       if (payload.activeKey === 'storage') {
         const { drivers, buckets } = yield call(service.getStorageDrivers);
         payload.drivers = drivers;
@@ -34,7 +38,10 @@ export default {
         payload: { ...payload },
       });
     },
-    *updateBucket({ payload }, { call, put }) {
+    *updateBucket(
+      { payload }: Record<string, any>,
+      { call, put }: EffectsCommandMap,
+    ) {
       yield service.updateBucket(payload);
       const { drivers, buckets } = yield call(service.getStorageDrivers);
       yield put({
@@ -44,7 +51,7 @@ export default {
     },
   },
   reducers: {
-    updateState(state, { payload }) {
+    updateState(state: Record<string, any>, { payload }: AnyAction) {
       return { ...state, ...payload };
     },
   },

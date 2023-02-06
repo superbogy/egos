@@ -1,9 +1,7 @@
-import { useState } from 'react';
 import { Menu } from 'antd';
 import { connect, Dispatch, history } from 'umi';
 import BaseView from './components/base';
-import BindingView from './components/binding';
-import NotificationView from './components/notification';
+import BindingView from './components/storage';
 import SecurityView from './components/security';
 // import Translate from './components/Translate';
 import styles from './style.less';
@@ -21,16 +19,15 @@ interface AccountProps {
   account: any;
 }
 const Index: React.FC<AccountProps> = (props: AccountProps) => {
-  console.log('fuck account');
   const { account, dispatch } = props;
-  const [activeKey, setActiveKey] = useState('base');
+  const activeKey = account.activeKey;
   const getMenu = () => {
     return Object.keys(menuMap).map((item) => (
       <Item key={item}>{menuMap[item]}</Item>
     ));
   };
   const onActive = (key: string) => {
-    setActiveKey(key);
+    history.push('/account/setting', { activeKey: key });
   };
 
   const handleBucketUpdate = (bucket: any) => {
@@ -61,8 +58,8 @@ const Index: React.FC<AccountProps> = (props: AccountProps) => {
         );
       // case 'translator':
       //   return <Translate />;
-      case 'notification':
-        return <NotificationView />;
+      // case 'notification':
+      //   return <NotificationView />;
       default:
         return null;
     }
@@ -90,6 +87,7 @@ const Index: React.FC<AccountProps> = (props: AccountProps) => {
     </>
   );
 };
-export default connect(({ account, dispatch }) => ({ account, dispatch }))(
-  Index,
-);
+export default connect(({ account, dispatch }: AccountProps) => ({
+  account,
+  dispatch,
+}))(Index);

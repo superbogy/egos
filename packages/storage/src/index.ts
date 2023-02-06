@@ -10,33 +10,31 @@ export const driverInstance: Record<string, Driver> = {};
 
 export const getDriver = (bucket: BucketItem) => {
   const driver = drivers.find((d) => {
-    return d.name === bucket.driver;
+    return d.serviceName === bucket.driver;
   });
   if (!driver) {
     throw new Error('Invalid driver');
   }
-  if (!driverInstance[driver.name]) {
-    driverInstance[driver.name] = new driver(bucket);
+  if (!driverInstance[driver.serviceName]) {
+    driverInstance[driver.serviceName] = new driver(bucket);
   }
-  return driverInstance[driver.name];
+  return driverInstance[driver.serviceName];
 };
 
 export const getDriverSchema = (driverName: string) => {
   const driver = drivers.find((d) => {
-    return d.name === driverName;
+    return d.serviceName === driverName;
   });
   if (!driver) {
     throw new Error('Driver not found');
   }
-  return driver.schema;
+  return driver._schema;
 };
 
 export const getDriverSchemas = () => {
   const res: Record<string, any> = {};
-  drivers.forEach((item) => (res[item.name] = item.schema));
+  drivers.forEach((item) => (res[item.serviceName] = item._schema));
   return res;
 };
 
 export * from './utils';
-
-export * from './interface';

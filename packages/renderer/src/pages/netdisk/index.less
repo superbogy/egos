@@ -1,0 +1,80 @@
+@import '~antd/lib/style/themes/default.less';
+
+.pre {
+  margin: 12px 0;
+  padding: 12px 20px;
+  background: @input-bg;
+  box-shadow: @card-shadow;
+}
+
+.select-all {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px;
+  background-color: #fefefe;
+  border: #fefefe;
+}
+
+.filename {
+  display: flex;
+  justify-content: left;
+}
+
+.selected {
+  padding: 2px;
+  border: 2px solid skyblue;
+  border-radius: 4px;
+}
+
+.disk-box {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+
+  .crumb {
+    color: #b2b2b2;
+    font-size: 12px;
+    background-color: #f0f2f5;
+    padding: 4px 12px;
+
+    .peace {
+      padding: 4px;
+      cursor: pointer;
+    }
+  }
+
+  .disk-layout {
+    display: flex;
+    flex: auto;
+
+    .disk-sider {
+      width: 180px;
+      border-right: 1px solid #f0f0f0;
+      padding-top: 8px;
+
+      .ant-menu-vertical {
+        border-right: none;
+      }
+    }
+
+    .disk-main {
+      flex: 1 0;
+      padding: 12px;
+    }
+
+    .disk-transmission {
+      padding: 8px 8px 24px 16px;
+      cursor: pointer;
+    }
+  }
+}
+
+.react-contexify__separator {
+  background-color: #f0f0f0;
+}
+
+.disk-ctx-text {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+}

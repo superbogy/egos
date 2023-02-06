@@ -1,16 +1,16 @@
 import { Input, List, Select, Switch } from 'antd';
 
-const BasicView = () => {
+const BasicView: React.FC = () => {
   const getData = () => {
     return [
       {
         title: '翻译',
         description: '翻译语言',
         actions: [
-          <Select name="lang" value="auto" key="from" bordered={false}>
+          <Select value="auto" key="from" bordered={false}>
             <Select.Option value="auto">auto</Select.Option>
           </Select>,
-          <Select name="lang" value="english" key="to" bordered={false}>
+          <Select value="english" key="to" bordered={false}>
             <Select.Option value="english">English</Select.Option>
           </Select>,
         ],

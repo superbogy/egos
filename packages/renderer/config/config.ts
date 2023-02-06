@@ -17,6 +17,10 @@ export default defineConfig({
   clientLoader: {},
   npmClient: 'pnpm',
   title: 'egos',
+  locale: {
+    default: 'zh-CN',
+    baseSeparator: '-',
+  },
   // base: './',
   // manifest: {
   //   basePath: '/',

@@ -1,0 +1,25 @@
+.drag-drop {
+  display: flex;
+}
+
+
+.card-box {
+  p {
+    margin: 0;
+    padding: 0;
+  }
+
+  p[contenteditable="true"] {
+    // border: 1px dashed #b2b2b2;
+    // background-color: #fff;
+    color: #666;
+    outline: 0px solid transparent !important;
+  }
+
+  p[contenteditable="true"]:focus {
+    border: 1px dashed #b2b2b2;
+    background-color: #fff;
+    color: #666;
+    outline: 0px solid transparent !important;
+  }
+}

@@ -1,11 +1,10 @@
 import { dialog, ipcMain, shell } from 'electron';
-import { getBuckets, updateBucket } from '@/lib/bucket';
+import { getBuckets, updateBucket } from '../lib/bucket';
 import { getDriverSchemas } from '@egos/storage';
 
-export default () => {
-  ipcMain.handle('account:buckets', async (_, { type, name, status }) => {
+export const registerChannel = () => {
+  ipcMain.handle('get@account:buckets', async (_, { type, name, status }) => {
     let buckets = getBuckets();
-    console.log('fucking buckets', buckets, { type, name });
     if (name) {
       buckets = buckets.filter((item) => item.name === name);
     }
@@ -19,10 +18,10 @@ export default () => {
       return { ...item };
     });
   });
-  ipcMain.handle('account:drivers', async () => {
+  ipcMain.handle('get@account:drivers', async () => {
     return getDriverSchemas();
   });
-  ipcMain.handle('account:buckets:update', async (ev, { bucket }) => {
+  ipcMain.handle('update@account:buckets', async (ev, { bucket }) => {
     console.log('bucket', bucket);
     return updateBucket(bucket);
   });

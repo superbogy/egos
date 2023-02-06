@@ -10,7 +10,7 @@ export default {
       path: '/disk',
       name: 'disk',
       icon: 'FolderOutlined',
-      component: '@/pages/Home',
+      component: '@/pages/netdisk',
     },
 
     {
