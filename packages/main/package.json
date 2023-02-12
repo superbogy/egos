@@ -30,7 +30,8 @@
     "file-type": "^16.5.3",
     "js-yaml": "^4.1.0",
     "mime": "^3.0.0",
-    "sqlite3": "^5.1.4"
+    "sqlite3": "^5.1.4",
+    "tldr": "^3.3.8"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.1.1",

@@ -8,20 +8,23 @@ import {
   ArrowDownOutlined,
   TableOutlined,
 } from '@ant-design/icons';
-import { Outlet } from 'umi';
 
 const getSortIcon = (order: number) => {
+  if (!order) {
+    return null;
+  }
   return order > 1 ? <ArrowUpOutlined /> : <ArrowDownOutlined />;
 };
 
 interface CommonHeaderProps {
-  onSort?: () => void;
-  onToggleDisplay: () => void;
+  onSort?: (args: any) => void;
+  onToggleDisplay?: () => void;
   onSearch: (value: string) => void;
   orderBy: { [key: string]: number };
-  display: string;
-  sortMenus: any;
-  filterItems: ReactNode;
+  display?: string;
+  sortMenus?: any;
+  filterItems?: ReactNode;
+  children?: ReactNode[];
 }
 
 export const enum SortItem {
@@ -32,29 +35,35 @@ export const enum SortItem {
 
 export default (props: CommonHeaderProps) => {
   const { onSort, onToggleDisplay, orderBy, display, sortMenus = [] } = props;
-  const menu = (
-    <Menu onClick={onSort} defaultSelectedKeys={Object.keys(orderBy)}>
-      {sortMenus.map((item: { key: number; [key: string]: any }) => {
-        return (
-          <Menu.Item key={item.key}>
+  const menuItems = sortMenus.map(
+    (item: { key: number; [key: string]: any }) => {
+      return {
+        key: item.key,
+        label: (
+          <span style={{ fontSize: 12 }}>
             {item.name}
-            {orderBy[item.key] ? getSortIcon(orderBy[item.key]) : null}
-          </Menu.Item>
-        );
-      })}
-    </Menu>
+            {getSortIcon(orderBy[item.key])}
+          </span>
+        ),
+      };
+    },
+  );
+  const menu = (
+    <Menu
+      onClick={onSort}
+      defaultSelectedKeys={Object.keys(orderBy)}
+      items={menuItems}
+    ></Menu>
   );
   return (
     <>
       <div className="g-header-wrapper">
         <Row style={{ padding: 2 }}>
           <Col span={12}>
-            <Space size={8}>
-              <Outlet />
-            </Space>
+            <Space size={8}>{props.children}</Space>
           </Col>
           <Col span={12}>
-            <Space size={8} style={{ float: 'right' }}>
+            <Space size={8} style={{ float: 'right', paddingRight: 12 }}>
               {props.filterItems ? props.filterItems : null}
               <div>
                 <Input.Search
@@ -82,7 +91,7 @@ export default (props: CommonHeaderProps) => {
               ) : null}
 
               {onSort ? (
-                <Dropdown overlay={menu} placement="bottomCenter">
+                <Dropdown overlay={menu} placement="bottom">
                   <SortDescendingOutlined />
                 </Dropdown>
               ) : null}

@@ -24,7 +24,7 @@ export class Builder {
     return this;
   }
 
-  isEmpty(data: string[] | string | Dict): boolean {
+  isEmpty(data: any): boolean {
     if (!data) {
       return true;
     }
@@ -34,8 +34,8 @@ export class Builder {
     return !Boolean(Object.keys(data).length);
   }
 
-  fields(fields: string[]): Builder {
-    if (this.isEmpty(fields)) {
+  fields(fields?: string[]): Builder {
+    if (!fields || this.isEmpty(fields)) {
       return this;
     }
     this._fields = fields;
@@ -51,19 +51,21 @@ export class Builder {
     return this;
   }
 
-  order(orderBy: Dict): Builder {
+  order(orderBy?: Dict): Builder {
     if (this.isEmpty(orderBy)) {
       return this;
     }
     const orderClause: string[] = [];
-    Object.entries(orderBy).forEach((elm: string[]) => {
-      orderClause.push(elm.join(' '));
-    });
+    Object.entries(orderBy as Record<string, string>).forEach(
+      (elm: string[]) => {
+        orderClause.push(elm.join(' '));
+      },
+    );
     this.sql.order = { sql: `ORDER BY ${orderClause.join(',')}`, params: [] };
     return this;
   }
 
-  limit(limit: number): Builder {
+  limit(limit?: number): Builder {
     if (!limit) {
       return this;
     }
@@ -71,7 +73,7 @@ export class Builder {
     return this;
   }
 
-  offset(offset: number): Builder {
+  offset(offset?: number): Builder {
     if (!offset) {
       return this;
     }
@@ -79,12 +81,12 @@ export class Builder {
     return this;
   }
 
-  group(field: string | string[]): Builder {
+  group(field: string | string[] | undefined): Builder {
     if (this.isEmpty(field)) {
       return this;
     }
     this.sql.group = {
-      sql: `GROUP BY ${field.toString()}`,
+      sql: `GROUP BY ${(field as string).toString()}`,
       params: [],
     };
     return this;

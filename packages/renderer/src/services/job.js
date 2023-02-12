@@ -1,4 +1,4 @@
-import Queue from './queue';
+import Queue from './task';
 import delay from 'delay';
 import { upload } from './uploader';
 import Locker from 'await-lock';

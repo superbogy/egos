@@ -14,14 +14,22 @@ import {
   UploadOutlined,
 } from '@ant-design/icons';
 import { Breadcrumb, Button, Empty, Menu, Popover, Radio } from 'antd';
-import { useLayoutEffect, useRef, useState } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  useEffect,
+  FC,
+  ReactNode,
+} from 'react';
 import Share from '@/components/Share';
 import QRUploader from '@/components/Uploader/qrUpload';
-import { history } from 'umi';
+import { Dispatch, history, useRequest } from 'umi';
 import {
   Item,
   Menu as ContextMenu,
   Separator,
+  TriggerEvent,
   useContextMenu,
 } from 'react-contexify';
 import { connect, useIntl, useLocation } from 'umi';
@@ -33,9 +41,12 @@ import Modal from './components/Modal';
 import { DropBox } from '@/components/DnD';
 import Provider from '@/components/DnD/Provider';
 import Selecto from 'react-selecto';
-import Remote from '@/lib/remote';
+import { Remote } from '@/lib/remote';
 
 import { useCallback } from 'react';
+import { DiskState } from './model';
+import { FileSchema } from '@/services/file';
+import * as service from './service';
 import './index.less';
 
 const sortMenus = [
@@ -52,71 +63,84 @@ const sortMenus = [
     key: 'filename',
   },
 ];
-const ctxIds = ['disk-item-ctx', 'disk-container-ctx'];
+const ctxIds = ['netdisk-item-ctx', 'netdisk-container-ctx'];
 
-const Index = (props) => {
-  const { dispatch, disk } = props;
-  const [liked, setLiked] = useState([]);
-  const disableDrop = disk.entrance.map((item) => item.id);
+interface NetDiskProps {
+  dispatch: Dispatch;
+  netdisk: DiskState;
+}
+
+const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
+  const { dispatch, netdisk } = props;
+  console.log('netdisk origin props', props);
+  const [liked, setLiked]: [number[], any] = useState([]);
+  const disableDrop = netdisk.entrance.map((item) => item.id);
   const location = useLocation();
   const intl = useIntl();
-  const { meta, files, currentFolder, selected } = disk;
-  const [editable, setEditable] = useState(null);
-  const [currentItem, setCurrentItem] = useState(null);
-  const { display = 'card' } = disk.query;
+  const { meta, files, currentFolder, selected } = netdisk;
+  const [editable, setEditable] = useState(false);
+  const [currentItem, setCurrentItem] = useState<FileSchema | null>(null);
+  const { display = 'card' }: { display?: string } = netdisk.query;
   const [modalVisible, setModalVisible] = useState(false);
   const [isDragging, setDragging] = useState(false);
+  useEffect(() => {
+    // const res = await service.query({});
+    dispatch({
+      type: 'netdisk/init',
+      payload: { location },
+    });
+  }, [location]);
   const handleUpload = () => {
-    remote.dialog
+    Remote.Electron.dialog
       .showOpenDialog({
         properties: ['openFile', 'openDirectory', 'multiSelections'],
         securityScopedBookmarks: true,
       })
-      .then((res) => {
+      .then((res: { canceled: boolean; filePaths: string[] }) => {
         if (res.canceled) {
           return;
         }
         dispatch({
-          type: 'disk/upload',
+          type: 'netdisk/upload',
           payload: { files: res.filePaths, parentId: currentFolder.id },
         });
       });
   };
 
   const contextHandlers = {
-    open({ props }) {
-      remote.ipcRenderer.send('openFile', props.file);
+    open({ props }: { props: { file: string } }) {
+      Remote.Electron.ipcRenderer.send('openFile', props.file);
     },
-    showInFolder({ props }) {
+    showInFolder({ props }: any) {
       if (!props.file) {
         return;
       }
-      remote.ipcRenderer.send('showFile', props.file);
+      Remote.Electron.ipcRenderer.send('showFile', props.file);
     },
     detail() {
       setEditable(true);
     },
-    download({ props }) {
+    download({ props }: any) {
       dispatch({
-        type: 'disk/download',
+        type: 'netdisk/download',
         payload: { ids: [props.id] },
       });
     },
-    rename({ props }) {
+    rename({ props }: any) {
       const elmId = 'file-item-id-' + props.id;
-      const elm = document.getElementById(elmId);
+      const elm = document.getElementById(elmId) as HTMLElement;
       elm.focus();
     },
-    like({ props }) {
-      liked.push(props.id);
+    like({ props }: { props: FileSchema } | any) {
+      liked.push(props.id as any);
       setLiked(liked);
       dispatch({
-        type: 'disk/likeIt',
+        type: 'netdisk/likeIt',
         payload: { id: props.id },
       });
     },
     getLikedStyle() {
-      const style = {};
+      const style: { color?: string } = {};
       if (!currentItem) {
         return style;
       }
@@ -132,30 +156,30 @@ const Index = (props) => {
     display,
     orderBy: { id: -1 },
     sortMenus,
-    onSearch: (keyword) => {
+    onSearch: (keyword: string) => {
       dispatch({
-        type: 'disk/query',
+        type: 'netdisk/query',
         payload: {
           keyword,
           parentId: currentFolder.id,
         },
       });
     },
-    onSort: ({ key }) => {
+    onSort: ({ key }: { [key: string]: string }) => {
       const sort = {
         [key]: 'asc',
       };
-      if (disk.order[key]) {
-        sort[key] = disk.order[key] === 'asc' ? 'desc' : 'asc';
+      if (netdisk.order[key]) {
+        sort[key] = netdisk.order[key] === 'asc' ? 'desc' : 'asc';
       }
       dispatch({
-        type: 'disk/setUserAction',
+        type: 'netdisk/setUserAction',
         payload: {
           order: sort,
         },
       });
       dispatch({
-        type: 'disk/query',
+        type: 'netdisk/query',
         payload: {
           order: sort,
         },
@@ -163,17 +187,17 @@ const Index = (props) => {
     },
     onToggleDisplay() {
       dispatch({
-        type: 'disk/setUserAction',
+        type: 'netdisk/setUserAction',
         payload: {
           display: display === 'table' ? 'card' : 'table',
         },
       });
     },
   };
-  const setSelect = (ids) => {
+  const setSelect = (ids: number[]) => {
     const selectedIds = Array.isArray(ids) ? ids : [ids];
     dispatch({
-      type: 'disk/updateState',
+      type: 'netdisk/updateState',
       payload: {
         selected: selectedIds,
       },
@@ -191,26 +215,24 @@ const Index = (props) => {
     });
     return show;
   });
-  const onContainerCtx = (ev) => {
+  const onContainerCtx = (ev: TriggerEvent) => {
     if (ev.defaultPrevented) {
       return;
     }
     ev.preventDefault();
-    showContainerCtx(ev, {
+    showContainerCtx({
+      event: ev,
       props: currentFolder,
     });
   };
-  const gotoFolder = (id) => {
+  const gotoFolder = (id: number | string) => {
     if (Number.isNaN(Number(id))) {
       return;
     }
-    history.go({
-      pathname: location.pathname,
-      query: { parentId: id },
-    });
+    history.push(location.pathname, { parentId: id });
   };
   const handleDrop = useCallback(
-    (item) => {
+    (item: { src: FileSchema; dest: FileSchema }) => {
       const { src, dest } = item;
       let selectedIds = [...selectedRef.current];
       const sourceId = src.id;
@@ -226,7 +248,7 @@ const Index = (props) => {
         selectedIds = [sourceId];
       }
       return dispatch({
-        type: 'disk/move',
+        type: 'netdisk/move',
         payload: {
           target: dest,
           sourceIds: selectedIds.filter((value, index, self) => {
@@ -247,18 +269,23 @@ const Index = (props) => {
     },
     onSelect: setSelect,
     gotoFolder,
-    onContext: (item) => (ev) => {
+    onContext: (item: FileSchema) => (ev: TriggerEvent) => {
       if (ev.defaultPrevented) {
         return;
       }
       ev.preventDefault();
       setCurrentItem(item);
-      showItemCtx(ev, {
+      showItemCtx({
+        event: ev,
         props: item,
       });
     },
     onMove: handleDrop,
-    onSelectChange(activeItem, cmdKeyActive, shiftKeyActive) {
+    onSelectChange(
+      activeItem: FileSchema,
+      cmdKeyActive: any,
+      shiftKeyActive: any,
+    ) {
       let selectedIds = [];
       const activeId = currentItem ? currentItem.id : null;
       if (cmdKeyActive) {
@@ -268,26 +295,28 @@ const Index = (props) => {
           selectedIds = [...selected, activeItem.id];
         }
       } else if (shiftKeyActive && activeItem.id !== activeId) {
-        const current = files.findIndex((item) => item.id === activeItem.id);
-        const prev = files.findIndex((item) => item.id === activeId);
-        selectedIds = files.slice(current, prev).map((item) => item.id);
+        const current = files.findIndex(
+          (item: any) => item.id === activeItem.id,
+        );
+        const prev = files.findIndex((item: any) => item.id === activeId);
+        selectedIds = files.slice(current, prev).map((item: any) => item.id);
       } else {
         selectedIds = [activeItem.id];
       }
       setCurrentItem(activeItem);
       setSelect(selectedIds);
     },
-    onDrag(item) {
+    onDrag(item: FileSchema) {
       if (!selected.includes(item.id)) {
         setSelect([item.id]);
       }
     },
-    onUpload({ files, parentId }) {
+    onUpload({ files, parentId }: { files: any[]; parentId: number }) {
       handleNativeDrop({ files, parentId });
     },
-    onRename({ id, name }) {
+    onRename({ id, name }: { id: number; name: string }) {
       dispatch({
-        type: 'disk/rename',
+        type: 'netdisk/rename',
         payload: {
           id,
           name,
@@ -298,9 +327,9 @@ const Index = (props) => {
   const tableProps = {
     ...cardProps,
   };
-  const handleDel = (params) => {
+  const handleDel = (params: any) => {
     dispatch({
-      type: 'disk/moveToTrash',
+      type: 'netdisk/moveToTrash',
       payload: { ids: [params.props.id] },
     });
   };
@@ -317,14 +346,17 @@ const Index = (props) => {
     visible: modalVisible,
     onCancel: onNewFolder,
     currentFolder,
-    onOk(values) {
-      dispatch({
-        type: 'disk/createFolder',
-        payload: { ...values },
-      }).then(() => {
+    onOk(values: any) {
+      useRequest(async () => {
+        await service.createFolder({ ...values });
         onNewFolder();
         refresh();
       });
+      // dispatch({
+      //   type: 'netdisk/createFolder',
+      //   payload: { ...values },
+      // }).then(() => {
+      // });
     },
   };
   const getDisplayContent = () => {
@@ -337,34 +369,33 @@ const Index = (props) => {
     return <Card {...cardProps} />;
   };
 
-  const gotoPath = (path) => {
+  const gotoPath = (path: string) => {
     if (path === '/') {
-      history.replace({
-        pathname: location.pathname,
-        query: {},
-      });
+      history.replace(location.pathname, {});
     } else {
-      dispatch({
-        type: 'disk/gotoPath',
+      const q = dispatch({
+        type: 'netdisk/gotoPath',
         payload: { path },
-      }).then((res) => {
-        if (!res) {
-          return;
-        }
-        history.replace({
-          pathname: location.pathname,
-          query: {
-            ...location.query,
-            parentId: res.id,
-          },
-        });
       });
+      console.log('goto path qqqq', q);
+      // .then((res) => {
+      // if (!res) {
+      //   return;
+      // }
+      // history.replace({
+      //   pathname: location.pathname,
+      //   query: {
+      //     ...location.query,
+      //     parentId: res.id,
+      //   },
+      // });
+      // });
     }
   };
   const getBreadCrumb = () => {
-    const pathItems = currentFolder.path.split('/').filter((item) => item);
-    const breadNode = [];
-    pathItems.reduce((prev, cur) => {
+    const pathItems = currentFolder.path.split('/').filter((item: any) => item);
+    const breadNode: ReactNode[] = [];
+    pathItems.reduce((prev: string, cur: string) => {
       const next = [prev, cur].join('/');
       breadNode.push(
         <Breadcrumb.Item onClick={() => gotoPath(next)} key={next}>
@@ -382,30 +413,36 @@ const Index = (props) => {
     onClose() {
       setEditable(!editable);
     },
-    availableFolders: disk.availableFolders,
-    onSearch(name) {
+    availableFolders: netdisk.availableFolders,
+    onSearch(name: string) {
       dispatch({
-        type: 'disk/searchFolder',
+        type: 'netdisk/searchFolder',
         payload: { name },
       });
     },
-    onSave(values) {
+    onSave(values: any) {
       dispatch({
-        type: 'disk/save',
+        type: 'netdisk/save',
         payload: { ...values },
       });
     },
   };
 
-  const handleNativeDrop = ({ files, parentId }) => {
-    const paths = files.map((file) => file.path);
+  const handleNativeDrop = ({
+    files,
+    parentId,
+  }: {
+    files: File[];
+    parentId: number;
+  }) => {
+    const paths = files.map((file: any) => file.path);
     dispatch({
-      type: 'disk/upload',
+      type: 'netdisk/upload',
       payload: { files: paths, parentId },
     });
   };
 
-  const cancelSelected = (e) => {
+  const cancelSelected = (e: any) => {
     if (!e.defaultPrevented && !isDragging) {
       setSelect([]);
     } else {
@@ -419,10 +456,10 @@ const Index = (props) => {
   });
   const shareProps = {
     ...shareItem,
-    detail: disk.shareDetail,
-    onShare: (payload) => {
+    detail: netdisk.shareDetail,
+    onShare: (payload: any) => {
       dispatch({
-        type: 'disk/share',
+        type: 'netdisk/share',
         payload,
       });
     },
@@ -431,9 +468,9 @@ const Index = (props) => {
     },
   };
 
-  const handleShare = async (params) => {
+  const handleShare = async (params: any) => {
     dispatch({
-      type: 'disk/getShare',
+      type: 'netdisk/getShare',
       payload: { id: params.props.id },
     });
     shareItem.visible = true;
@@ -443,19 +480,18 @@ const Index = (props) => {
   const [qrUpload, setQrUpload] = useState(false);
   const showQrUpload = () => {
     dispatch({
-      type: 'disk/genUploadUrl',
+      type: 'netdisk/genUploadUrl',
       payload: {
         id: currentFolder.id,
         expiry: 86400 * 1000,
       },
-    }).then((res) => {
-      setQrUpload(!qrUpload);
     });
+    setQrUpload(!qrUpload);
   };
 
   return (
     <>
-      <div className="disk-box" onClick={cancelSelected}>
+      <div className="netdisk-box" onClick={cancelSelected}>
         <Header {...headerProps}>
           <Button type="text" icon={<PlusOutlined />} onClick={onNewFolder}>
             New
@@ -463,7 +499,7 @@ const Index = (props) => {
           <Button type="text" icon={<UploadOutlined />} onClick={handleUpload}>
             Upload
           </Button>
-          <Popover content="">
+          <Popover content="" placement="bottom">
             <Button
               type="text"
               icon={<QrcodeOutlined />}
@@ -486,17 +522,17 @@ const Index = (props) => {
             <Breadcrumb.Item onClick={() => gotoPath('/')}>
               <FolderOpenOutlined />
               <span className="peace">
-                {intl.formatMessage({ id: `menu.disk.all` })}
+                {intl.formatMessage({ id: `menu.netdisk.all` })}
               </span>
             </Breadcrumb.Item>
             {currentFolder.id ? getBreadCrumb() : null}
           </Breadcrumb>
         </div>
         <Provider>
-          <div className="disk-layout">
-            <div className="disk-sider">
+          <div className="netdisk-layout">
+            <div className="netdisk-sider">
               <Menu onClick={({ key }) => gotoFolder(key)}>
-                {disk.entrance.map((item) => {
+                {netdisk.entrance.map((item) => {
                   const dropProps = {
                     currentItem: item,
                     selected: [],
@@ -517,15 +553,15 @@ const Index = (props) => {
               </Menu>
             </div>
             <div
-              className="disk-main"
+              className="netdisk-main"
               onContextMenu={onContainerCtx}
               onDrop={(e) => {
-                const { target } = e;
+                const { target } = e as any;
                 const classList = [
                   ...target.classList,
                   ...target.parentElement.classList,
                 ];
-                if (!classList.includes('disk-main')) {
+                if (!classList.includes('netdisk-main')) {
                   return;
                 }
                 handleNativeDrop({
@@ -538,72 +574,72 @@ const Index = (props) => {
             </div>
           </div>
         </Provider>
-        <ContextMenu id="disk-item-ctx">
+        <ContextMenu id="netdisk-item-ctx">
           <Item onClick={contextHandlers.detail}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>show</span>
               <FundViewOutlined />
             </div>
           </Item>
           <Item onClick={contextHandlers.rename}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>rename</span>
               <EditOutlined />
             </div>
           </Item>
           <Item onClick={console.log}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>move</span>
               <ExportOutlined />
             </div>
           </Item>
           <Item onClick={handleDel}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>delete</span>
               <DeleteOutlined />
             </div>
           </Item>
           <Item onClick={contextHandlers.download}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>download</span>
               <DownloadOutlined />
             </div>
           </Item>
           <Separator />
           <Item onClick={contextHandlers.like}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>star</span>
               <StarFilled style={contextHandlers.getLikedStyle()} />
             </div>
           </Item>
           <Item onClick={handleShare}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>share</span>
               <ShareAltOutlined />
             </div>
           </Item>
         </ContextMenu>
-        <ContextMenu id="disk-container-ctx">
+        <ContextMenu id="netdisk-container-ctx">
           <Item onClick={onNewFolder}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>new folder</span>
               <PlusOutlined />
             </div>
           </Item>
           <Item onClick={console.log}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>show</span>
               <FundViewOutlined />
             </div>
           </Item>
           <Item onClick={handleUpload}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>upload</span>
               <UploadOutlined />
             </div>
           </Item>
           <Item onClick={console.log}>
-            <div className="disk-ctx-text">
+            <div className="netdisk-ctx-text">
               <span>sort</span>
               <SortAscendingOutlined />
             </div>
@@ -613,7 +649,7 @@ const Index = (props) => {
         <Modal {...modalProps} />
         <Edit {...editProps} />
         <Selecto
-          container={document.main}
+          container={document.getElementsByTagName('main')[0]}
           dragContainer={'.ant-layout'}
           selectableTargets={['.drag-item']}
           selectByClick={false}
@@ -624,7 +660,7 @@ const Index = (props) => {
           hitRate={0}
           onSelect={(e) => {
             setDragging(true);
-            const selectedIds = [];
+            const selectedIds: number[] = [];
             e.selected.map((item) => {
               const id = Number(item.dataset.id);
               if (selected.indexOf(id) === -1) {
@@ -637,14 +673,14 @@ const Index = (props) => {
         />
       </div>
       <Share {...shareProps} />
-      <QRUploader visible={qrUpload} url={disk.uploadUrl} />
+      <QRUploader visible={qrUpload} url={netdisk.uploadUrl} />
     </>
   );
 };
-export default connect((s) => {
-  const { disk, loading, router } = s;
+export default connect((s: any) => {
+  const { netdisk, loading, router } = s;
   return {
-    disk,
+    netdisk,
     loading,
     router,
   };

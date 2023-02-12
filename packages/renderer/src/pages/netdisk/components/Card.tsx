@@ -10,6 +10,9 @@ import { defaultStyles, FileIcon } from 'react-file-icon';
 import { DragBox, DropBox } from '@/components/DnD';
 import Viewer from '@/components/Viewer';
 import Exhibit from '@/components/Viewer/exhibit';
+import { FileSchema } from '@/services/file';
+import { FileObjectSchema } from '@/services/file-object';
+import { TriggerEvent } from 'react-contexify';
 
 const dataIndex = [
   { key: ['file', 'bucket'], alias: 'Bucket' },
@@ -23,14 +26,34 @@ const dataIndex = [
   { key: ['createdAt'], alias: 'create' },
 ];
 
-export default (props) => {
+interface CardProps {
+  pagination: any;
+  onMove: ({ src, dest }: { src: FileSchema; dest: FileSchema }) => void;
+  onDrag: (file: FileSchema) => void;
+  onUpload: ({
+    files,
+    parentId,
+  }: {
+    files: string[];
+    parentId: number;
+  }) => void;
+  onRename: ({ id, name }: { id: number; name: string }) => void;
+  gotoFolder: (id: number) => void;
+  onContext: (file: FileSchema) => (ev: TriggerEvent) => void;
+  onSelectChange: (file: FileSchema, metaKey: any, shiftKey: any) => void;
+  selected: number[];
+  disable: number[];
+  data: FileSchema[];
+}
+export default (props: CardProps) => {
   const { pagination, onMove, selected, disable = [] } = props;
-  const [preview, setPreview] = useState(null);
-  const handleImagePreview = (file) => {
+  console.log('netdis card component', props);
+  const [preview, setPreview] = useState<FileSchema | null>(null);
+  const handleImagePreview = (file: FileSchema) => {
     setPreview(file);
   };
-  const getCard = (item) => {
-    const { file } = item;
+  const getCard = (item: FileSchema) => {
+    const file = item.file as FileObjectSchema;
     const dragProps = {
       currentItem: item,
       onMove,
@@ -81,10 +104,10 @@ export default (props) => {
           data-id={item.id}
           onDoubleClick={() => handleImagePreview(item)}
         >
-          {defaultStyles[ext] ? (
+          {ext in defaultStyles ? (
             <FileIcon
               extension={ext}
-              {...defaultStyles[ext]}
+              {...(defaultStyles as any)[ext]}
               fold={Boolean(item.isFolder)}
               style={{ fontSize: 75 }}
             />
@@ -95,8 +118,8 @@ export default (props) => {
       </DragBox>
     );
   };
-  const handleRename = (item) => {
-    return (e) => {
+  const handleRename = (item: FileSchema) => {
+    return (e: any) => {
       const newName = (e.target.innerText || '').trim();
       if (!newName) {
         e.target.innerText = item.filename;
@@ -105,16 +128,16 @@ export default (props) => {
       }
     };
   };
-  const directToDetail = (item) => (e) => {
+  const directToDetail = (item: FileSchema) => () => {
     if (item.isFolder) {
       props.gotoFolder(item.id);
     }
   };
-  const handleClick = (item, e) => {
+  const handleClick = (item: FileSchema, e: any) => {
     e.preventDefault();
     props.onSelectChange(item, e.metaKey, e.shiftKey);
   };
-  const getCardItem = (item) => {
+  const getCardItem = (item: FileSchema) => {
     const iconClass = ['card-icon'];
     if (selected.includes(item.id)) {
       iconClass.push('selected');

@@ -3,6 +3,7 @@ import { Job } from '@egos/lite';
 import { utils } from '@egos/lite';
 import { File } from '../models/file';
 import { FileObject } from '../models/file-object';
+import { Task } from '../models/task';
 
 export default class SetupJob extends Job {
   async up() {
@@ -12,5 +13,7 @@ export default class SetupJob extends Job {
     await this.exec(fileSql);
     const fileObjSql = utils.genSql(FileObject.table, FileObject.schema);
     await this.exec(fileObjSql);
+    const taskSql = utils.genSql(Task.table, Task.schema);
+    await this.exec(taskSql);
   }
 }

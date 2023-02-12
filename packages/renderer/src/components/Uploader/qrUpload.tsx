@@ -4,9 +4,14 @@ import { useEffect, useState } from 'react';
 
 import qrCode from 'qrcode';
 import './qr.less';
-const QRUploader = (props) => {
+
+interface QRLoaderProps {
+  visible: boolean;
+  url: string;
+}
+const QRUploader = (props: QRLoaderProps) => {
   const [visible, setVisible] = useState(false);
-  const [qrLink, setQrLink] = useState(null);
+  const [qrLink, setQrLink] = useState<string>('');
   useEffect(() => {
     setVisible(props.visible);
     if (props.url) {

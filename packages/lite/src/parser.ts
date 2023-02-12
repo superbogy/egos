@@ -11,7 +11,7 @@ const OPERATOR: Record<string, string> = {
   $like: 'LIKE',
   $isNull: 'IS NULL',
   $isNotNull: 'IS NOT NULL',
-  $inc: 'in',
+  $inc: 'inc',
 };
 
 const LOGICAL: Dict = {
@@ -93,18 +93,24 @@ export class Parser {
   pairToSql(pair: Dict) {
     const sql: any[] = [];
     const values: any[] = [];
+    const pushResult = (res: [string, any[]]) => {
+      const [s, val] = res;
+      console.log(res);
+      sql.push(s);
+      val.map((i) => {
+        values.push(i);
+      });
+    };
     Object.entries(pair).map(([k, v]) => {
       if (typeof v === 'object') {
         Object.entries(v).map((cur) => {
           const [op, v] = cur;
-          const [s, val] = this.joinKV(op, k, v);
-          sql.push(s);
-          values.push(val);
+          const res = this.joinKV(op, k, v);
+          pushResult(res);
         }, []);
       } else {
-        const [s, val] = this.joinKV('$eq', k, v);
-        sql.push(s);
-        values.push(val);
+        const res = this.joinKV('$eq', k, v);
+        pushResult(res);
       }
     });
     return { sql: sql.join('and'), params: values };
@@ -112,17 +118,20 @@ export class Parser {
 
   joinKV(op: string, key: string, value: any): [s: string, v: any] {
     if (op === '$inc') {
-      return [this.increment(key, value), undefined];
+      return [this.increment(key, value), []];
     }
     if (op in OPERATOR) {
       const opStr = OPERATOR[op] as string;
-      return [`${key} ${opStr} ?`, value];
+      return [`${key} ${opStr} ?`, [value]];
     }
     const func = this.sqlFunction(op);
     const placeholder = Array.isArray(value)
       ? Array(value.length).fill('?').join(',')
       : '?';
-    return [func.replace('%s', placeholder), value];
+    return [
+      `${key} ${func.replace('%s', placeholder)}`,
+      Array.isArray(value) ? value : [value],
+    ];
   }
 
   parse(entities: any): { sql: string; params: any[] } {

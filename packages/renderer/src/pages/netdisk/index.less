@@ -26,7 +26,7 @@
   border-radius: 4px;
 }
 
-.disk-box {
+.netdisk-box {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -40,14 +40,16 @@
     .peace {
       padding: 4px;
       cursor: pointer;
+      font-size: 12px;
     }
   }
 
-  .disk-layout {
+  .netdisk-layout {
     display: flex;
     flex: auto;
+    flex-direction: row;
 
-    .disk-sider {
+    .netdisk-sider {
       width: 180px;
       border-right: 1px solid #f0f0f0;
       padding-top: 8px;
@@ -55,14 +57,20 @@
       .ant-menu-vertical {
         border-right: none;
       }
+
+      .ant-menu-item {
+        border-right: none;
+        margin: 0;
+      }
+
     }
 
-    .disk-main {
+    .netdisk-main {
       flex: 1 0;
       padding: 12px;
     }
 
-    .disk-transmission {
+    .netdisk-transmission {
       padding: 8px 8px 24px 16px;
       cursor: pointer;
     }
@@ -73,7 +81,7 @@
   background-color: #f0f0f0;
 }
 
-.disk-ctx-text {
+.netdisk-ctx-text {
   width: 100%;
   display: flex;
   justify-content: space-between;

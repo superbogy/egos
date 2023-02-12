@@ -11,11 +11,11 @@ const QueueStatus = {
 class Queue extends Base {
   _table = 'tasks';
 
-  enqueue(data) {
+  enqueue(data: any) {
     return this.insert({ ...data, status: QueueStatus.PENDING });
   }
 
-  dequeue({ limit = 50, retry = 3 }) {
+  dequeue({ limit = 50, retry = 3 }: { limit?: number; retry?: number }) {
     return this.find(
       { status: { $neq: QueueStatus.DONE }, retry: { $lt: retry } },
       { limit },
@@ -26,19 +26,19 @@ class Queue extends Base {
     return this.exec('getPendingUpload');
   }
 
-  async getTaskList(...args) {
+  async getTaskList(...args: any[]) {
     return this.exec('getTaskList', ...args);
   }
 
-  async download(...args) {
+  async download(...args: any[]) {
     return this.exec('download', ...args);
   }
 
-  async buildUploadTasks(...args) {
+  async buildUploadTasks(...args: any[]) {
     return this.exec('buildUploadTasks', ...args);
   }
 
-  async getTaskResultUrl(...args) {
+  async getTaskResultUrl(...args: any[]) {
     return this.exec('getResultUrl', ...args);
   }
 }
@@ -48,12 +48,12 @@ export const fetchPendingTask = async () => {
   // const job = new Job();
   // return job.run();
   // return queue.dequeue();
-  return queue.dequeue();
+  return queue.dequeue({});
 };
 export default queue;
 
-export const countTaskStatus = ({ status }) => {
-  const where = {};
+export const countTaskStatus = ({ status }: { status?: string }) => {
+  const where: Record<string, any> = {};
   if (status) {
     where.status = status;
   }

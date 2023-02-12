@@ -1,8 +1,6 @@
 import * as service from './service';
-// import { EffectsCommandMap, SubscriptionAPI } from 'dva';
-import { EffectsCommandMap, SubscriptionAPI, AnyAction } from 'umi';
-console.log('123 mnodel account');
-export default {
+import { EffectsCommandMap, SubscriptionAPI } from 'umi';
+const model = {
   namespace: 'account',
   state: {
     activeKey: 'base',
@@ -12,11 +10,7 @@ export default {
   subscriptions: {
     setup({ dispatch, history }: SubscriptionAPI) {
       return history.listen(({ location }: any) => {
-        console.log('????? setup', location);
-        if (
-          location.pathname === '/account/setting' ||
-          location.pathname === '/'
-        ) {
+        if (location.pathname === '/account/setting') {
           dispatch({
             type: 'init',
             payload: location.state || {},
@@ -50,9 +44,6 @@ export default {
       });
     },
   },
-  reducers: {
-    updateState(state: Record<string, any>, { payload }: AnyAction) {
-      return { ...state, ...payload };
-    },
-  },
+  reducers: {},
 };
+export default model;

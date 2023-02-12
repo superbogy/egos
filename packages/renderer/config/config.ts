@@ -1,11 +1,7 @@
 import { defineConfig } from 'umi';
 import router from './router';
+import theme from './theme';
 
-console.log([
-  {
-    component: './404',
-  },
-]);
 export default defineConfig({
   antd: {},
   access: {},
@@ -21,6 +17,7 @@ export default defineConfig({
     default: 'zh-CN',
     baseSeparator: '-',
   },
+  historyWithQuery: {},
   // base: './',
   // manifest: {
   //   basePath: '/',
@@ -31,6 +28,7 @@ export default defineConfig({
       component: './404',
     },
   ],
+  theme: theme,
   // routes: [
   //   {
   //     exact: false,

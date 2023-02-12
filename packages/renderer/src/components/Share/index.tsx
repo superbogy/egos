@@ -1,4 +1,6 @@
 import { dayMs } from '@/lib/helper';
+import { FileSchema } from '@/services/file';
+import { ShareSchema } from '@/services/share';
 import { CopyOutlined } from '@ant-design/icons';
 import {
   Button,
@@ -14,13 +16,23 @@ import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import './index.less';
 
-export default (props) => {
-  const { file } = props;
-  const [formData, setFormData] = useState({ expiry: 1, isExternal: false });
-  const [qrLink, setQrLink] = useState(null);
+interface ShareProps {
+  visible: boolean;
+  file: FileSchema | object;
+  detail: ShareSchema | null;
+  onCancel: () => void;
+  onShare: (args: any) => void;
+}
+export default (props: ShareProps) => {
+  const file = props.file as FileSchema;
+  const [formData, setFormData] = useState<any>({
+    expiry: 1,
+    isExternal: false,
+  });
+  const [qrLink, setQrLink] = useState<string>('');
   useEffect(() => {
     if (props.detail) {
-      QRCode.toDataURL(props.detail.url).then((qrUrl) => {
+      QRCode.toDataURL(props.detail.url as string).then((qrUrl) => {
         setQrLink(qrUrl);
       });
     }
@@ -44,12 +56,12 @@ export default (props) => {
     props.onCancel();
   };
 
-  const updateFormData = (params) => {
+  const updateFormData = (params: any) => {
     setFormData({ ...formData, ...params });
   };
 
   const handleOk = async () => {
-    props.onShare({ ...formData, id: file.id });
+    props.onShare({ ...formData, id: (file as FileSchema).id });
   };
   const [isCopyUrl, setIsCopyUrl] = useState(false);
   const copyToClipboard = () => {

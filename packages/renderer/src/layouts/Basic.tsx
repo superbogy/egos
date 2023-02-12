@@ -73,14 +73,14 @@ export default connect(({ global, dispatch }: LayoutProps) => ({
     }
   }, []);
 
-  const handleTransCancel = () => {
-    dispatch({
-      type: 'global/updateState',
-      payload: {
-        translateVisible: false,
-      },
-    });
-  };
+  // const handleTransCancel = () => {
+  //   dispatch({
+  //     type: 'global/updateState',
+  //     payload: {
+  //       translateVisible: false,
+  //     },
+  //   });
+  // };
   const menuItems: MenuItemType[] = router.routes
     .filter((item) => item.icon)
     .map((item) => {
@@ -130,7 +130,10 @@ export default connect(({ global, dispatch }: LayoutProps) => ({
         <Layout.Header style={{ background: '#fefefe', height: 45 }}>
           <RightContent menu={true} theme="light" />
         </Layout.Header>
-        <Layout.Content style={{ height: '100%', overflow: 'overflow' }}>
+        <Layout.Content
+          className="main"
+          style={{ height: '100%', overflow: 'overflow' }}
+        >
           <Outlet />
           {/* <Translator
             visible={translateVisible}

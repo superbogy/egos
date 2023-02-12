@@ -4,7 +4,7 @@ export const tryFn = (caller: (...p: any) => any, ...args: any) => {
   try {
     return caller(...args);
   } catch (err) {
-    return { err: true, message: err.message };
+    return { err: true, message: (err as Error).message };
   }
 };
 

@@ -9,6 +9,7 @@ export default class Base extends Model {
   constructor(options?: ModelOpts) {
     super(options);
     this._channel = `egos.model.${this.table}`;
+    this._options.debug = true;
     this.registerChannel();
   }
 
@@ -23,7 +24,8 @@ export default class Base extends Model {
     Base.channels.push(this.channel);
     ipcMain.handle(this._channel, async (event: any, payload: any) => {
       try {
-        const { method, args } = payload;
+        console.log('[model] invoke', this._channel, payload);
+        const { method, args = [] } = payload;
         const res = await this[method](...args);
         if (!res) {
           return res;

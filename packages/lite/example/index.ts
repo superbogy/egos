@@ -1,7 +1,6 @@
 import { Model, connect, table, column } from '../src';
-import path from 'path';
 import assert from 'assert';
-import { FieldTypes, merge } from '../src/schema';
+import { FieldTypes } from '../src/schema';
 import 'reflect-metadata';
 import { genSql } from '../src/utils';
 
@@ -12,7 +11,7 @@ class User extends Model {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT, default: '""' })
-  name: string;
+  userName: string;
   @column({ type: FieldTypes.INT })
   age: number;
   @column({ type: FieldTypes.TEXT })
@@ -21,22 +20,29 @@ class User extends Model {
   mail: string;
   @column({ type: FieldTypes.TEXT, decode: JSON.parse, encode: JSON.stringify })
   profile: string;
+  @column({ type: FieldTypes.INT })
+  parentId: number;
 }
 
 const main = async () => {
   const user = new User({ debug: true, timestamp: true });
-  console.log(user.schema);
   const sql = genSql(user.table, user.schema);
   await user.exec(sql);
   const current = await user.create({
-    name: 'tommy',
+    userName: 'tommy',
     gender: 'male',
     age: 30,
     mail: 'tommy@hello.cc',
     profile: { bar: 'foo', quiz: 'biz' },
+    parentId: 0,
   });
-  const cur = await user.findById(current.id);
+  const cur = (await user.findById(current.id)) as User;
   console.log(cur.toObject());
+  const users = await user.find({
+    parentId: 0,
+  });
+  const inRes = await user.count({ id: { $in: [current.id, 2] } });
+  console.log(inRes);
   // const con = {
   //   $or: [
   //     { $and: [{ name: 1 }, { age: 2 }] },
@@ -61,7 +67,7 @@ const main = async () => {
   const user2 = await user1.save();
   console.log(user2.name); // tom
   assert(typeof user1.profile === 'object');
-  const check = await user.findById(user1.id);
+  const check = (await user.findById(user1.id)) as User;
   console.log('check findById %j', check.toObject());
   const u2 = await user.upsert({
     id: user1.id + 1,

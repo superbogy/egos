@@ -1,6 +1,6 @@
 import Debug from 'debug';
 import { Builder } from './builder';
-import { Dict, ModelOpts } from './interface';
+import { Dict, ModelOpts, QueryOptions } from './interface';
 import { isEmpty, pick, has } from 'ramda';
 import { Database, ISqlite } from 'sqlite';
 import { TimestampSchema, ColumnSchema } from './schema';
@@ -128,7 +128,7 @@ export class Model {
     return Object.entries(props).reduce((acc, cur) => {
       const [k, v]: [string, any] = cur;
       const col: ColumnSchema = schema[k];
-      if (props[k]) {
+      if (k in props) {
         acc[col.name || k] = v;
       } else {
         acc[k] = v;
@@ -159,9 +159,10 @@ export class Model {
     return new (this.constructor as new () => this)();
   }
 
-  instance(data: Dict): Model {
+  instance(row: Dict): Model {
     const instance = this.clone();
-    for (const key in this.toProps(data)) {
+    const data = this.toProps(row);
+    for (const key in data) {
       const column = this.schema[key];
       const val = column?.decode ? column.decode(data[key]) : data[key];
       instance.setAttr(key, val);
@@ -196,12 +197,12 @@ export class Model {
     return stmt[method](params);
   }
 
-  async find(where: Dict, options: Dict = {}): Promise<Model[]> {
+  async find(where: Dict = {}, options: QueryOptions = {}): Promise<Model[]> {
     const { limit, offset, order, fields, group } = options;
     const builder = new Builder({});
     const { sql, params } = builder
       .table(this.table)
-      .where(where)
+      .where(this.toRowData(where))
       .fields(fields)
       .order(order)
       .group(group)
@@ -220,6 +221,7 @@ export class Model {
   async count(where: Dict): Promise<number> {
     const res = (await this.findOne(where, {
       fields: ['count(*) as count'],
+      rows: true,
     })) as Model;
     return Number(res.count);
   }

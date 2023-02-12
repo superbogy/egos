@@ -19,7 +19,6 @@ export default class BaseService {
   }
 
   init() {
-    console.log(this._api);
     this.model = this._api.getModel(this._table);
   }
 
@@ -27,7 +26,7 @@ export default class BaseService {
     const res = await this.model.execute({
       url: this._table,
       method,
-      data: payload,
+      args: payload,
     });
     return res;
   }

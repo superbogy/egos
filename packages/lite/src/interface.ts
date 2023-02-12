@@ -17,3 +17,12 @@ export interface ModelOpts {
   timestamp?: boolean;
   debug?: boolean;
 }
+
+export interface QueryOptions {
+  offset?: number;
+  limit?: number;
+  order?: Record<string, string>;
+  group?: string;
+  fields?: string[];
+  rows?: boolean;
+}
