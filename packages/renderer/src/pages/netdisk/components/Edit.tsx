@@ -1,17 +1,27 @@
-import React, { memo, useState } from 'react';
-import path from 'path';
+import { memo } from 'react';
 import { Drawer, Form, Input, Select, Button, Descriptions } from 'antd';
 import './edit.less';
+import { FileSchema } from '@/services/file';
+import { FileObjectSchema } from '@/services/file-object';
 
-export default memo((props) => {
-  const currentItem = props.currentItem || {};
-  const currentFolder = props.currentFolder || {};
+interface EditProps {
+  currentItem: FileSchema | null;
+  currentFolder: FileSchema | null;
+  availableFolders: FileSchema[];
+  onClose: () => void;
+  onSave: (v: Partial<FileSchema>) => void;
+  onSearch: (k: string) => void;
+  visible: boolean;
+}
+export default memo((props: EditProps) => {
+  const currentItem = props.currentItem || ({} as FileSchema);
+  const currentFolder = props.currentFolder || ({} as FileSchema);
   const availableFolders = props.availableFolders || [];
-  const file = currentItem.file || {};
+  const file = currentItem.file || ({} as FileObjectSchema);
   const onClose = () => {
     props.onClose();
   };
-  const onSave = (values) => {
+  const onSave = (values: Partial<FileSchema>) => {
     props.onSave({ id: currentItem.id, ...values });
   };
   const parentFolders = [
@@ -28,8 +38,8 @@ export default memo((props) => {
       });
     }
   });
-  let timeout = null;
-  const fetch = (input) => {
+  let timeout: NodeJS.Timeout | null = null;
+  const fetch = (input: string) => {
     if (timeout) {
       clearTimeout(timeout);
       timeout = null;
@@ -41,11 +51,16 @@ export default memo((props) => {
       <Drawer
         placement="right"
         onClose={onClose}
-        visible={props.visible}
+        open={props.visible}
         width={480}
         className="disk-edit-box"
       >
-        <Form name="basic" initialValues={currentItem} onFinish={onSave} autoComplete="off">
+        <Form
+          name="basic"
+          initialValues={currentItem}
+          onFinish={onSave}
+          autoComplete="off"
+        >
           <Descriptions column={1} bordered>
             <Descriptions.Item label="文件名">
               <Form.Item
@@ -56,14 +71,19 @@ export default memo((props) => {
               </Form.Item>
             </Descriptions.Item>
             <Descriptions.Item label="路径">
-              <Form.Item name="path" rules={[{ required: true, message: 'Please input path!' }]}>
+              <Form.Item
+                name="path"
+                rules={[{ required: true, message: 'Please input path!' }]}
+              >
                 <Input value={currentItem.path} bordered={false} />
               </Form.Item>
             </Descriptions.Item>
             <Descriptions.Item label="父目录">
               <Form.Item
                 name="parentId"
-                rules={[{ required: true, message: 'Please choose parent path!' }]}
+                rules={[
+                  { required: true, message: 'Please choose parent path!' },
+                ]}
               >
                 <Select
                   value={currentItem.parentId}

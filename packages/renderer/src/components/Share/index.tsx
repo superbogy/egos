@@ -71,7 +71,7 @@ export default (props: ShareProps) => {
   return (
     <>
       <Modal
-        visible={props.visible}
+        open={props.visible}
         onCancel={handleCancel}
         footer={[
           <Button key="back" onClick={console.log} danger>

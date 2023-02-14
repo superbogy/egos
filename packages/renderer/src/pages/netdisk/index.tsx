@@ -24,7 +24,7 @@ import {
 } from 'react';
 import Share from '@/components/Share';
 import QRUploader from '@/components/Uploader/qrUpload';
-import { Dispatch, history, useRequest } from 'umi';
+import { Dispatch, history } from 'umi';
 import {
   Item,
   Menu as ContextMenu,
@@ -46,7 +46,6 @@ import { Remote } from '@/lib/remote';
 import { useCallback } from 'react';
 import { DiskState } from './model';
 import { FileSchema } from '@/services/file';
-import * as service from './service';
 import './index.less';
 
 const sortMenus = [
@@ -72,7 +71,6 @@ interface NetDiskProps {
 
 const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const { dispatch, netdisk } = props;
-  console.log('netdisk origin props', props);
   const [liked, setLiked]: [number[], any] = useState([]);
   const disableDrop = netdisk.entrance.map((item) => item.id);
   const location = useLocation();
@@ -89,6 +87,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       type: 'netdisk/init',
       payload: { location },
     });
+    console.log('location.state', location.state);
   }, [location]);
   const handleUpload = () => {
     Remote.Electron.dialog
@@ -311,7 +310,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
         setSelect([item.id]);
       }
     },
-    onUpload({ files, parentId }: { files: any[]; parentId: number }) {
+    onUpload({ files, parentId }: { files: any[]; parentId?: number }) {
       handleNativeDrop({ files, parentId });
     },
     onRename({ id, name }: { id: number; name: string }) {
@@ -346,17 +345,13 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     visible: modalVisible,
     onCancel: onNewFolder,
     currentFolder,
-    onOk(values: any) {
-      useRequest(async () => {
-        await service.createFolder({ ...values });
-        onNewFolder();
-        refresh();
+    async onOk(values: any) {
+      const res = await dispatch({
+        type: 'netdisk/createFolder',
+        payload: { ...values },
       });
-      // dispatch({
-      //   type: 'netdisk/createFolder',
-      //   payload: { ...values },
-      // }).then(() => {
-      // });
+      setModalVisible(false);
+      console.log(res);
     },
   };
   const getDisplayContent = () => {
@@ -377,7 +372,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
         type: 'netdisk/gotoPath',
         payload: { path },
       });
-      console.log('goto path qqqq', q);
       // .then((res) => {
       // if (!res) {
       //   return;
@@ -433,7 +427,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     parentId,
   }: {
     files: File[];
-    parentId: number;
+    parentId?: number;
   }) => {
     const paths = files.map((file: any) => file.path);
     dispatch({

@@ -1,30 +1,37 @@
 import './index.less';
-
+import { FC } from 'react';
 import {
   CloseCircleOutlined,
   LeftOutlined,
   RightOutlined,
 } from '@ant-design/icons';
-import { getClassWithColor } from 'file-icons-js';
 import { path } from 'ramda';
 import { useEffect, useState } from 'react';
 import Exhibit from './exhibit';
 
-export default (props) => {
+interface ViewerProps {
+  currentItem: any;
+  dataIndex: { alias: string; key: string[] }[];
+  list: any[];
+  visible: boolean;
+  onClose: () => void;
+  controls: any;
+}
+const Viewer: FC<ViewerProps> = (props: ViewerProps) => {
   const { currentItem, dataIndex, list, visible } = props;
-  const [activeItem, setActiveItem] = useState({});
+  const [activeItem, setActiveItem] = useState<any>({});
   useEffect(() => {
     setActiveItem(currentItem);
   }, [currentItem]);
 
-  const handlePre = (cur) => {
+  const handlePre = (cur: any) => {
     const index = list.findIndex((v) => v.id === cur.id);
     if (index <= 0) {
       return false;
     }
     setActiveItem(list[index - 1]);
   };
-  const handleNext = (cur) => {
+  const handleNext = (cur: any) => {
     const index = list.findIndex((v) => v.id === cur.id);
     if (index >= list.length - 1) {
       return false;
@@ -32,7 +39,6 @@ export default (props) => {
     setActiveItem(list[index + 1]);
   };
   const file = activeItem.file || {};
-  const fileClass = getClassWithColor('.' + file.ext);
   return (
     <>
       <div
@@ -81,3 +87,5 @@ export default (props) => {
     </>
   );
 };
+
+export default Viewer;

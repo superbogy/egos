@@ -38,7 +38,7 @@ export interface QueryInterface {
 
 export const query = async (payload: QueryInterface) => {
   const res = await FileSystem.getFiles(payload);
-  console.log('getFiles', res);
+  console.log('getFiles', res, payload);
   return res;
 };
 

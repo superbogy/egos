@@ -2,8 +2,20 @@
   display: flex;
 }
 
+.selected {
+  border: 2px solid skyblue !important;
+
+  border-radius: 4px;
+}
 
 .card-box {
+  padding: 4px;
+
+  .card-icon {
+    border: 2px solid #fff;
+    border-radius: 4px;
+  }
+
   p {
     margin: 0;
     padding: 0;
@@ -21,5 +33,15 @@
     background-color: #fff;
     color: #666;
     outline: 0px solid transparent !important;
+  }
+
+  .card-name,
+  .card-date {
+    font-size: 12px;
+    text-align: center;
+  }
+
+  .card-date {
+    color: #b2b2b2;
   }
 }

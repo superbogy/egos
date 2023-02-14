@@ -1,3 +1,4 @@
+import { FC, ReactNode } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { NativeTypes } from 'react-dnd-html5-backend';
 import './index.less';
@@ -7,7 +8,26 @@ export const ItemTypes = {
   CARD: 'card',
 };
 
-export const DropBox = (props) => {
+export interface DropProps {
+  currentItem: any;
+  selected?: number[];
+  disable?: number[];
+  style?: Record<string, string | number>;
+  hoverStyle?: Record<string, string | number>;
+  dropStyle?: Record<string, string | number>;
+  dropType?: string;
+  onUpload: ({
+    files,
+    parentId,
+    currentItem,
+  }: {
+    files: any[];
+    parentId?: number;
+    currentItem?: any;
+  }) => void;
+  children: ReactNode | ReactNode[];
+}
+export const DropBox: FC<DropProps> = (props: DropProps) => {
   const {
     currentItem,
     selected = [],
@@ -22,9 +42,8 @@ export const DropBox = (props) => {
   const [{ canDrop, isOver }, drop] = useDrop(() => {
     return {
       accept,
-      drop: (item, monitor) => {
+      drop: (item: any, monitor) => {
         if (monitor.getItemType() === NativeTypes.FILE) {
-          // @fixme remove parentId
           return props.onUpload({
             files: item.files,
             parentId: currentItem.id,
@@ -75,7 +94,13 @@ export const DropBox = (props) => {
   );
 };
 
-export const DragBox = (props) => {
+export interface DragProps {
+  currentItem: any;
+  dragType?: string;
+  onMove?: ({ src, dest }: { src: any; dest: any }) => void;
+  children: ReactNode | ReactNode[];
+}
+export const DragBox: FC<DragProps> = (props) => {
   const { currentItem } = props;
   const [{ isDragging }, drag] = useDrag(
     () => ({
@@ -83,11 +108,11 @@ export const DragBox = (props) => {
       item: { id: currentItem.id, isFolder: currentItem.isFolder },
       end: (item, monitor) => {
         const dropResult = monitor.getDropResult();
-        if (item && dropResult) {
+        if (item && dropResult && props.onMove) {
           props.onMove({ src: item, dest: dropResult });
         }
       },
-      isDragging: (monitor) => {
+      isDragging: () => {
         return true;
       },
       collect: (monitor) => {
@@ -107,7 +132,28 @@ export const DragBox = (props) => {
   );
 };
 
-export const Sortable = (props) => {
+export interface SortableProps {
+  currentItem: any;
+  selected: number[];
+  disable: number[];
+  style: Record<string, string>;
+  hoverStyle: Record<string, string>;
+  dropStyle: Record<string, string>;
+  onMove: (src: any, dest: any) => void;
+  dropType?: string;
+  onUpload?: ({
+    files,
+    parentId,
+    currentItem,
+  }: {
+    files: any[];
+    parentId?: number;
+    currentItem: any;
+  }) => void;
+  children: ReactNode | ReactNode[];
+}
+
+export const Sortable: FC<SortableProps> = (props) => {
   const { currentItem, selected = [], disable, hoverStyle, dropStyle } = props;
   const [{ isDragging, itemType }, drag] = useDrag(
     {
@@ -142,10 +188,9 @@ export const Sortable = (props) => {
           canDrop: monitor.canDrop(),
         };
       },
-      drop(item, monitor) {
+      drop(item: any, monitor) {
         if (monitor.getItemType() === NativeTypes.FILE) {
           if (props.onUpload) {
-            // @fixme
             props.onUpload({
               files: item.files,
               parentId: currentItem.id,
@@ -156,7 +201,7 @@ export const Sortable = (props) => {
         }
         return currentItem;
       },
-      canDrop(item) {
+      canDrop(item: any) {
         if (selected.includes(currentItem.id)) {
           return false;
         }
@@ -169,7 +214,10 @@ export const Sortable = (props) => {
     [currentItem, selected],
   );
   const getDropStyle = () => {
-    const style = { ...props.style, opacity: isDragging ? 0 : 1 };
+    const style: Record<string, string | number> = {
+      ...props.style,
+      opacity: isDragging ? 0 : 1,
+    };
     const isActive = canDrop && isOver;
     if (isActive) {
       if (itemType === NativeTypes.FILE) {

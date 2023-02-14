@@ -1,9 +1,8 @@
 import { ShareSchema } from '@/services/share';
 import storage from '@/services/storage';
 import { isEmpty } from 'ramda';
-import { AnyAction, EffectsCommandMap, SubscriptionAPI } from 'umi';
+import { AnyAction, EffectsCommandMap } from 'umi';
 import * as services from './service';
-import { parse } from 'query-string';
 import { FileSchema } from '@/services/file';
 
 export interface DiskState {
@@ -20,7 +19,7 @@ export interface DiskState {
   order: any; // @todo
   currentFolder: any; // @todo
   location: any; // @todo
-  availableFolders: number[];
+  availableFolders: FileSchema[];
   selected: number[];
   inProgressNumber: number;
   shareDetail: null | ShareSchema;
@@ -74,8 +73,8 @@ const model = {
       { put, call, select }: EffectsCommandMap,
     ): Generator<any> {
       const { location } = payload;
-      console.log('model location', location, parse(location.search));
-      const qs = parse(location.search);
+      const qs = location.state;
+      console.log(location);
       const state = yield select(
         ({ netdisk }: { netdisk: DiskState }): DiskState => netdisk,
       );
@@ -96,6 +95,7 @@ const model = {
       { payload = {} }: AnyAction,
       { call, put, select }: EffectsCommandMap,
     ) {
+      console.log('query payload', payload);
       if (isEmpty(payload)) {
         const { query } = yield select((s: any) => {
           const { netdisk } = s;
@@ -134,7 +134,7 @@ const model = {
       yield call(services.star, { ...payload });
     },
     *setUserAction({ payload }: AnyAction, { put, select }: EffectsCommandMap) {
-      const { query } = yield select(({ disk }: any) => disk);
+      const { query } = yield select(({ netdisk }: any) => netdisk);
       const { display, order } = payload;
       const pathname = '/disk';
       const actions: Record<string, any> = {};
@@ -159,8 +159,19 @@ const model = {
         payload: {},
       });
     },
-    *createFolder({ payload }: AnyAction, { call }: EffectsCommandMap) {
+    *createFolder(
+      { payload }: AnyAction,
+      { call, put, select }: EffectsCommandMap,
+    ) {
       yield call(services.createFolder, payload);
+      const { query, parentId } = yield select(({ netdisk }: any) => netdisk);
+      yield put({
+        type: 'query',
+        payload: {
+          ...query,
+          parentId,
+        },
+      });
     },
     *gotoPath({ payload }: AnyAction, { call }: EffectsCommandMap) {
       const { path } = payload;

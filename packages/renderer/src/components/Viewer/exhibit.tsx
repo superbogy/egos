@@ -4,8 +4,19 @@ import { FileUnknownOutlined } from '@ant-design/icons';
 import classNames from 'classnames';
 import { getClassWithColor } from 'file-icons-js';
 import { Fragment } from 'react';
+import { FileObjectSchema } from '@/services/file-object';
 
-export default (props) => {
+interface ExhibitProps {
+  file: FileObjectSchema;
+  className?: string;
+  boxClass?: string;
+  itemClass?: string;
+  avatarClass?: string;
+  controls?: any;
+  avatarStyle?: Record<string, string>;
+  onDoubleClick?: () => void;
+}
+export default (props: ExhibitProps) => {
   const file = props.file || {};
   const { boxClass, itemClass, avatarClass } = props;
   const fileClass = getClassWithColor('.' + file.ext);

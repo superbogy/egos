@@ -35,7 +35,7 @@ const BindingForm: React.FC<BindProps> = (props: BindProps) => {
   return (
     <Modal
       title={name}
-      visible={props.visible}
+      open={props.visible}
       onOk={handleOk}
       onCancel={props.onCancel}
     >

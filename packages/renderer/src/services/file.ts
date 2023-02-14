@@ -13,6 +13,7 @@ export interface FileSchema {
   description?: string;
   starred?: boolean;
   file?: FileObjectSchema;
+  tag?: string[];
   createdAt: string;
   updatedAt: string;
 }

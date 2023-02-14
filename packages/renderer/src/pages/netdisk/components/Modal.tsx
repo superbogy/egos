@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
+import { FC } from 'react';
 import { Modal, Form, Input, Select } from 'antd';
+import { FileSchema } from '@/services/file';
 
-export default (props) => {
+interface FileModalProps {
+  currentFolder: FileSchema;
+  visible: boolean;
+  onOk: (v: Partial<FileSchema>) => void;
+  onCancel: () => void;
+}
+const Index: FC<FileModalProps> = (props) => {
   const { currentFolder } = props;
   const [form] = Form.useForm();
   const modalProps = {
     title: '创建文件夹',
-    visible: props.visible,
+    open: props.visible,
     centered: true,
     onOk() {
       form.validateFields().then((values) => {
@@ -49,7 +56,9 @@ export default (props) => {
               showArrow={false}
               value={currentFolder.id}
             >
-              <Select.Option value={currentFolder.id}>{currentFolder.path}</Select.Option>
+              <Select.Option value={currentFolder.id}>
+                {currentFolder.path}
+              </Select.Option>
             </Select>
           </Form.Item>
         </Form>
@@ -57,3 +66,5 @@ export default (props) => {
     </>
   );
 };
+
+export default Index;

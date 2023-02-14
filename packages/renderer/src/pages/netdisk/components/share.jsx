@@ -54,7 +54,7 @@ export default (props) => {
   return (
     <>
       <Modal
-        visible={props.visible}
+        open={props.visible}
         onCancel={handleCancel}
         footer={[
           <Button key="back" onClick={console.log} danger>

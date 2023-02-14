@@ -25,7 +25,7 @@ const QRUploader = (props: QRLoaderProps) => {
   };
   return (
     <>
-      <Modal visible={visible} onCancel={handleCancel}>
+      <Modal open={visible} onCancel={handleCancel}>
         <div className="qr-uploader-box">
           <div className="uploader-qrcode">
             {qrLink ? <img style={{ width: 304 }} src={qrLink} /> : null}

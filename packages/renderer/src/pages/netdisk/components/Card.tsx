@@ -13,6 +13,7 @@ import Exhibit from '@/components/Viewer/exhibit';
 import { FileSchema } from '@/services/file';
 import { FileObjectSchema } from '@/services/file-object';
 import { TriggerEvent } from 'react-contexify';
+import classNames from 'classnames';
 
 const dataIndex = [
   { key: ['file', 'bucket'], alias: 'Bucket' },
@@ -30,13 +31,7 @@ interface CardProps {
   pagination: any;
   onMove: ({ src, dest }: { src: FileSchema; dest: FileSchema }) => void;
   onDrag: (file: FileSchema) => void;
-  onUpload: ({
-    files,
-    parentId,
-  }: {
-    files: string[];
-    parentId: number;
-  }) => void;
+  onUpload: ({ files, parentId }: { files: any[]; parentId?: number }) => void;
   onRename: ({ id, name }: { id: number; name: string }) => void;
   gotoFolder: (id: number) => void;
   onContext: (file: FileSchema) => (ev: TriggerEvent) => void;
@@ -47,7 +42,6 @@ interface CardProps {
 }
 export default (props: CardProps) => {
   const { pagination, onMove, selected, disable = [] } = props;
-  console.log('netdis card component', props);
   const [preview, setPreview] = useState<FileSchema | null>(null);
   const handleImagePreview = (file: FileSchema) => {
     setPreview(file);
@@ -68,11 +62,11 @@ export default (props: CardProps) => {
         onUpload: props.onUpload,
       };
       return (
-        <DropBox {...dropProps} droppable={selected.includes(item.id)}>
+        <DropBox {...dropProps}>
           <DragBox {...dragProps}>
             <div className="drag-item" data-id={item.id}>
               <FolderFilled
-                style={{ fontSize: 100, height: 108, color: 'cyan' }}
+                style={{ fontSize: 72, height: 72, color: 'cyan' }}
               />
             </div>
           </DragBox>
@@ -82,12 +76,6 @@ export default (props: CardProps) => {
     if (item.type) {
       return (
         <DragBox {...dragProps}>
-          {/* <img
-            onDoubleClick={() => handleImagePreview(item)}
-            className="drag-item"
-            src={`http://local-egos${file.local}`}
-            data-id={item.id} */}
-          {/* /> */}
           <Exhibit
             file={file}
             className="drag-item"
@@ -138,14 +126,12 @@ export default (props: CardProps) => {
     props.onSelectChange(item, e.metaKey, e.shiftKey);
   };
   const getCardItem = (item: FileSchema) => {
-    const iconClass = ['card-icon'];
-    if (selected.includes(item.id)) {
-      iconClass.push('selected');
-    }
     return (
-      <div key={item.id} className="card-box">
+      <div key={item.id} className={classNames('card-box')}>
         <div
-          className={iconClass.join(' ')}
+          className={classNames('card-icon', {
+            selected: selected.includes(item.id),
+          })}
           onClick={(e) => handleClick(item, e)}
           onContextMenu={props.onContext(item)}
           onDoubleClick={directToDetail(item)}
