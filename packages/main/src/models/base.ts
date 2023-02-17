@@ -2,7 +2,7 @@ import { connect, Model, ModelOpts } from '@egos/lite';
 import { ipcMain } from 'electron';
 import { getConfig } from '../config';
 
-@connect({ name: 'default', filename: getConfig().db })
+@connect('egos')
 export default class Base extends Model {
   _channel: string;
   static channels: string[] = [];

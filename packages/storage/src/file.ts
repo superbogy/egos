@@ -112,7 +112,6 @@ export class FileDriver extends Driver {
     dest: string,
     options: Record<string, any> = {},
   ) {
-    console.log('----???? add file', source, dest);
     const stream =
       typeof source === 'string' ? fs.createReadStream(source) : source;
     const writable = fs.createWriteStream(this.getPath(dest), options);
@@ -126,7 +125,6 @@ export class FileDriver extends Driver {
     options: Record<string, any> = {},
   ) {
     const isInflight = this.inflight(options.taskId);
-    console.log('file multipartUpload::::::', source, dest, this._inflight);
     if (!isInflight) {
       return false;
     }
@@ -140,7 +138,7 @@ export class FileDriver extends Driver {
     const fd = await fsp.open(this.getPath(dest), 'a+');
     const chunkNumber = Math.ceil(stat.size / chunkSize);
     const hash = crypto.createHash('md5');
-    for (let partNumber = 1; partNumber <= chunkNumber; partNumber++) {
+    for (let partNumber = 0; partNumber < chunkNumber; partNumber++) {
       if (this.isCancel(options.taskId)) {
         this.afterCancel(options.taskId);
         await readable.close();
@@ -148,10 +146,17 @@ export class FileDriver extends Driver {
         return false;
       }
       // await setTimeout(5000);
-      const cursor = (partNumber - 1) * chunkSize;
+      const cursor = partNumber * chunkSize;
       const len =
         cursor + chunkSize > stat.size ? stat.size - cursor : chunkSize;
       const chunk = Buffer.alloc(len);
+      console.log(
+        'chunk--> chunk number: %s,cursor: %s, size: %s',
+        partNumber,
+        cursor,
+        len,
+        stat.size,
+      );
       await readable.read(chunk, 0, len, cursor);
       if (!chunk) {
         break;
@@ -161,7 +166,7 @@ export class FileDriver extends Driver {
       const done = doneParts.find((item) => {
         return Number(item[2]) === partNumber && item[0] === String(eTag);
       });
-      console.log('>>>>>', eTag, done, partNumber);
+      console.log('done---->', done, partNumber);
       if (done) {
         continue;
       }
@@ -194,7 +199,9 @@ export class FileDriver extends Driver {
       await options.onFinish({ ...options });
     }
     this.onFinish(options.taskId);
-    return hash.digest('hex');
+    const md5Hash = hash.digest('hex');
+    console.log('file md5::', md5Hash);
+    return md5Hash;
   }
 
   async multipartDownload(
@@ -258,7 +265,6 @@ export class FileDriver extends Driver {
           }),
         );
       }
-      console.log('multipart download end', options);
     }
     const renameFile = await getNoneExistedFilename(filename, savePath);
     await util.promisify(fs.rename)(local, renameFile);

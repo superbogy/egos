@@ -5,6 +5,10 @@ import { AnyAction, EffectsCommandMap } from 'umi';
 import * as services from './service';
 import { FileSchema } from '@/services/file';
 
+export enum FileDisplay {
+  CARD = 'card',
+  LIST = 'list',
+}
 export interface DiskState {
   entrance: any[];
   query: {
@@ -29,9 +33,8 @@ const model = {
   namespace: 'netdisk',
   state: {
     entrance: [],
-    query: {
-      display: 'card',
-    },
+    query: {},
+    display: 'card',
     meta: {
       total: 0,
     },
@@ -46,27 +49,6 @@ const model = {
     shareDetail: null,
     uploadUrl: '',
   },
-  // subscriptions: {
-  //   setup({ dispatch, history }: SubscriptionAPI) {
-  //     return history.listen(({ location }: any) => {
-  //       console.log('?', history, location);
-  //       if (location.pathname === '/disk' || location.pathname === '/') {
-  //         const { query } = location;
-  //         const custom = storage.getUserData('/disk') || {};
-  //         const { display = 'card', order = { id: 'desc' } } = custom;
-  //         dispatch({
-  //           type: 'init',
-  //           payload: {
-  //             query: { ...query, order, display },
-  //           },
-  //         });
-  //         ipcEvent.register('upload-success', () => {
-  //           dispatch({ type: 'query', payload: {} });
-  //         });
-  //       }
-  //     });
-  //   },
-  // },
   effects: {
     *init(
       { payload }: any,
@@ -74,7 +56,6 @@ const model = {
     ): Generator<any> {
       const { location } = payload;
       const qs = location.state;
-      console.log(location);
       const state = yield select(
         ({ netdisk }: { netdisk: DiskState }): DiskState => netdisk,
       );
@@ -88,7 +69,7 @@ const model = {
       }
       yield put({
         type: 'query',
-        payload: qs,
+        payload: qs || {},
       });
     },
     *query(
@@ -96,7 +77,7 @@ const model = {
       { call, put, select }: EffectsCommandMap,
     ) {
       console.log('query payload', payload);
-      if (isEmpty(payload)) {
+      if (!payload || isEmpty(payload)) {
         const { query } = yield select((s: any) => {
           const { netdisk } = s;
           return {

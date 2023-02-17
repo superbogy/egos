@@ -52,11 +52,9 @@ export default class Driver {
 
   validate(data: any) {
     const schema = this.schema;
-    console.log('schema>>', schema, data);
     const validate = new Ajv({ strict: false } as Ajv.Options).compile(schema);
     const res = validate(data);
     if (!res) {
-      console.log('validate error', validate.errors);
       throw new Error((validate.errors as Ajv.ErrorObject[])[0].message);
     }
     return true;
@@ -106,6 +104,10 @@ export default class Driver {
   getLocalChunkFilename(dest: string, type: string) {
     const driverName = this.constructor.name.toLowerCase();
     return path.join([dest, type, driverName, 'multi.parts'].join('-'));
+  }
+
+  async multipartUpload(...args: any[]): Promise<string | boolean> {
+    return false;
   }
 
   async getDoneParts(dest: string, type: string) {

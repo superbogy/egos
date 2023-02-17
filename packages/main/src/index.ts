@@ -134,8 +134,13 @@ app.whenReady().then(async () => {
       });
     },
   );
-  await prepare();
+  await prepare(mainWindow);
 });
+app.on('ready', () => {
+  devtoolsInstall();
+  createWindow();
+});
+
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } },
 ]);

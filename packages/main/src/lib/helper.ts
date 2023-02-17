@@ -29,3 +29,27 @@ export const getFileMeta = async (file: string) => {
     mtime: new Date(stat.mtime).toISOString(),
   };
 };
+
+export const jsonParser = (value: string) => {
+  try {
+    if (value && typeof value === 'string') {
+      return JSON.parse(value);
+    }
+    return value;
+  } catch (err) {
+    console.log('code json error', err, value);
+    return value;
+  }
+};
+
+export const jsonStringify = (obj: object) => {
+  try {
+    if (obj && typeof obj === 'object') {
+      return JSON.stringify(obj);
+    }
+    return obj;
+  } catch (err) {
+    console.log('encode josn error', err);
+    return obj;
+  }
+};

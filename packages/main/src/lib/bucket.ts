@@ -31,7 +31,6 @@ export const getBuckets = () => {
 
 export const updateBucket = async ({ ...bucket }: any) => {
   const driver = getDriver(bucket);
-  console.log('update bucket driver %j ', bucket, driver);
   driver.validate(bucket.config);
   const config = getConfig();
   if (bucket.isDefault) {
@@ -48,7 +47,6 @@ export const updateBucket = async ({ ...bucket }: any) => {
   } else {
     config.buckets[index] = bucket;
   }
-  console.log('bucketUpdate', config);
   await writeConfig(config);
 };
 
@@ -66,10 +64,8 @@ export const getAvailableBucket = (type: string) => {
   const buckets = getBuckets();
   const bucket = buckets.find((b) => {
     const isActive = b.status === BUCKET_STATUS.ACTIVE;
-    console.log(b.type === type, isActive);
     return type ? b.type === type && isActive : isActive;
   });
-  console.log('buckets & type', buckets, type, bucket);
   if (!bucket) {
     throw new ServiceError({
       message: 'None available bucket',

@@ -22,6 +22,7 @@
     "@egos/storage": "workspace:^1.0.0",
     "ajv": "^8.12.0",
     "await-lock": "^2.2.2",
+    "bson-objectid": "^2.0.4",
     "concurrently": "^7.6.0",
     "crypto-js": "^4.1.1",
     "electron-context-menu": "^3.6.1",

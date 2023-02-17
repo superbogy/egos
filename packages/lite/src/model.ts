@@ -61,7 +61,9 @@ export class Model {
   }
 
   async connect() {
-    if (this.db instanceof Promise) {
+    if (typeof this.db === 'function') {
+      this._db = await Promise.resolve((this.db as Function)());
+    } else if (this.db instanceof Promise) {
       this._db = await Promise.resolve(this.db);
     }
     return this.db;
@@ -128,7 +130,7 @@ export class Model {
     return Object.entries(props).reduce((acc, cur) => {
       const [k, v]: [string, any] = cur;
       const col: ColumnSchema = schema[k];
-      if (k in props) {
+      if (col && k in props) {
         acc[col.name || k] = v;
       } else {
         acc[k] = v;

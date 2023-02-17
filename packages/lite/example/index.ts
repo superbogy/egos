@@ -3,18 +3,19 @@ import assert from 'assert';
 import { FieldTypes } from '../src/schema';
 import 'reflect-metadata';
 import { genSql } from '../src/utils';
+import { addConnection } from '../src/decorators';
+import { Database } from 'sqlite3';
 
-const dbFile = '';
-@connect({ name: 'default', filename: dbFile })
+@connect('default')
 @table('users')
 class User extends Model {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   userName: string;
-  @column({ type: FieldTypes.INT })
+  @column({ type: FieldTypes.INT, default: 0 })
   age: number;
-  @column({ type: FieldTypes.TEXT })
+  @column({ type: FieldTypes.TEXT, default: () => 1 })
   gender: string;
   @column({ type: FieldTypes.TEXT })
   mail: string;
@@ -23,10 +24,12 @@ class User extends Model {
   @column({ type: FieldTypes.INT })
   parentId: number;
 }
-
+const dbFile = '';
 const main = async () => {
+  await addConnection('default', { filename: dbFile });
   const user = new User({ debug: true, timestamp: true });
   const sql = genSql(user.table, user.schema);
+  console.log(sql);
   await user.exec(sql);
   const current = await user.create({
     userName: 'tommy',

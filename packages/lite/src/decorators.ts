@@ -34,35 +34,46 @@ export function table(table: string) {
   };
 }
 
+export interface ConnectConfig {
+  filename: string;
+  mode?: number;
+  driver?: any;
+}
+
+export interface DelayConnectionConfig {
+  name: string;
+  filename?: string;
+}
+
 const connections: Record<string, any> = {};
 
-export function connect(config: { name: string; filename?: string }) {
+const delayConnect = (name: string) => () => {
+  return connections[name];
+};
+
+export function connect(name: string, config?: ISqlite.Config) {
   return function (constructor: Function) {
-    if (!connections[config.name]) {
-      const conn = open({
-        filename: config.filename || '',
-        driver: Database,
-      });
-      connections[config.name] = conn;
+    if (!connections[name] && !config) {
+      constructor.prototype._db = delayConnect(name);
+    } else {
+      constructor.prototype._db = addConnection(name, config as ConnectConfig);
     }
-    constructor.prototype._db = connections[config.name];
   };
 }
 
-export const addConnection = async (
-  config: { name: string } & ISqlite.Config,
-) => {
-  if (!connections[config.name]) {
+export const addConnection = async (name: string, config: ConnectConfig) => {
+  if (!connections[name]) {
     if (config.filename && !fs.existsSync(path.dirname(config.filename))) {
       fs.mkdirSync(path.dirname(config.filename));
     }
     const conn = open({
       filename: config.filename,
-      driver: Database,
+      driver: config.driver || Database,
+      mode: config.mode,
     });
-    connections[config.name] = conn;
+    connections[name] = conn;
   }
-  return connections[config.name];
+  return connections[name];
 };
 
 // export function Entity<T>(

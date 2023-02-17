@@ -24,8 +24,8 @@ export default (props: ExhibitProps) => {
     if (file.type === 'image') {
       return (
         <img
-          className="exhibit-file-item"
-          src={`file://${file.local}`}
+          className={classNames('exhibit-file-item', [itemClass])}
+          src={`atom://${file.local}`}
           onClick={(e) => e.preventDefault()}
         />
       );
@@ -46,22 +46,7 @@ export default (props: ExhibitProps) => {
 
     return (
       <div className={classNames('exhibit-file-item', itemClass)}>
-        {file.type === 'image' ? (
-          <img
-            src={`file://${file.local}`}
-            onClick={(e) => e.preventDefault()}
-            onError={console.log}
-          />
-        ) : file.type === 'video' ? (
-          <Fragment>
-            <video className="exhibit-media-item" controls={true}>
-              <source
-                src={`http://local-egos${file.local}#t=0.5`}
-                type="video/mp4"
-              />
-            </video>
-          </Fragment>
-        ) : fileClass ? (
+        {fileClass ? (
           <span
             className={classNames(
               fileClass,

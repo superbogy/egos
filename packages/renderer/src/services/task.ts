@@ -7,8 +7,10 @@ const QueueStatus = {
   UNRESOLVED: 'unresolved',
   DONE: 'done',
 };
-
-class Queue extends Base {
+export interface NativeFile {
+  path: string;
+}
+class TaskModel extends Base {
   _table = 'tasks';
 
   enqueue(data: any) {
@@ -34,30 +36,35 @@ class Queue extends Base {
     return this.exec('download', ...args);
   }
 
-  async buildUploadTasks(...args: any[]) {
-    return this.exec('buildUploadTasks', ...args);
+  async buildUploadTasks({
+    files,
+    parentId,
+  }: {
+    files: string[];
+    parentId: number;
+  }) {
+    return this.exec('buildUploadTasks', { files, parentId });
   }
 
   async getTaskResultUrl(...args: any[]) {
     return this.exec('getResultUrl', ...args);
   }
 }
-const queue = new Queue('tasks');
+export const Task = new TaskModel('tasks');
 
 export const fetchPendingTask = async () => {
   // const job = new Job();
   // return job.run();
   // return queue.dequeue();
-  return queue.dequeue({});
+  return Task.dequeue({});
 };
-export default queue;
 
 export const countTaskStatus = ({ status }: { status?: string }) => {
   const where: Record<string, any> = {};
   if (status) {
     where.status = status;
   }
-  const res = queue.find(
+  const res = Task.find(
     {},
     { group: 'status', fields: ['count(*) as count', 'status'], rows: true },
   );

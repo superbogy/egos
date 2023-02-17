@@ -4,6 +4,7 @@ import { FieldTypes } from '@egos/lite/dist/schema';
 import Driver from '@egos/storage/dist/abstract';
 import Base from './base';
 import fs from 'fs';
+import { FileObject } from './file-object';
 
 export const quickEntrance = [
   { filename: 'Document', path: '/Document' },
@@ -21,8 +22,24 @@ export interface QueryPayload {
   parentId?: number;
   order: Record<string, string>;
 }
+
+export interface FileSchema {
+  id: number;
+  type: string;
+  fileId: number;
+  parentId: number;
+  isFolder: number;
+  path: string;
+  filename: string;
+  size: number;
+  description?: string;
+  starred?: boolean;
+  tag?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
 @table('files')
-class FileModel extends Base {
+export class FileModel extends Base {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT })
@@ -82,9 +99,10 @@ class FileModel extends Base {
   }
 
   async getFileInfo(item: any) {
-    let file: FileModel = (await File.findById(item.fileId)) as FileModel;
+    let file: FileModel = (await FileObject.findById(item.fileId)) as FileModel;
     const sizeLimit = 1024 * 1024 * 50;
     const driver = getDriverByBucket(file.bucket) as Driver;
+    console.log('getFileInfo', file.bucket);
     const url = await driver.getUrl(file.remote);
     if (
       (file.type === 'image' || file.type === 'video') &&
@@ -124,7 +142,6 @@ class FileModel extends Base {
       where.filename = { $like: `%${keyword}%` };
     }
     const total = await this.count(where);
-    console.log('tttttoal', total);
     const files = await this.find(where, options);
     const list = [];
     for (const item of files) {

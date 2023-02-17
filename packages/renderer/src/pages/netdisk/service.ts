@@ -4,12 +4,11 @@ import path from 'path';
 import { ServiceError } from '@/lib/error';
 import Model from '@/services/base';
 import FileSystem from '@/services/file';
-import Queue from '@/services/task';
+import { Task } from '@/services/task';
 import Share from '@/services/share';
 import Trash from '@/services/trash';
 import { Remote } from '@/lib/remote';
 
-const Task = new Model('tasks');
 const Favorite = new Model('favorite');
 
 export const quickEntrance = [
@@ -37,8 +36,8 @@ export interface QueryInterface {
 }
 
 export const query = async (payload: QueryInterface) => {
-  const res = await FileSystem.getFiles(payload);
-  console.log('getFiles', res, payload);
+  const res = await FileSystem.getFiles(payload || {});
+  Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
   return res;
 };
 
@@ -49,8 +48,8 @@ export const upload = async ({
   files: string[];
   parentId: number;
 }) => {
-  await Queue.buildUploadTasks({ files, parentId });
-  Remote.Electron.ipcRenderer.send('upload', { type: 'file' });
+  await Task.buildUploadTasks({ files, parentId });
+  Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
 };
 
 export const download = async ({
@@ -61,7 +60,7 @@ export const download = async ({
   local: string;
 }) => {
   const { ipcRenderer } = Remote.Electron;
-  await Queue.download({ ids, local, type: 'file' });
+  await Task.download({ ids, local, type: 'file' });
   return ipcRenderer.send('download', { type: 'file' });
 };
 

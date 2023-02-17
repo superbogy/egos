@@ -14,16 +14,17 @@ export const objToKVPairs = (obj: any): any[] => {
 };
 
 export const columnToSql = (column: ColumnSchema) => {
-  let dft: string = column.default
-    ? typeof column.default === 'function'
-      ? ''
-      : `DEFAULT "${column.default}"`
-    : '';
+  let def: any = '';
+  if (column.default !== undefined) {
+    def =
+      typeof column.default === 'function' ? column.default() : column.default;
+    def = `DEFAULT '${def}'`;
+  }
   const colSql = [
     `\`${column.name}\``,
     column.type,
     column.nullable ? '' : 'NOT NULL',
-    dft,
+    def,
     column.pk ? 'PRIMARY KEY' : '',
     column.autoIncrement ? 'AUTOINCREMENT' : '',
   ];

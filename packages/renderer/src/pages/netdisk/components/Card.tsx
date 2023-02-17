@@ -78,6 +78,7 @@ export default (props: CardProps) => {
         <DragBox {...dragProps}>
           <Exhibit
             file={file}
+            itemClass="card-img"
             className="drag-item"
             onDoubleClick={() => handleImagePreview(item)}
           />

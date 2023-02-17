@@ -22,7 +22,6 @@ export const registerChannel = () => {
     return getDriverSchemas();
   });
   ipcMain.handle('update@account:buckets', async (ev, { bucket }) => {
-    console.log('bucket', bucket);
     return updateBucket(bucket);
   });
 };
