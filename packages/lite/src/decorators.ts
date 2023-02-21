@@ -23,6 +23,7 @@ export function index(params: any) {
       name: `${name}_idx`,
       unique: !!params.unique,
       columns: params.columns,
+      condition: params.condition,
     };
     Reflect.defineMetadata('model:indices', indices, target);
   };
@@ -45,7 +46,7 @@ export interface DelayConnectionConfig {
   filename?: string;
 }
 
-const connections: Record<string, any> = {};
+export const connections: Record<string, any> = {};
 
 const delayConnect = (name: string) => () => {
   return connections[name];
@@ -66,7 +67,7 @@ export const addConnection = async (name: string, config: ConnectConfig) => {
     if (config.filename && !fs.existsSync(path.dirname(config.filename))) {
       fs.mkdirSync(path.dirname(config.filename));
     }
-    const conn = open({
+    const conn = await open({
       filename: config.filename,
       driver: config.driver || Database,
       mode: config.mode,

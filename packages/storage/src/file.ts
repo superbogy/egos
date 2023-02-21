@@ -150,13 +150,6 @@ export class FileDriver extends Driver {
       const len =
         cursor + chunkSize > stat.size ? stat.size - cursor : chunkSize;
       const chunk = Buffer.alloc(len);
-      console.log(
-        'chunk--> chunk number: %s,cursor: %s, size: %s',
-        partNumber,
-        cursor,
-        len,
-        stat.size,
-      );
       await readable.read(chunk, 0, len, cursor);
       if (!chunk) {
         break;
@@ -166,7 +159,6 @@ export class FileDriver extends Driver {
       const done = doneParts.find((item) => {
         return Number(item[2]) === partNumber && item[0] === String(eTag);
       });
-      console.log('done---->', done, partNumber);
       if (done) {
         continue;
       }

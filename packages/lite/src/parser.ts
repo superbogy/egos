@@ -1,7 +1,7 @@
 import { Dict } from './interface';
 import { objToKVPairs } from './utils';
 
-const OPERATOR: Record<string, string> = {
+export const OPERATOR: Record<string, string> = {
   $eq: '=',
   $neq: '!=',
   $gt: '>',
@@ -14,14 +14,14 @@ const OPERATOR: Record<string, string> = {
   $inc: 'inc',
 };
 
-const LOGICAL: Dict = {
+export const LOGICAL: Dict = {
   $and: 'AND',
   $or: 'OR',
   $xor: 'XOR',
 };
 
 export class Parser {
-  buildTree(query: Dict | Dict[], op = '$and'): any[] {
+  build(query: Dict | Dict[], op = '$and'): any {
     const data: Record<string, any> = { [op]: [] };
     // [{a: 1}, {b: 1}]
     if (Array.isArray(query)) {
@@ -34,34 +34,37 @@ export class Parser {
       );
       return [res];
     }
-    if (typeof query === 'object') {
-      // {$and: [{ mail: 2 }, { gender: 'male' }],$or: [{ name: 1 }, { age: 2 }]}
-      if (Object.keys(query).length > 1 && (query.$and || query.$or)) {
-        return this.buildTree({ $and: query });
-      }
-      // const q = {
-      //   $or: [
-      //     { $and: [{ name: 1 }, { age: 2 }] },
-      //     { $or: [{ mail: 2 }, { gender: 'male' }] },
-      //   ],
-      // };
-      const res = Object.entries(query).reduce((acc, cur) => {
-        const [k, v] = cur;
-        if (k in LOGICAL) {
-          if (!acc[k]) {
-            acc[k] = [];
-          }
-          const t = this.buildTree(v, k);
-          return Object.assign(acc, t);
-        } else {
-          acc[op].push({ [k]: v });
-        }
-        return acc;
-      }, data);
-      return [res];
+    // {$and: [{ mail: 2 }, { gender: 'male' }],$or: [{ name: 1 }, { age: 2 }]}
+    if (Object.keys(query).length > 1 && (query.$and || query.$or)) {
+      return this.build({ $and: [query] });
+    }
+    const hasLogicOp = this.hasLogicOp(query);
+    if (!hasLogicOp) {
+      return this.build({ $and: [query] });
     }
 
-    return [data];
+    // const q = {
+    //   $or: [
+    //     { $and: [{ name: 1 }, { age: 2 }] },
+    //     { $or: [{ mail: 2 }, { gender: 'male' }] },
+    //   ],
+    // };
+    const [k, v]: [string, any] = Object.entries(query)[0];
+    return this.build(v, k);
+  }
+
+  hasOperator(valItem: any): boolean {
+    if (typeof valItem !== 'object') {
+      return false;
+    }
+    return Object.keys(valItem).some((v) => v in OPERATOR);
+  }
+
+  hasLogicOp(valItem: any) {
+    if (typeof valItem !== 'object') {
+      return false;
+    }
+    return Object.keys(LOGICAL).some((l) => l in valItem);
   }
 
   transform(tree: Dict[], lp?: string): { sql: string; params: any[] } {
@@ -77,7 +80,7 @@ export class Parser {
           return this.transform(item, lo);
         }
         const res = item.map((n: any) => {
-          const { sql, params } = this.pairToSql(n);
+          const { sql, params } = this.objectToSql(n);
           result.params = result.params.concat(params);
           return sql;
         });
@@ -90,12 +93,11 @@ export class Parser {
     return { sql: result.sql.join(''), params: result.params };
   }
 
-  pairToSql(pair: Dict) {
+  objectToSql(pair: Dict) {
     const sql: any[] = [];
     const values: any[] = [];
     const pushResult = (res: [string, any[]]) => {
       const [s, val] = res;
-      console.log(res);
       sql.push(s);
       val.map((i) => {
         values.push(i);
@@ -113,10 +115,10 @@ export class Parser {
         pushResult(res);
       }
     });
-    return { sql: sql.join('and'), params: values };
+    return { sql: sql.join(' and '), params: values };
   }
 
-  joinKV(op: string, key: string, value: any): [s: string, v: any] {
+  joinKV(op: string, key: string, value?: any): [s: string, v: any] {
     if (op === '$inc') {
       return [this.increment(key, value), []];
     }
@@ -124,18 +126,18 @@ export class Parser {
       const opStr = OPERATOR[op] as string;
       return [`${key} ${opStr} ?`, [value]];
     }
-    const func = this.sqlFunction(op);
+    const func = this.sqlFunction(op, key);
     const placeholder = Array.isArray(value)
       ? Array(value.length).fill('?').join(',')
       : '?';
     return [
-      `${key} ${func.replace('%s', placeholder)}`,
-      Array.isArray(value) ? value : [value],
+      func.replace('%s', placeholder),
+      Array.isArray(value) ? value : value ? [value] : [],
     ];
   }
 
   parse(entities: any): { sql: string; params: any[] } {
-    const tree = this.buildTree(objToKVPairs(entities));
+    const tree = this.build(objToKVPairs(entities));
     return this.transform(tree);
   }
 
@@ -144,12 +146,14 @@ export class Parser {
       throw new Error('mews increment value must be number');
     }
 
-    return '=`' + field + '` + ' + value;
+    return `${field} = ${field} + ${value}`;
   }
 
-  private sqlFunction(name: string): string {
-    return name.toUpperCase().replace('$', '') + '(%s)';
-  }
+  private sqlFunction(name: string, filed: String): string {
+    if (name.startsWith('$')) {
+      return `${filed} ${name.toUpperCase().replace('$', '')}(%s)`;
+    }
 
-  free(): void {}
+    return `${name}(${filed})`;
+  }
 }
