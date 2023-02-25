@@ -237,11 +237,19 @@ importers:
   packages/storage:
     specifiers:
       '@types/ali-oss': ^6.16.7
+      '@types/jest': ^29.4.0
       ali-oss: ^6.17.1
+      crypto-js: ^4.1.1
+      jest: ^29.4.3
+      ts-jest: ^29.0.5
     dependencies:
       ali-oss: registry.npmmirror.com/ali-oss/6.17.1
+      crypto-js: registry.npmmirror.com/crypto-js/4.1.1
     devDependencies:
       '@types/ali-oss': registry.npmmirror.com/@types/ali-oss/6.16.7
+      '@types/jest': registry.npmmirror.com/@types/jest/29.4.0
+      jest: registry.npmmirror.com/jest/29.4.3
+      ts-jest: registry.npmmirror.com/ts-jest/29.0.5_aupzocb7nbmwg3tujrpclqxmou
 
   packages/translate:
     specifiers:
@@ -19786,7 +19794,7 @@ packages:
       '@babel/core': registry.npmmirror.com/@babel/core/7.20.12
       bs-logger: registry.npmmirror.com/bs-logger/0.2.6
       fast-json-stable-stringify: registry.npmmirror.com/fast-json-stable-stringify/2.1.0
-      jest: registry.npmmirror.com/jest/29.4.3_@types+node@16.18.11
+      jest: registry.npmmirror.com/jest/29.4.3
       jest-util: registry.npmmirror.com/jest-util/29.4.3
       json5: registry.npmmirror.com/json5/2.2.3
       lodash.memoize: registry.npmmirror.com/lodash.memoize/4.1.2

@@ -3,6 +3,7 @@ export interface BucketItem {
   name: string;
   type: string;
   prefix: string;
+  isDefault?: boolean;
   status: BUCKET_STATUS;
   driver: Drivers;
   synchronize: [];

@@ -1,7 +1,7 @@
 import { Remote } from './remote';
 const ipcRender = Remote.Electron.ipcRenderer;
 
-type RemoteCallback = () => any;
+type RemoteCallback = (event: any, ...payload: any) => void;
 
 class IpcEvent {
   events: string[];
@@ -12,6 +12,12 @@ class IpcEvent {
   }
 
   register(evName: string, callback: RemoteCallback) {
+    console.log('eventssssssss', this.events);
+    if (this.events.includes(evName)) {
+      console.log('have been listen', evName);
+      return;
+    }
+    this.events.push(evName);
     ipcRender.removeListener(evName, console.log);
     ipcRender.on(evName, callback);
   }

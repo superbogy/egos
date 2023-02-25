@@ -7,6 +7,7 @@ import { ServiceError } from './error';
 import { getNoneExistedFilename, md5 } from './utils';
 import Driver from './abstract';
 import { FileObject } from './interface';
+import { CryptoService } from './security';
 
 export class FileDriver extends Driver {
   static serviceName = 'LOCAL';
@@ -129,15 +130,19 @@ export class FileDriver extends Driver {
       return false;
     }
     const stat = fs.statSync(source);
-    const chunkSize = 1024 * 1024 * 8;
+    const chunkSize = 1024 * 1024 * 1;
     if (stat.size < chunkSize) {
       return this.addFile(source, dest, options);
     }
     const doneParts = await this.getDoneParts(dest, 'upload');
     const readable = await fsp.open(source, 'r');
+    console.log(this.getPath(dest));
     const fd = await fsp.open(this.getPath(dest), 'a+');
     const chunkNumber = Math.ceil(stat.size / chunkSize);
     const hash = crypto.createHash('md5');
+    let writeCursor: number = 0;
+    const cryptoService = new CryptoService(options.secret);
+    const isEncrypt = options.isEncrypt || false;
     for (let partNumber = 0; partNumber < chunkNumber; partNumber++) {
       if (this.isCancel(options.taskId)) {
         this.afterCancel(options.taskId);
@@ -155,14 +160,16 @@ export class FileDriver extends Driver {
         break;
       }
       hash.update(chunk);
-      const eTag = md5(chunk);
+      const writeChunk = isEncrypt ? cryptoService.encrypt(chunk) : chunk;
+      const eTag = md5(writeChunk);
       const done = doneParts.find((item) => {
         return Number(item[2]) === partNumber && item[0] === String(eTag);
       });
       if (done) {
         continue;
       }
-      await fd.write(chunk, undefined, undefined, cursor);
+      await fd.write(writeChunk, undefined, undefined, writeCursor);
+      writeCursor += writeChunk.length;
       await this.doneChunk({
         dest,
         type: 'upload',

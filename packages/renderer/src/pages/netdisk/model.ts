@@ -55,7 +55,7 @@ const model = {
       { put, call, select }: EffectsCommandMap,
     ): Generator<any> {
       const { location } = payload;
-      const qs = location.state;
+      const qs = location?.state || {};
       const state = yield select(
         ({ netdisk }: { netdisk: DiskState }): DiskState => netdisk,
       );

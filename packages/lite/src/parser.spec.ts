@@ -84,8 +84,19 @@ describe('Parser', () => {
   describe('parse', () => {
     it('should able to parse', () => {
       const parser = new Parser();
-      const res = parser.parse({ id: 1, age: 2 });
-      expect(res).toEqual({ sql: '((id = ? AND age = ?))', params: [1, 2] });
+      const singleOp = parser.parse({ id: 1, age: 2 });
+      expect(singleOp).toEqual({
+        sql: '((id = ? AND age = ?))',
+        params: [1, 2],
+      });
+      const multiOp = parser.parse({
+        $and: [{ mail: 2 }, { gender: 'male', userId: { $in: [1, 2, 3] } }],
+        $or: [{ name: 1 }, { age: { $gte: 2 } }],
+      });
+      expect(multiOp).toEqual({
+        sql: '((mail = ? AND gender = ? AND userId IN(?,?,?)) AND (name = ? OR age >= ?))',
+        params: [2, 'male', 1, 2, 3, 1, 2],
+      });
     });
   });
 });

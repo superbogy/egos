@@ -59,17 +59,26 @@ export class FileUploadJob {
         .then(() => {
           event.reply(this.channel, {
             status: 'done',
+            type: 'job',
             message: 'upload job done',
           });
         })
         .catch((err) => {
-          event.reply(this.channel, { status: 'error', message: err.message });
+          event.reply(this.channel, {
+            status: 'error',
+            type: 'job',
+            message: err.message,
+          });
         });
     });
     ipcMain.on(FILE_UPLOAD_RESUME, (event, { taskIds = [] }) => {
       this.run(event, { id: { $in: taskIds }, status: 'pause' }).catch(
         (err) => {
-          event.reply(this.channel, { status: 'failed', message: err.message });
+          event.reply(this.channel, {
+            status: 'failure',
+            type: 'job',
+            message: err.message,
+          });
         },
       );
     });
@@ -97,6 +106,7 @@ export class FileUploadJob {
         event.reply(this.channel, {
           taskId: task.id,
           status: 'pause',
+          type: 'job',
           message: 'ok',
           err: null,
         });
@@ -123,7 +133,8 @@ export class FileUploadJob {
         event.reply(this.channel, {
           taskId: task.id,
           status: 'cancel',
-          message: 'ok',
+          type: 'job',
+          message: 'job cancelled',
           err: null,
         });
       });
@@ -217,6 +228,7 @@ export class FileUploadJob {
     }
     const fileItem = [name || uuid().toHexString()];
     const remote = path.join(...fileItem);
+    console.log('>>>>>', bucket);
     const driver = getDriver(bucket);
     const meta = await getFileMeta(local);
     const progress = async (checkpoint: CheckPoint) => {
@@ -235,6 +247,8 @@ export class FileUploadJob {
       }
       event.reply(this.channel, {
         message: 'progress',
+        type: 'upload',
+        status: 'uploading',
         taskId,
         size,
         percent,
@@ -280,6 +294,7 @@ export class FileUploadJob {
           task.status = 'processing';
           event.reply(this.channel, {
             taskId: task.id,
+            type: 'upload',
             status: 'processing',
             retry: task.retry,
           });
@@ -303,13 +318,12 @@ export class FileUploadJob {
                 targetId: res.id,
               });
             })
-            .catch((err) => {
+            .catch(async (err) => {
               console.log('fuck err', err);
               if (task.retry > task.maxRetry) {
                 task.status = 'unresolved';
                 task.err = err.message;
                 task.retry += 1;
-                task.save();
                 this.failure(event, payload, err.message);
               }
             });
@@ -324,10 +338,11 @@ export class FileUploadJob {
   }
 
   success(event: IpcMainEvent, payload: any, result?: any) {
-    if (this.options.channel) {
+    if (this.channel) {
       event.reply(this.channel, {
         status: 'success',
         message: 'success',
+        type: 'upload',
         payload,
         result,
       });
@@ -336,7 +351,13 @@ export class FileUploadJob {
 
   failure(event: IpcMainEvent, payload: any, err: any) {
     if (this.channel) {
-      event.reply(this.channel, { message: 'failed', payload, err });
+      event.reply(this.channel, {
+        message: payload.message || 'failure',
+        status: 'failure',
+        type: 'upload',
+        payload,
+        err,
+      });
     }
   }
 }

@@ -34,7 +34,10 @@ export default (props: ExhibitProps) => {
     if (file.type === 'video') {
       return (
         <Fragment>
-          <video className="exhibit-media-item" controls={props.controls}>
+          <video
+            className={classNames('exhibit-media-item', [itemClass])}
+            controls={props.controls}
+          >
             <source
               src={`http://local-egos${file.local}#t=0.5`}
               type="video/mp4"

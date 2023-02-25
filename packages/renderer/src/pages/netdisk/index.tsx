@@ -47,6 +47,7 @@ import { useCallback } from 'react';
 import { DiskState } from './model';
 import { FileSchema } from '@/services/file';
 import './index.less';
+import { registerUploadEvent } from './events';
 
 const sortMenus = [
   {
@@ -87,6 +88,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       type: 'netdisk/init',
       payload: { location },
     });
+    registerUploadEvent(dispatch);
     console.log('location.state', location.state);
   }, [location]);
   const handleUpload = () => {
@@ -346,12 +348,13 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     onCancel: onNewFolder,
     currentFolder,
     async onOk(values: any) {
-      const res = await dispatch({
-        type: 'netdisk/createFolder',
-        payload: { ...values },
-      });
+      await Promise.resolve(
+        dispatch({
+          type: 'netdisk/createFolder',
+          payload: { ...values },
+        }),
+      );
       setModalVisible(false);
-      console.log(res);
     },
   };
   const getDisplayContent = () => {

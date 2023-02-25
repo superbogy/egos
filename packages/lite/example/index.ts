@@ -12,7 +12,7 @@ class User extends Model {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT, default: '' })
-  userName: string;
+  name: string;
   @column({ type: FieldTypes.INT, default: 0 })
   age: number;
   @column({ type: FieldTypes.TEXT, default: () => 1 })
@@ -21,7 +21,7 @@ class User extends Model {
   mail: string;
   @column({ type: FieldTypes.TEXT, decode: JSON.parse, encode: JSON.stringify })
   profile: string;
-  @column({ type: FieldTypes.INT })
+  @column({ type: FieldTypes.INT, default: 0 })
   parentId: number;
 }
 const dbFile = '';
@@ -32,7 +32,7 @@ const main = async () => {
   console.log(sql);
   await user.exec(sql);
   const current = await user.create({
-    userName: 'tommy',
+    name: 'tommy',
     gender: 'male',
     age: 30,
     mail: 'tommy@hello.cc',
@@ -60,7 +60,6 @@ const main = async () => {
   // const c = { age: 1, name: 2, gender: 3 };
   // const orQuery = await user.findOne(con);
   // console.log(orQuery);
-  return;
   const user1 = (await user.findOne(
     { id: { $gte: 1, $lte: 200 } },
     { order: { id: 'desc', age: 'asc' } },
