@@ -1,49 +1,44 @@
 import fs from 'fs';
-import Stream, { Readable, Transform } from 'stream';
+import Stream, { Writable, Readable, Transform } from 'stream';
 import { createDecryptStream, createEncryptStream } from './security';
-import { md5 } from './utils';
+import { SpeedStream } from './speed-stream';
+import crypto from 'crypto';
+import { HashStream } from './hash.stream';
 
 export class LocalDriver {
   async upload(source: string, dest: string, options: any) {
-    const start = 0;
-    const writable = fs.createWriteStream(dest, { start, mode: 0o666 });
-    // readable.on('data', (chunk: Buffer) => {
-    //   console.log('readable data length', chunk.length);
-    // });
-    // readable.on('end', () => {
-    //   console.log('There will be no more data.');
-    // });
-    // readable.on('pause', () => {
-    //   console.log('readable pause');
-    // });
-    // writable.on('finish', () => {
-    //   console.log('writable finish');
-    // });
-    // writable.on('data', (chunk: Buffer) => {
-    //   console.log('writeable data length', chunk.length);
-    // });
-    const readable = options.encrypt
+    const writable = fs.createWriteStream(dest, { mode: 0o666 });
+    const md5 = new HashStream();
+    const readable = options.secret
       ? createEncryptStream(source, options.secret)
       : fs.createReadStream(source);
-    await Stream.promises.pipeline(readable, writable);
+    const pipelines: Stream[] = [readable, md5];
+    if (options.speed) {
+      const speedStream = new SpeedStream({ span: options.speedInterval });
+      speedStream.calculate(options.speed);
+      pipelines.push(speedStream);
+    }
+    pipelines.push(writable);
+    await Stream.promises.pipeline(pipelines as ReadonlyArray<any>);
+    return md5.getHash();
   }
 
   async decrypt(source: string, dest: string, options: any) {
     const readable = await createDecryptStream(source, options.secret);
     const writable = fs.createWriteStream(dest);
-    // console.log('???!23123123', source, dest);
-    // let init = false;
-    // const transform = new Transform({
-    //   transform(chunk, encoding, callback) {
-    //     if (!init) {
-    //       const h = md5(chunk);
-    //       console.log('2222', chunk.length, h);
-    //       init = true;
-    //     }
-    //     this.push(chunk);
-    //     callback();
-    //   },
-    // });
-    await Stream.promises.pipeline(readable, writable);
+    if (options.speed) {
+      const speedStream = new SpeedStream();
+      speedStream.calculate(options.speed);
+      return Stream.promises.pipeline(readable, speedStream, writable);
+    }
+    return Stream.promises.pipeline(readable, writable);
+  }
+
+  async speedStream() {
+    return new Transform({
+      transform(chunk: Buffer) {
+        this.push(chunk);
+      },
+    });
   }
 }

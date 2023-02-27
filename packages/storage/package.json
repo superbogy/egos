@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "ali-oss": "^6.17.1",
-    "crypto-js": "^4.1.1"
+    "crypto-js": "^4.1.1",
+    "md5-file": "^5.0.0"
   },
   "devDependencies": {
     "@types/ali-oss": "^6.16.7",

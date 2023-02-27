@@ -3,10 +3,29 @@ import { BucketItem } from './interface';
 import { md5 } from './utils';
 import fsp from 'fs/promises';
 import fs from 'fs';
-import { CryptoService } from './security';
 import crypto from 'crypto';
+import path from 'path';
+import os from 'os';
+import { v4 as uuid } from 'uuid';
+import md5File from 'md5-file';
+import { setTimeout } from 'timers/promises';
 
 import { LocalDriver } from './file-stream';
+import { CryptoService } from './security';
+
+const createTmpFile = () => {
+  return path.join(os.tmpdir(), 'egos', uuid());
+};
+
+const fillFile = async (file: string, total: number) => {
+  const fd = await fsp.open(file, 'w+', 0o600);
+  for (let count = 0; count < total; count++) {
+    const chunk = crypto.randomBytes(1024);
+    await fd.write(chunk, 0, chunk.length, count);
+    count += chunk.length;
+  }
+  await fd.close();
+};
 
 describe('FileDriver', () => {
   const bucket: BucketItem = {
@@ -20,15 +39,15 @@ describe('FileDriver', () => {
     synchronize: [],
     config: { path: '/Users/tommy/.egos/storage/files' },
   };
-  it('able to upload file multi chunk', async () => {
+  it.skip('able to upload file multi chunk', async () => {
     const driver = new FileDriver(bucket);
-    const source = '/Users/tommy/Documents/multi-origin.png';
-    const dest = 'multi-upload.png';
+    const source = createTmpFile();
+    await fillFile(source, 1024 * 1024 * 5);
+    const dest = createTmpFile();
     const hash = '861759ca48644dd97296b0008318bacf';
-    const target = '/Users/tommy/.egos/storage/files/multi-upload.png';
-    const dfile = '/Users/tommy/Documents/multi-decrypt.png';
+    const target = createTmpFile();
+    const dfile = createTmpFile();
     const secret = md5('abrsf').substring(16);
-    fs.unlinkSync(target);
     const res = await driver.multipartUpload(source, dest, {
       isEncrypt: true,
       secret,
@@ -44,15 +63,10 @@ describe('FileDriver', () => {
     const chunk = Buffer.alloc(chunkSize + 32);
     console.log(chunk.length);
     await rfd.read(chunk, 0, chunk.length, cursor);
-    //   iv = Buffer.alloc(16);
-    // await rfd.read(iv, 0, 16, 0);
-    // cursor += 16;
     iv = chunk.subarray(0, 16);
     const encrypted = chunk.subarray(16);
-    console.log('?????---md55', md5(chunk), md5(encrypted));
     const decryptService = new CryptoService(secret, iv);
     const res2 = decryptService.decrypt(encrypted);
-    console.log('fuck22222', md5(res2));
     //   for (let partNumber = 0; partNumber < chunkNumber; partNumber++) {
     //     const chunk = Buffer.alloc(chunkSize + 16);
     //     await rfd.read(chunk, 0, chunk.length, cursor);
@@ -64,22 +78,37 @@ describe('FileDriver', () => {
     //   console.log(md5ash.digest('hex'));
     //   const fd = await fsp.open(target);
   });
-  it.only('should be ok', async () => {
+  it('should upload file', async () => {
     const driver = new LocalDriver();
-    const source = '/Users/tommy/Documents/multi-origin.png';
-    const dest = '/Users/tommy/Documents/multi-upload-encrypt.png';
-    const hash = '861759ca48644dd97296b0008318bacf';
-    const target = '/Users/tommy/.egos/storage/files/multi-upload.png';
-    const dfile = '/Users/tommy/Documents/multi-decrypt.png';
-    const secret = md5('abrsf').substring(16);
-    if (fs.existsSync(dest)) {
-      fs.unlinkSync(dest);
-    }
-    if (fs.existsSync(dfile)) {
-      fs.unlinkSync(dfile);
-    }
-
-    await driver.upload(source, dest, { secret, encrypt: true });
-    await driver.decrypt(dest, dfile, { secret });
+    const totalBytes = 1024 * 1024;
+    const source = createTmpFile();
+    const dest = createTmpFile();
+    await fillFile(source, totalBytes);
+    const speed = jest.fn();
+    const sourceMd5 = await md5File(source);
+    const res = await driver.upload(source, dest, { speed });
+    await setTimeout(2000);
+    expect(sourceMd5).toEqual(res);
+    expect(speed).toHaveBeenCalled();
+    fs.unlinkSync(source);
+    fs.unlinkSync(dest);
   });
+  it('should upload file and encrypt', async () => {
+    const driver = new LocalDriver();
+    const totalBytes = 1024 * 1024;
+    const source = createTmpFile();
+    const dest = createTmpFile();
+    const decryptFile = createTmpFile();
+    await fillFile(source, totalBytes);
+    const sourceMd5 = await md5File(source);
+    const secret = md5('abrsf').substring(16);
+    await driver.upload(source, dest, { secret, speed: console.log });
+    await setTimeout(1000);
+    await driver.decrypt(dest, decryptFile, { secret });
+    const deCryptMd5 = await md5File(decryptFile);
+    expect(sourceMd5).toEqual(deCryptMd5);
+    fs.unlinkSync(source);
+    fs.unlinkSync(dest);
+    fs.unlinkSync(decryptFile);
+  }, 10000);
 });

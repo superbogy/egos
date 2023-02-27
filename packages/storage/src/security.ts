@@ -74,9 +74,9 @@ export function createEncryptStream(source: string, pass: string): Transform {
     transform(chunk, encoding, callback) {
       if (!initialized) {
         initialized = true;
-        this.push(Buffer.concat([iv, chunk]));
+        this.push(Buffer.concat([iv, chunk]), encoding);
       } else {
-        this.push(chunk);
+        this.push(chunk, encoding);
       }
       callback();
     },
@@ -92,9 +92,5 @@ export const createDecryptStream = async (source: string, pass: string) => {
   await fd.close();
   const readable = fs.createReadStream(source, { start: 16 });
   const decryptStream = crypto.createDecipheriv('aes-128-cbc', pass, iv);
-  decryptStream.on('data', (chunk) => {
-    console.log('decrypt data', md5(chunk), chunk.length);
-  });
-
   return readable.pipe<Transform>(decryptStream);
 };
