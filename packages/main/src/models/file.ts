@@ -102,7 +102,6 @@ export class FileModel extends Base {
     let file: FileModel = (await FileObject.findById(item.fileId)) as FileModel;
     const sizeLimit = 1024 * 1024 * 50;
     const driver = getDriverByBucket(file.bucket) as Driver;
-    console.log('getFileInfo', file.bucket);
     const url = await driver.getUrl(file.remote);
     if (
       (file.type === 'image' || file.type === 'video') &&

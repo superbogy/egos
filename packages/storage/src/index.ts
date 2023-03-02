@@ -1,5 +1,5 @@
 import Driver from './abstract';
-import { FileDriver } from './file';
+import { FileDriver } from './file-stream';
 import { BucketItem } from './interface';
 import { OssDriver } from './oss';
 

@@ -6,7 +6,7 @@ export class SpeedStream extends Transform {
   private cursor: number;
   private lastPoint: number;
   private interval: NodeJS.Timer | null;
-  private span: any;
+  public span: any;
 
   constructor(opts?: TransformOptions & { span?: number }) {
     super(opts);
@@ -35,6 +35,7 @@ export class SpeedStream extends Transform {
       this.interval = null;
     }
     this.cursor = 0;
+    this.lastPoint = 0;
   }
 
   _flush(callback: TransformCallback): void {
@@ -42,11 +43,13 @@ export class SpeedStream extends Transform {
   }
 
   calculate(cb: any) {
-    if (!this.interval) {
-      this.interval = setInterval(() => {
-        cb(this.cursor - this.lastPoint, this.span);
-        this.lastPoint = this.cursor;
-      }, this.span);
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
     }
+    this.interval = setInterval(async () => {
+      await cb(this.cursor, this.lastPoint, this.span);
+      this.lastPoint = this.cursor;
+    }, this.span);
   }
 }

@@ -10,7 +10,6 @@ export const getFileMeta = async (file: string) => {
   const filename = path.basename(file);
   const stream = fs.createReadStream(file);
   const mime = (await fromStream(stream)) as FileMeta;
-  console.log('mmmmmmmimeeeee', mime);
   const fileMeta: FileMeta = mime || { mime: '', ext: path.extname(filename) };
   if (!mime) {
     fileMeta.mime = Mime.getType(filename) as string;

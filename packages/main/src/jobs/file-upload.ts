@@ -226,22 +226,18 @@ export class FileUploadJob {
     if (!fs.existsSync(local)) {
       throw new Error('file not exists');
     }
-    const fileItem = [name || uuid().toHexString()];
-    const remote = path.join(...fileItem);
-    console.log('>>>>>', bucket);
     const driver = getDriver(bucket);
+    const remote = driver.getPath(name || uuid().toHexString());
     const meta = await getFileMeta(local);
-    const progress = async (checkpoint: CheckPoint) => {
-      const { size, total, partNumber, taskId, percent } = checkpoint;
+    const progress = async (checkpoint: any) => {
+      console.log('checkpoint>->', checkpoint);
+      const { size, cursor, lastPoint, taskId, interval } = checkpoint;
       const task = await Task.findById(taskId);
       if (!task) {
         return;
       }
-      const cpt = task.checkpoint || {};
-      if (!cpt.percent || cpt.percent < percent) {
-        task.checkpoint = checkpoint;
-        await task.save();
-      }
+      task.checkpoint = checkpoint;
+      await task.save();
       if (!event) {
         return;
       }
@@ -251,15 +247,22 @@ export class FileUploadJob {
         status: 'uploading',
         taskId,
         size,
-        percent,
+        percent: cursor / size,
+        speed: (cursor - lastPoint) / interval,
         file: local,
-        partNumber,
-        total,
       });
     };
+    console.log(',', local, remote);
     const res = await driver.multipartUpload(local, remote, {
       taskId,
-      progress,
+      onProgress: progress,
+      onFinish: async () => {
+        event.reply(this.channel, {
+          taskId,
+          status: 'finish',
+          type: 'upload',
+        });
+      },
     });
     if (!res) {
       return null;

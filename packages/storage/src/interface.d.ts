@@ -1,12 +1,12 @@
 export interface BucketItem {
-  alias: string;
+  alias?: string;
   name: string;
   type: string;
-  prefix: string;
+  prefix?: string;
   isDefault?: boolean;
   status: BUCKET_STATUS;
   driver: Drivers;
-  synchronize: [];
+  synchronize?: [];
   config: any;
 }
 
@@ -18,12 +18,32 @@ export interface ChunkProps {
   dest: string;
   type: string;
   eTag?: string;
-  size: number;
-  partNumber: number;
+  cursor: number;
 }
 
 export interface FileObject {
   remote: string;
   filename: string;
   ext?: string;
+}
+
+export interface FlightItem {
+  taskId: number;
+  source: any;
+  timestamp: number;
+}
+
+export type speedCallback = (params: {
+  cursor: number;
+  lastPoint: number;
+  interval: number;
+  size?: number;
+}) => void;
+
+export interface UploadOptions {
+  taskId: number;
+  onProgress?: speedCallback;
+  interval?: number;
+  secret?: string;
+  onFinish?: (params: { taskId: number }) => void;
 }

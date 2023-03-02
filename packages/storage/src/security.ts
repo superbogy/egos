@@ -65,10 +65,14 @@ const decrypt = (encrypted: Buffer, key: string) => {
   return result;
 };
 
-export function createEncryptStream(source: string, pass: string): Transform {
+export function createEncryptStream(
+  source: Stream | string,
+  pass: string,
+): Transform {
   let initialized: boolean = false;
   const iv = crypto.randomBytes(16);
-  const readable = fs.createReadStream(source);
+  const readable =
+    source instanceof Stream ? source : fs.createReadStream(source);
   const encryptStream = crypto.createCipheriv('aes-128-cbc', pass, iv);
   const transform = new Transform({
     transform(chunk, encoding, callback) {

@@ -3,9 +3,11 @@ import { EventEmitter } from 'events';
 import fs from 'fs';
 import path from 'path';
 import util from 'util';
-import { BucketItem, ChunkProps, FileObject } from './interface';
+import { Readable } from 'stream';
+import { BucketItem, ChunkProps, FileObject, FlightItem } from './interface';
+import { ServiceError } from './error';
 
-export default class Driver {
+export default abstract class Driver {
   static buckets = [];
   static _schema: any;
   protected bucket: BucketItem;
@@ -23,7 +25,7 @@ export default class Driver {
     return (this.constructor as any)._schema;
   }
 
-  cancel(taskId: string, cb: () => any) {
+  cancel(taskId: number, cb: () => any) {
     const index = this._cancel.indexOf(taskId);
     if (index === -1) {
       this._cancel.push(taskId);
@@ -31,14 +33,14 @@ export default class Driver {
     this._event.on('cancel', cb);
   }
 
-  isCancel(taskId: string) {
+  isCancel(taskId: number) {
     if (!taskId) {
       return false;
     }
     return this._cancel.includes(taskId);
   }
 
-  afterCancel(taskId: string) {
+  afterCancel(taskId: number) {
     const index = this._cancel.indexOf(taskId);
     if (index !== -1) {
       this._cancel.splice(index, 1);
@@ -48,6 +50,21 @@ export default class Driver {
 
   getBucket() {
     return this.bucket;
+  }
+
+  getPath(dest: string) {
+    const bucket = this.bucket;
+    if (!bucket || !bucket.config) {
+      throw new ServiceError({
+        message: 'Invalid bucket',
+      });
+    }
+    const p = path.join(
+      bucket.config.path || '',
+      bucket.config.prefix || '',
+      dest,
+    );
+    return p;
   }
 
   validate(data: any) {
@@ -114,21 +131,18 @@ export default class Driver {
     const filename = this.getLocalChunkFilename(dest, type);
     // const filename = await this.getCacheFilePath(filename);
     if (!fs.existsSync(filename)) {
-      return [];
+      return { cursor: 0 };
     }
-    const content = await util.promisify(fs.readFile)(filename);
-    return content
-      .toString()
-      .split('\n')
-      .filter((i) => i.trim())
-      .map((item) => item.split(','));
+    const content = await fs.promises.readFile(filename, {
+      encoding: 'utf-8',
+    });
+    return JSON.parse(content);
   }
 
-  async doneChunk({ dest, type, eTag, size, partNumber }: ChunkProps) {
+  async doneChunk({ dest, type, cursor }: ChunkProps) {
     const file = this.getLocalChunkFilename(dest, type);
-    // const file = await this.getCacheFilePath(name);
-    const part = [eTag, size, partNumber].join(',');
-    await util.promisify(fs.appendFile)(file, part + '\n');
+    console.log('doneChunk', file);
+    await fs.promises.writeFile(file, JSON.stringify({ cursor }));
   }
 
   async clearLocalChunkFile(dest: string, type: string) {
@@ -142,19 +156,73 @@ export default class Driver {
     await this.clearLocalChunkFile(dest, type);
   }
 
-  isInflight(taskId: string) {
-    return this._inflight.includes(taskId);
+  getInflightIdx(taskId: number) {
+    const idx = this._inflight.findIndex(
+      (item: FlightItem) => item.taskId === taskId,
+    );
+    return idx;
   }
 
-  inflight(taskId: string) {
-    if (!this.isInflight(taskId)) {
-      this._inflight.push(taskId);
+  getInFlightTask(taskId: number) {
+    const idx = this.getInflightIdx(taskId);
+    if (idx === -1) {
+      return null;
+    }
+    return this._inflight[idx];
+  }
+
+  isInflight(taskId: number) {
+    const idx = this.getInflightIdx(taskId);
+    if (idx === -1) {
+      return false;
+    }
+    const item = this._inflight[idx];
+    if (!item) {
+      return false;
+    }
+    if (item.timestamp < Date.now() - 5000) {
+      this._inflight = this._inflight.splice(idx, 1);
+      return false;
+    }
+    return true;
+  }
+
+  async freeTask(taskId: number, source?: fs.promises.FileHandle | Readable) {
+    const idx = this.getInflightIdx(taskId);
+    this._inflight = this._inflight.splice(idx, 1);
+    if (source instanceof Readable) {
+      source.destroy();
+    } else {
+      source?.close();
+    }
+  }
+
+  inflight(taskId: number) {
+    const task = this.getInFlightTask(taskId);
+    if (!task) {
+      this._inflight.push({ taskId, timestamp: Date.now() });
       return true;
+    }
+    if (task.timestamp < Date.now() - 10000) {
+      this.freeTask(taskId);
     }
     return false;
   }
 
-  onFinish(taskId: string) {
+  refreshInflightTask(taskId: number) {
+    const idx = this.getInflightIdx(taskId);
+    if (idx === -1) {
+      return;
+    }
+    const current = this._inflight[idx];
+    const taskState = {
+      ...current,
+      timestamp: Date.now(),
+    };
+    this._inflight[idx] = taskState;
+  }
+
+  onFinish(taskId: number) {
     this._inflight = this._inflight.filter((t) => t !== taskId);
   }
 }

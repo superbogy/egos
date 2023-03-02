@@ -11,9 +11,11 @@
     "clean": "tsc --build --clean"
   },
   "dependencies": {
+    "@types/webtorrent": "^0.109.3",
     "ali-oss": "^6.17.1",
     "crypto-js": "^4.1.1",
-    "md5-file": "^5.0.0"
+    "md5-file": "^5.0.0",
+    "webtorrent": "^1.9.7"
   },
   "devDependencies": {
     "@types/ali-oss": "^6.16.7",

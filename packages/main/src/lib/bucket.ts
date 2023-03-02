@@ -82,7 +82,6 @@ export const getBucketByName = (name: string) => {
 
 export const getDriverByBucket = (name: string) => {
   const bucket = getBucketByName(name);
-  console.log(bucket);
   if (!bucket) {
     return null;
   }

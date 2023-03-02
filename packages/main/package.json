@@ -32,7 +32,9 @@
     "js-yaml": "^4.1.0",
     "mime": "^3.0.0",
     "sqlite3": "^5.1.4",
-    "tldr": "^3.3.8"
+    "tldr": "^3.3.8",
+    "torrent-search-api": "^2.1.4",
+    "webtorrent": "^2.0.14"
   },
   "devDependencies": {
     "@types/crypto-js": "^4.1.1",
