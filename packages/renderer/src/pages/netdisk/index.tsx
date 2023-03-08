@@ -6,14 +6,16 @@ import {
   ExportOutlined,
   FolderOpenOutlined,
   FundViewOutlined,
+  LockOutlined,
   PlusOutlined,
   QrcodeOutlined,
   ShareAltOutlined,
   SortAscendingOutlined,
   StarFilled,
+  UnlockFilled,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Breadcrumb, Button, Empty, Menu, Popover, Radio } from 'antd';
+import { Breadcrumb, Button, Empty, Menu, Popover, Select, Space } from 'antd';
 import {
   useLayoutEffect,
   useRef,
@@ -37,6 +39,7 @@ import Card from './components/Card';
 import Edit from './components/Edit';
 import List from './components/List';
 import Modal from './components/Modal';
+import TagItem from './components/Tag';
 
 import { DropBox } from '@/components/DnD';
 import Provider from '@/components/DnD/Provider';
@@ -48,6 +51,7 @@ import { DiskState } from './model';
 import { FileSchema } from '@/services/file';
 import './index.less';
 import { registerUploadEvent } from './events';
+import Crypt from './components/Crypt';
 
 const sortMenus = [
   {
@@ -81,7 +85,23 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const [currentItem, setCurrentItem] = useState<FileSchema | null>(null);
   const { display = 'card' }: { display?: string } = netdisk.query;
   const [modalVisible, setModalVisible] = useState(false);
+  const [showCrypt, setShowCrypt] = useState<boolean>(false);
   const [isDragging, setDragging] = useState(false);
+  const tagList = meta.tags.map((tag: any) => {
+    return {
+      key: tag.name,
+      label: (
+        <div key={tag.name}>
+          <span
+            className="netdisk-tag-color"
+            style={{ background: tag.name }}
+          ></span>
+          <span className="netdisk-tag-text">{tag.name}</span>
+        </div>
+      ),
+      value: tag.name,
+    };
+  });
   useEffect(() => {
     // const res = await service.query({});
     dispatch({
@@ -375,18 +395,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
         type: 'netdisk/gotoPath',
         payload: { path },
       });
-      // .then((res) => {
-      // if (!res) {
-      //   return;
-      // }
-      // history.replace({
-      //   pathname: location.pathname,
-      //   query: {
-      //     ...location.query,
-      //     parentId: res.id,
-      //   },
-      // });
-      // });
     }
   };
   const getBreadCrumb = () => {
@@ -464,7 +472,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       setShareItem({ ...shareItem, visible: !shareItem.visible });
     },
   };
-
   const handleShare = async (params: any) => {
     dispatch({
       type: 'netdisk/getShare',
@@ -485,6 +492,17 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     });
     setQrUpload(!qrUpload);
   };
+  const cryptProps = {
+    type: 'encrypt',
+    fileItem: currentItem,
+    visible: showCrypt,
+    onOk: ({ password }: { password: string }) => {
+      dispatch({
+        type: 'netdisk/crypt',
+        payload: { id: currentItem?.id, password },
+      });
+    },
+  };
 
   return (
     <>
@@ -503,16 +521,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
               onClick={showQrUpload}
             ></Button>
           </Popover>
-          {selected.length ? (
-            <Radio.Group>
-              <Radio.Button value="large">download</Radio.Button>
-              <Radio.Button value="large">share</Radio.Button>
-              <Radio.Button value="default">tag</Radio.Button>
-              <Radio.Button value="small" onClick={console.log}>
-                delete
-              </Radio.Button>
-            </Radio.Group>
-          ) : null}
         </Header>
         <div className="crumb">
           <Breadcrumb>
@@ -569,6 +577,24 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
             >
               {getDisplayContent()}
             </div>
+            <div className="netdisk-right">
+              <Space direction="vertical">
+                {meta.tags?.map((tag: any) => {
+                  return (
+                    <TagItem
+                      tag={tag}
+                      key={tag.name}
+                      onSave={(id, data) =>
+                        dispatch({
+                          type: 'netdisk/updateFileTags',
+                          payload: { id, ...data },
+                        })
+                      }
+                    />
+                  );
+                })}
+              </Space>
+            </div>
           </div>
         </Provider>
         <ContextMenu id="netdisk-item-ctx">
@@ -603,10 +629,53 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
             </div>
           </Item>
           <Separator />
+          <Item>
+            <div
+              className="netdisk-ctx-text"
+              onClick={(ev) => {
+                ev.stopPropagation();
+              }}
+            >
+              <Select
+                mode="tags"
+                allowClear={false}
+                size="small"
+                bordered={false}
+                placeholder="choose tags"
+                defaultValue={
+                  currentItem?.tags ? currentItem?.tags.map((t) => t.name) : []
+                }
+                options={tagList}
+                style={{ width: '80%' }}
+                onSearch={(...args: any[]) => console.log('fffffuck', args)}
+                onChange={(values) =>
+                  dispatch({
+                    type: 'netdisk/save',
+                    payload: { id: currentItem?.id, tags: values },
+                  })
+                }
+              />
+            </div>
+          </Item>
           <Item onClick={contextHandlers.like}>
             <div className="netdisk-ctx-text">
               <span>star</span>
               <StarFilled style={contextHandlers.getLikedStyle()} />
+            </div>
+          </Item>
+          <Item onClick={() => setShowCrypt(!showCrypt)}>
+            <div className="netdisk-ctx-text">
+              {currentItem?.password ? (
+                <>
+                  <span>decrypt</span>
+                  <UnlockFilled />
+                </>
+              ) : (
+                <>
+                  <span>encrypt</span>
+                  <LockOutlined />
+                </>
+              )}
             </div>
           </Item>
           <Item onClick={handleShare}>
@@ -641,7 +710,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
               <SortAscendingOutlined />
             </div>
           </Item>
-          <Separator />
         </ContextMenu>
         <Modal {...modalProps} />
         <Edit {...editProps} />
@@ -671,6 +739,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       </div>
       <Share {...shareProps} />
       <QRUploader visible={qrUpload} url={netdisk.uploadUrl} />
+      <Crypt {...cryptProps}></Crypt>
     </>
   );
 };

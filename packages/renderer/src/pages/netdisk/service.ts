@@ -190,7 +190,7 @@ export const save = async (data: Record<string, any>) => {
   }
   const change: Record<string, any> = {};
   Object.entries(data).forEach(([key, value]) => {
-    if (current[key] !== undefined) {
+    if (current[key] !== undefined && key !== 'id') {
       change[key] = value;
     }
   });
@@ -287,3 +287,15 @@ export const genQrUpload = async ({
 }) => {
   return await Share.genFileUploadUrl({ id, expiry });
 };
+
+export const updateFileTags = (payload: { id: number; tags: string[] }) => {
+  const { id, tags } = payload;
+  return FileSystem.updateFileTags(id, tags);
+};
+
+
+export const encrypt = async (payload: {id: number, password: string}) => {
+  const { id, password} = payload;
+  console.log(id, password);
+  await FileSystem.encrypt(id, password);
+}

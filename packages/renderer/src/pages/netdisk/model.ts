@@ -9,6 +9,11 @@ export enum FileDisplay {
   CARD = 'card',
   LIST = 'list',
 }
+
+export interface Tag {
+  name: string;
+  color: string;
+}
 export interface DiskState {
   entrance: any[];
   query: {
@@ -17,6 +22,7 @@ export interface DiskState {
   meta: {
     total: number;
     pageSize?: number;
+    tags: Tag[];
   };
   files: FileSchema[];
   parentId: string;
@@ -37,6 +43,7 @@ const model = {
     display: 'card',
     meta: {
       total: 0,
+      tags: [],
     },
     files: [],
     parentId: '',
@@ -88,6 +95,7 @@ const model = {
       }
       const { meta: newMeta, data } = yield call(services.query, payload);
       const { files, parent } = data;
+      console.log(newMeta, data);
       const inProgressNumber: number = yield call(
         services.progressTaskNumber,
         payload,
@@ -190,6 +198,7 @@ const model = {
       });
     },
     *save({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
+      console.log('ssssave', payload);
       yield call(services.save, payload);
       yield put({
         type: 'query',
@@ -219,6 +228,16 @@ const model = {
         type: 'updateState',
         payload: { uploadUrl },
       });
+    },
+    *updateTags({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
+      yield call(services.updateFileTags, payload);
+      yield put({
+        type: 'query',
+        payload: {},
+      });
+    },
+    *crypt({ payload }: AnyAction, { call }: EffectsCommandMap) {
+      yield call(services.encrypt, payload);
     },
   },
   reducers: {

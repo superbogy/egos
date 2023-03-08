@@ -10,6 +10,15 @@ class TagModel extends Base {
   name: string;
   @column({ type: FieldTypes.TEXT, default: '' })
   color: string;
+
+  async findAndCreate(tag: string, color?: string) {
+    const cur = await this.findOne({ name: tag });
+    if (cur) {
+      return cur.toJSON();
+    }
+    const c = color || '#' + Math.floor(Math.random() * 16777215).toString(16);
+    return (await this.create({ name: tag, color: c })).toJSON();
+  }
 }
 
 export const Tag = new TagModel();

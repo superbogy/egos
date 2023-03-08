@@ -1,10 +1,15 @@
 import { ServiceError } from '../error';
 import { column, table } from '@egos/lite';
+import crypto from 'crypto';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
 import { File } from './file';
 import fs from 'fs';
 import { jsonParser, jsonStringify } from '../lib/helper';
+import { FileObject } from './file-object';
+import { getDriver } from '@egos/storage';
+import { getDriverByBucket } from '@/lib/bucket';
+import Driver from '@egos/storage/dist/abstract';
 
 export enum QueueStatus {
   PENDING = 'pending',
@@ -82,6 +87,28 @@ class TaskModel extends Base {
     } catch (err) {
       throw new ServiceError({ message: String(err.message), code: 10501 });
     }
+  }
+
+  async buildEncryptJob(id: number, password: string) {
+    const file = await File.findById(id);
+    if (!file) {
+      return false;
+    }
+    const hash = crypto.createHash('md5').digest('hex');
+    if (file.password !== hash) {
+      return false;
+    }
+    const task = {
+      action: 'encrypt',
+      type: 'file',
+      payload: { fileId: file.fileId, password },
+      status: 'pending',
+      retry: 0,
+      maxRetry: 10,
+      err: '',
+    };
+    await Task.create(task);
+    return true;
   }
 }
 

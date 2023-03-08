@@ -1,7 +1,7 @@
 import './card.less';
 
 import { FileUnknownFilled, FolderFilled } from '@ant-design/icons';
-import { Empty, Pagination, Space } from 'antd';
+import { Badge, Empty, Pagination, Space } from 'antd';
 import moment from 'moment';
 import path from 'path';
 import { useState } from 'react';
@@ -41,6 +41,7 @@ interface CardProps {
   data: FileSchema[];
 }
 export default (props: CardProps) => {
+  console.log('card s', props);
   const { pagination, onMove, selected, disable = [] } = props;
   const [preview, setPreview] = useState<FileSchema | null>(null);
   const handleImagePreview = (file: FileSchema) => {
@@ -127,6 +128,7 @@ export default (props: CardProps) => {
     props.onSelectChange(item, e.metaKey, e.shiftKey);
   };
   const getCardItem = (item: FileSchema) => {
+    const tags = item.tags || [];
     return (
       <div key={item.id} className={classNames('card-box')}>
         <div
@@ -146,7 +148,11 @@ export default (props: CardProps) => {
           onBlur={handleRename(item)}
           id={'file-item-id-' + item.id}
         >
-          {item.filename}
+          {tags.length ? (
+            <Badge color={item.tags[0].color} text={item.filename} />
+          ) : (
+            item.filename
+          )}
         </p>
         <div className="card-date">
           {moment(item.createdAt).format('YYYY-MM-DD')}

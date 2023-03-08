@@ -13,13 +13,13 @@ export interface FileSchema {
   description?: string;
   starred?: boolean;
   file?: FileObjectSchema;
-  tag?: string[];
+  tags: any[];
+  password?: string;
   createdAt: string;
   updatedAt: string;
 }
 class File extends Model {
   async getFiles(payload: any): Promise<FileSchema[]> {
-    console.log('xxxxxxxxpayload', payload);
     return await this.exec('getFiles', payload);
   }
 
@@ -28,6 +28,14 @@ class File extends Model {
   }
   async getQuickEntrance(): Promise<FileSchema[]> {
     return this.exec('getQuickEntrance');
+  }
+
+  updateFileTags(id: number, tags: string[]) {
+    return this.exec('updateFileTags', id, tags);
+  }
+
+  async encrypt(id: number, password: string) {
+    return this.exec('encrypt', id, password);
   }
 }
 export default new File('files');

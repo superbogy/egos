@@ -9,6 +9,8 @@ import { registerEvent } from './event';
 
 export default async (win: BrowserWindow) => {
   const setting = await loadSetting();
+  console.log('ss', setting.setup);
+  // @todo
   if (setting.setup) {
     const db = await addConnection('egos', {
       filename: setting.db as string,

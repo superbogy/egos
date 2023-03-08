@@ -5,6 +5,9 @@ import Driver from '@egos/storage/dist/abstract';
 import Base from './base';
 import fs from 'fs';
 import { FileObject } from './file-object';
+import { jsonParser, jsonStringify } from '../lib/helper';
+import { Tag } from './tag';
+import R from 'ramda';
 
 export const quickEntrance = [
   { filename: 'Document', path: '/Document' },
@@ -58,6 +61,15 @@ export class FileModel extends Base {
   size: number;
   @column({ type: FieldTypes.TEXT, default: '' })
   description: string;
+  @column({
+    type: FieldTypes.TEXT,
+    default: '',
+    encode: jsonStringify,
+    decode: jsonParser,
+  })
+  tags: string;
+  @column({ type: FieldTypes.TEXT, default: '' })
+  password: string;
 
   async buildDefaultFolders() {
     const isRoot = await this.findOne({ parentId: 0 });
@@ -113,7 +125,7 @@ export class FileModel extends Base {
         file = (await file.save()) as FileModel;
       }
     }
-    return { ...item, url, file: file.toJSON() };
+    return { url, file: file.toJSON() };
   }
 
   async getFiles({
@@ -143,17 +155,46 @@ export class FileModel extends Base {
     const total = await this.count(where);
     const files = await this.find(where, options);
     const list = [];
+    const tagNames: string[] = R.flatten(R.pluck('tags', files)).filter(
+      (i) => i,
+    );
+    const tags = await Tag.find({ name: { $in: tagNames } });
     for (const item of files) {
       const file = item.toJSON();
+      if (file.tags?.length) {
+        file.tags = file.tags
+          .map((t: string) => {
+            const tag = tags.find((tag) => tag.name === t);
+            return tag;
+          })
+          .filter((t: any) => t);
+        console.log(file, item.tags, tags);
+      }
       if (!item.isFolder) {
         const newItem = await this.getFileInfo(file);
-        list.push(newItem);
+        list.push({ ...file, ...newItem });
         continue;
       }
       list.push(file);
     }
-    // const inProgressNumber = await
-    return { meta: { total }, data: { files: list, parent: parent.toJSON() } };
+    return {
+      meta: { total, tags },
+      data: { files: list, parent: parent.toJSON() },
+    };
+  }
+
+  async updateFileTags(id: number, tags: string[]) {
+    const tagList = tags.map((tag) => tag.trim()).filter((i) => i);
+    if (!tagList.length) {
+      return;
+    }
+    const file = await this.findById(id);
+    if (!file) {
+      return;
+    }
+    await Promise.all(tagList.map((t) => Tag.findAndCreate(t)));
+    file.tags = tagList;
+    await file.save();
   }
 }
 
