@@ -95,15 +95,17 @@ export class FileDriver extends Driver {
     try {
       const readable = fs.createReadStream(source);
       const isInflight = this.inflight(options.taskId);
-      if (!isInflight) {
+      console.log('isInflight', isInflight, options, this._inflight);
+      if (isInflight) {
         return false;
       }
       const donePart = await this.getDoneParts(dest, 'upload');
       const stat = await fsp.stat(source);
+      console.log('donePart', donePart, stat);
       if (stat.size === donePart.cursor) {
         return md5file(source);
       }
-      const remote = this.getPath(dest);
+      const remote = dest;
       console.log('file-->', source, remote);
       const writable = fs.createWriteStream(remote, {
         start: donePart.cursor,
@@ -134,6 +136,7 @@ export class FileDriver extends Driver {
         },
       );
       writable.on('finish', async () => {
+        console.log('fuck on finish');
         setTimeout(() => this.clearFragment(dest, 'upload'), speedStream.span);
         if (options.onFinish) {
           await Promise.resolve(options.onFinish({ taskId: options.taskId }));
@@ -143,6 +146,8 @@ export class FileDriver extends Driver {
       pipelines.push(speedStream);
       pipelines.push(writable);
       await Stream.promises.pipeline(pipelines as ReadonlyArray<any>);
+      const fuck = fs.statSync(remote);
+      console.log('fffuck', fuck);
       return md5.getHash();
     } catch (err) {
       throw err;

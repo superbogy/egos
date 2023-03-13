@@ -14,7 +14,7 @@
     "dev": "concurrently 'npm run watch'  'npm run start' ",
     "postinstall:todo": "electron-builder install-app-deps",
     "rebuild-db": "electron-rebuild -f -w sqlite3",
-    "start": "cross-env NODE_ENV=development DEBUG=@egos/lite:* nodemon --delay 1000ms --watch dist --exec electron  dist/index.js",
+    "start": "cross-env NODE_ENV=development DEBUG=@egos/lite:* nodemon --delay 1000ms --watch dist --exec electron  dist/index.js --trace-warnings",
     "watch": "tsc -w"
   },
   "dependencies": {

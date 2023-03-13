@@ -114,7 +114,7 @@ export class FileModel extends Base {
     let file: FileModel = (await FileObject.findById(item.fileId)) as FileModel;
     const sizeLimit = 1024 * 1024 * 50;
     const driver = getDriverByBucket(file.bucket) as Driver;
-    const url = await driver.getUrl(file.remote);
+    const url = file.remote;
     if (
       (file.type === 'image' || file.type === 'video') &&
       file.size < sizeLimit
@@ -168,7 +168,6 @@ export class FileModel extends Base {
             return tag;
           })
           .filter((t: any) => t);
-        console.log(file, item.tags, tags);
       }
       if (!item.isFolder) {
         const newItem = await this.getFileInfo(file);

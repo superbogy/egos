@@ -201,12 +201,12 @@ export default abstract class Driver {
     const task = this.getInFlightTask(taskId);
     if (!task) {
       this._inflight.push({ taskId, timestamp: Date.now() });
-      return true;
+      return false;
     }
     if (task.timestamp < Date.now() - 10000) {
       this.freeTask(taskId);
     }
-    return false;
+    return true;
   }
 
   refreshInflightTask(taskId: number) {

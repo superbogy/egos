@@ -17,14 +17,16 @@ import {
   FILE_UPLOAD_RESUME,
   FILE_UPLOAD_START,
 } from '../event/constant';
+import { getTaskSecret } from './helper';
+import { ServiceError } from '../error';
 
 export interface UploadPayload {
   local: string;
   parentId: number;
   name: string;
-  event: IpcMainEvent;
-  taskId: string;
-  bucket: { name: string };
+  taskId: string | number;
+  bucket?: { name: string };
+  fileId?: number;
 }
 
 export interface CheckPoint {
@@ -44,7 +46,7 @@ export class FileUploadJob {
   private readonly options: JobOptions;
   private locker: Locker;
   private syncJob: any;
-  private channel: string;
+  protected channel: string;
   constructor(options: JobOptions) {
     this.options = options;
     this.locker = new Locker();
@@ -63,7 +65,7 @@ export class FileUploadJob {
             message: 'upload job done',
           });
         })
-        .catch((err) => {
+        .catch((err: Error) => {
           event.reply(this.channel, {
             status: 'error',
             type: 'job',
@@ -73,7 +75,7 @@ export class FileUploadJob {
     });
     ipcMain.on(FILE_UPLOAD_RESUME, (event, { taskIds = [] }) => {
       this.run(event, { id: { $in: taskIds }, status: 'pause' }).catch(
-        (err) => {
+        (err: Error) => {
           event.reply(this.channel, {
             status: 'failure',
             type: 'job',
@@ -87,10 +89,74 @@ export class FileUploadJob {
     });
   }
 
-  async pause(
-    event: IpcMainEvent,
-    { taskIds, channel }: { taskIds: number[]; channel: string },
-  ) {
+  async run(event: IpcMainEvent, options?: any): Promise<any> {
+    try {
+      await FileUploadJob.locker.acquireAsync();
+      const where = { action: 'upload', type: 'file', ...options };
+      const tasks = await Task.dequeue({ where, limit: 50, retry: 100 });
+      if (!tasks.length) {
+        return;
+      }
+      for (const task of tasks) {
+        if (task.retry >= task.maxRetry) {
+          continue;
+        }
+        const { payload } = task;
+        if (!payload) {
+          continue;
+        }
+        const secret = getTaskSecret(task.id);
+        if (!secret && payload.isEncrypt) {
+          continue;
+        }
+        await task.updateAttributes({ status: 'processing' });
+        console.log('task iiiiiddddd', task.id, task);
+        event.reply(this.channel, {
+          taskId: task.id,
+          type: 'upload',
+          status: 'processing',
+          retry: task.retry,
+        });
+        const q = payload.isEncrypt
+          ? this.addFile(event, { ...payload, taskId: task.id })
+          : this.upload(event, { ...payload, taskId: task.id });
+        await q
+          .then(async () => {
+            await Task.update({ id: task.id }, { status: 'done' });
+          })
+          .catch(async (err) => {
+            console.log('fuck err', err);
+            if (task.retry > task.maxRetry) {
+              task.status = 'unresolved';
+              task.err = err.message;
+              task.retry += 1;
+              await task.updateAttributes({
+                status: 'unresolved',
+                err: err.message,
+                retry: task.retry + 1,
+              });
+              this.failure(event, payload, err.message);
+            } else {
+              throw err;
+            }
+          });
+      }
+    } catch (err) {
+      console.log(err);
+      this.failure(
+        event,
+        {
+          type: 'job',
+          message: 'exception error',
+        },
+        err,
+      );
+    } finally {
+      FileUploadJob.locker.release();
+    }
+  }
+
+  async pause(event: IpcMainEvent, { taskIds }: { taskIds: number[] }) {
     const tasks = await Task.findByIds(taskIds);
     if (!tasks.length) {
       return;
@@ -141,14 +207,9 @@ export class FileUploadJob {
     }
   }
 
-  async upload({
-    local,
-    parentId,
-    name,
-    event,
-    taskId,
-    bucket,
-  }: UploadPayload) {
+  async upload(event: IpcMainEvent, payload: UploadPayload) {
+    const bucket = getAvailableBucket('file');
+    const { local, parentId, name, taskId } = payload;
     if (!local) {
       return false;
     }
@@ -171,27 +232,27 @@ export class FileUploadJob {
         description: '',
         bucket: bucket.name,
       };
-      const newFolder = await File.create(folder);
+      let current = await File.findOne({ path: folder.path });
+      if (!current) {
+        current = await File.create(folder);
+      }
       const files = await sfp.readdir(local);
       for (const item of files) {
-        await this.upload({
+        await this.upload(event, {
           local: path.join(local, item),
-          parentId: newFolder.id,
+          parentId: current.id,
           name,
-          event,
           taskId,
-          bucket,
         });
       }
-      return newFolder.toJSON();
+      return current.toJSON();
     } else {
-      const fileObj = await this.addFile({
+      const fileObj = await this.addFile(event, {
         local,
         name,
         taskId,
-        event,
-        bucket,
       });
+      console.log('ffffile object', fileObj);
       if (!fileObj) {
         return null;
       }
@@ -205,6 +266,11 @@ export class FileUploadJob {
         isFolder: 0,
         fileId: fileObj.id,
         description: '',
+      });
+      this.success(event, {
+        ...payload,
+        taskId: taskId,
+        targetId: res.id,
       });
       if (Array.isArray(fileObj.backup)) {
         Object.entries(fileObj.backup).map(([toBucket]) => {
@@ -221,16 +287,65 @@ export class FileUploadJob {
     }
   }
 
-  async addFile(payload: Omit<UploadPayload, 'parentId'>) {
-    const { local, name, event, taskId, bucket } = payload;
-    if (!fs.existsSync(local)) {
-      throw new Error('file not exists');
-    }
+  async addFile(event: IpcMainEvent, payload: Omit<UploadPayload, 'parentId'>) {
+    const { name, taskId } = payload;
+    const bucket = getAvailableBucket('file');
     const driver = getDriver(bucket);
-    const remote = driver.getPath(name || uuid().toHexString());
-    const meta = await getFileMeta(local);
-    const progress = async (checkpoint: any) => {
-      console.log('checkpoint>->', checkpoint);
+    const { source, meta } = await this.getSourceInfo(payload);
+    const remote = name || uuid().toHexString();
+    const dest = driver.getPath(remote);
+    console.log('-0--1==>', source, dest);
+    const res = await driver.multipartUpload(source, dest, {
+      taskId,
+      secret: getTaskSecret(taskId as number),
+      onProgress: this.progress(event, source),
+      onFinish: async () => {
+        event.reply(this.channel, {
+          taskId,
+          status: 'finish',
+          type: 'upload',
+        });
+      },
+    });
+    console.log('resssss', res);
+    if (!res) {
+      return null;
+    }
+    const data = {
+      ...meta,
+      id: payload.fileId,
+      local: '',
+      remote,
+      md5: res,
+      bucket: bucket.name,
+    };
+
+    return await FileObject.upsert({ ...data });
+  }
+
+  async getSourceInfo(payload: { local?: string; fileId?: number }) {
+    console.log('getSourceInfo', payload);
+    if (payload.local) {
+      if (!fs.existsSync(payload.local)) {
+        throw new Error('file not exists');
+      }
+      const meta = await getFileMeta(payload.local);
+      return { source: payload.local, meta };
+    }
+    if (payload.fileId) {
+      const fileObj = (await FileObject.findById(payload.fileId)) as any;
+      const bucket = getBucketByName(fileObj.bucket);
+      const driver = getDriver(bucket);
+      const source = driver.getPath(fileObj.remote);
+      return { source, meta: fileObj.toJSON() };
+    }
+    throw new ServiceError({
+      message: 'invalid upload payload',
+    });
+  }
+
+  progress(event: IpcMainEvent, file: string) {
+    return async (checkpoint: any) => {
       const { size, cursor, lastPoint, taskId, interval } = checkpoint;
       const task = await Task.findById(taskId);
       if (!task) {
@@ -249,95 +364,9 @@ export class FileUploadJob {
         size,
         percent: cursor / size,
         speed: (cursor - lastPoint) / interval,
-        file: local,
+        file: file,
       });
     };
-    console.log(',', local, remote);
-    const res = await driver.multipartUpload(local, remote, {
-      taskId,
-      onProgress: progress,
-      onFinish: async () => {
-        event.reply(this.channel, {
-          taskId,
-          status: 'finish',
-          type: 'upload',
-        });
-      },
-    });
-    if (!res) {
-      return null;
-    }
-    const data = {
-      ...meta,
-      local: '',
-      remote,
-      bucket: bucket.name,
-    };
-
-    return await FileObject.insert({ ...data });
-  }
-
-  async run(event: IpcMainEvent, options?: any) {
-    try {
-      await FileUploadJob.locker.acquireAsync();
-      const where = { action: 'upload', type: 'file', ...options };
-      const tasks = await Task.dequeue({ where, limit: 50, retry: 100 });
-      if (!tasks.length) {
-        return;
-      }
-      for (const task of tasks) {
-        if (task.retry >= task.maxRetry) {
-          continue;
-        }
-        if (task.action === 'upload') {
-          const { payload } = task;
-          if (!payload) {
-            continue;
-          }
-          task.status = 'processing';
-          event.reply(this.channel, {
-            taskId: task.id,
-            type: 'upload',
-            status: 'processing',
-            retry: task.retry,
-          });
-          const bucket = getAvailableBucket('file');
-          await this.upload({
-            ...payload,
-            type: task.type,
-            event,
-            taskId: task.id,
-            bucket,
-          })
-            .then((res = {}) => {
-              if (!res || !res.id) {
-                return;
-              }
-              task.status = 'done';
-              task.targetId = res.id;
-              this.success(event, {
-                ...payload,
-                taskId: task.id,
-                targetId: res.id,
-              });
-            })
-            .catch(async (err) => {
-              console.log('fuck err', err);
-              if (task.retry > task.maxRetry) {
-                task.status = 'unresolved';
-                task.err = err.message;
-                task.retry += 1;
-                this.failure(event, payload, err.message);
-              }
-            });
-          await task.save();
-        }
-      }
-    } catch (err) {
-      console.log(err);
-    } finally {
-      FileUploadJob.locker.release();
-    }
   }
 
   success(event: IpcMainEvent, payload: any, result?: any) {
