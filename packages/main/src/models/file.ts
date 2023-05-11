@@ -1,13 +1,16 @@
 import { getDriverByBucket } from '../lib/bucket';
-import { column, connect, Model, table } from '@egos/lite';
+import { column, table, ORDER_TYPE, SelectOrder } from '@egos/lite';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Driver from '@egos/storage/dist/abstract';
 import Base from './base';
 import fs from 'fs';
-import { FileObject } from './file-object';
+import { FileObject, FileObjectModel } from './file-object';
 import { jsonParser, jsonStringify } from '../lib/helper';
 import { Tag } from './tag';
 import R from 'ramda';
+import { ServiceError } from '../error';
+import { Task } from './task';
+import { setTaskSecret } from '../jobs/helper';
 
 export const quickEntrance = [
   { filename: 'Document', path: '/Document' },
@@ -23,7 +26,7 @@ export interface QueryPayload {
   limit?: number;
   offset?: number;
   parentId?: number;
-  order: Record<string, string>;
+  order: SelectOrder;
 }
 
 export interface FileSchema {
@@ -37,7 +40,7 @@ export interface FileSchema {
   size: number;
   description?: string;
   starred?: boolean;
-  tag?: string[];
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -67,7 +70,7 @@ export class FileModel extends Base {
     encode: jsonStringify,
     decode: jsonParser,
   })
-  tags: string;
+  tags: string[];
   @column({ type: FieldTypes.TEXT, default: '' })
   password: string;
 
@@ -111,7 +114,10 @@ export class FileModel extends Base {
   }
 
   async getFileInfo(item: any) {
-    let file: FileModel = (await FileObject.findById(item.fileId)) as FileModel;
+    let file = await FileObject.findById(item.fileId);
+    if (!file) {
+      return;
+    }
     const sizeLimit = 1024 * 1024 * 50;
     const driver = getDriverByBucket(file.bucket) as Driver;
     const url = file.remote;
@@ -122,7 +128,7 @@ export class FileModel extends Base {
       if (!fs.existsSync(file.local)) {
         const cacheFile = await driver.getCacheFilePath(file);
         file.local = cacheFile;
-        file = (await file.save()) as FileModel;
+        file = await file.save();
       }
     }
     return { url, file: file.toJSON() };
@@ -135,11 +141,11 @@ export class FileModel extends Base {
     limit = 50,
     offset = 0,
   }: QueryPayload) {
-    let parent: FileModel;
+    let parent: any;
     if (!parentId) {
-      parent = (await this.buildDefaultFolders()) as FileModel;
+      parent = await this.buildDefaultFolders();
     } else {
-      parent = (await this.findById(parentId)) as FileModel;
+      parent = await this.findById(parentId);
     }
     const where: { parentId: number; filename?: Record<string, string> } = {
       parentId: parent.id,
@@ -147,7 +153,7 @@ export class FileModel extends Base {
     const options = {
       limit,
       offset,
-      order: order || { id: 'desc' },
+      order: order || { id: ORDER_TYPE.DESC },
     };
     if (keyword) {
       where.filename = { $like: `%${keyword}%` };
@@ -194,6 +200,34 @@ export class FileModel extends Base {
     await Promise.all(tagList.map((t) => Tag.findAndCreate(t)));
     file.tags = tagList;
     await file.save();
+  }
+  async encrypt(fid: number, password: string) {
+    console.log('encrypt payload', fid, password);
+    const fileInfo = await this.findById(fid);
+    if (!fileInfo) {
+      throw new ServiceError({
+        message: 'file  not found',
+      });
+    }
+    const fileObj = (await FileObject.findById(
+      fileInfo.fileId,
+    )) as FileObjectModel;
+    const driver = getDriverByBucket(fileObj.bucket);
+    const source = driver?.getPath(fileObj.remote);
+    console.log('?????', source);
+    const task = {
+      type: 'file',
+      action: 'upload',
+      payload: {
+        fileId: fileObj.id,
+        local: source,
+        isEncrypt: true,
+      },
+      status: 'pending',
+    };
+    const res = await Task.create(task);
+    console.log(res, password);
+    setTaskSecret(res.id, password);
   }
 }
 

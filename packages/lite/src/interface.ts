@@ -1,9 +1,26 @@
 import { Database } from 'sqlite';
 
-export type Dict = {
-  [key: string]: any;
-};
+export type Dict = Record<string, any>;
 
+export enum ORDER_TYPE {
+  DESC = 'DESC',
+  ASC = 'ASC',
+}
+
+export type SelectOrder = { [key: string]: ORDER_TYPE };
+
+export interface FindOpts {
+  rows?: boolean;
+  limit?: number;
+  offset?: number;
+  order?: SelectOrder | SelectOrder[];
+  fields?: string[];
+  group?: string | string[];
+}
+
+export interface InsertOpts {
+  lastId?: boolean;
+}
 export interface Connection {
   filename: string;
   mode?: number;
@@ -16,13 +33,4 @@ export interface ModelOpts {
   db?: Database;
   timestamp?: boolean;
   debug?: boolean;
-}
-
-export interface QueryOptions {
-  offset?: number;
-  limit?: number;
-  order?: Record<string, string>;
-  group?: string;
-  fields?: string[];
-  rows?: boolean;
 }

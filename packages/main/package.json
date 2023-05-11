@@ -18,8 +18,8 @@
     "watch": "tsc -w"
   },
   "dependencies": {
-    "@egos/lite": "workspace:^0.0.1",
-    "@egos/storage": "workspace:^1.0.0",
+    "@egos/lite": "workspace:^",
+    "@egos/storage": "workspace:^",
     "ajv": "^8.12.0",
     "await-lock": "^2.2.2",
     "bson-objectid": "^2.0.4",
@@ -31,7 +31,6 @@
     "file-type": "^16.5.3",
     "js-yaml": "^4.1.0",
     "mime": "^3.0.0",
-    "sqlite3": "^5.1.4",
     "tldr": "^3.3.8",
     "torrent-search-api": "^2.1.4",
     "webtorrent": "^2.0.14"

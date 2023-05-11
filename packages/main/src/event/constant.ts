@@ -7,3 +7,4 @@ export const FILE_UPLOAD_DONE = 'file:upload:done';
 export const FILE_UPLOAD_FAILED = 'file:upload:failed';
 export const FILE_UPLOAD_PROGRESSING = 'file:upload:progressing';
 export const FILE_ENCRYPT_PWD = 'file:encrypt:pwd';
+export const FILE_DOWANLOAD_START = 'file:dowanload:start';

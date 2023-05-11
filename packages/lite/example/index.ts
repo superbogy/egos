@@ -1,4 +1,4 @@
-import { Model, connect, table, column } from '../src';
+import { Model, connect, table, column, ORDER_TYPE } from '../src';
 import assert from 'assert';
 import { FieldTypes } from '../src/schema';
 import 'reflect-metadata';
@@ -6,9 +6,19 @@ import { genSql } from '../src/utils';
 import { addConnection } from '../src/decorators';
 import { Database } from 'sqlite3';
 
+class UserEntity {
+  id: number;
+  name: string;
+  age: number;
+  gender: string;
+  mail: string;
+  profile: string;
+  parentId: number;
+}
+
 @connect('default')
 @table('users')
-class User extends Model {
+class User extends Model<UserEntity> {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT, default: '' })
@@ -62,7 +72,7 @@ const main = async () => {
   // console.log(orQuery);
   const user1 = (await user.findOne(
     { id: { $gte: 1, $lte: 200 } },
-    { order: { id: 'desc', age: 'asc' } },
+    { order: { id: ORDER_TYPE.DESC, age: ORDER_TYPE.ASC } },
   )) as User;
   console.log(user1);
   user1.name = 'tom';

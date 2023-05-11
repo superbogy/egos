@@ -255,6 +255,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const handleDrop = useCallback(
     (item: { src: FileSchema; dest: FileSchema }) => {
       const { src, dest } = item;
+      console.log('onDrop-->', item);
       let selectedIds = [...selectedRef.current];
       const sourceId = src.id;
       const targetId = dest.id;
@@ -440,6 +441,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     files: File[];
     parentId?: number;
   }) => {
+    console.log('handleNativeDrop', files, parentId);
     const paths = files.map((file: any) => file.path);
     dispatch({
       type: 'netdisk/upload',
@@ -566,6 +568,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
                   ...target.classList,
                   ...target.parentElement.classList,
                 ];
+                console.log(classList);
                 if (!classList.includes('netdisk-main')) {
                   return;
                 }

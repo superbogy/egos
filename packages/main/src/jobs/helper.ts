@@ -1,15 +1,25 @@
-import { getSharedVar } from '../global';
-import { md5 } from '@egos/storage';
+import { getSharedVar, setSharedVar } from '../global';
+import crypto from 'crypto';
 
 export const getTaskSecretKey = (taskId: number) => {
   return ['encrypt', 'task', 'secret', 'key', taskId].join(':');
 };
-
-export const getTaskSecret = (taskId: number) => {
+export const getTaskPassword = (taskId: number) => {
   const key = getTaskSecretKey(taskId);
   const pwd = getSharedVar(key);
+  return pwd;
+};
+
+export const getTaskSecret = (taskId: number) => {
+  const pwd = getTaskPassword(taskId);
   if (!pwd) {
     return null;
   }
-  return md5(pwd);
+  const hash = crypto.createHash('sha1');
+  return hash.update(pwd).digest('hex').substring(16, 32);
+};
+
+export const setTaskSecret = (taskId: number, pass: string) => {
+  const key = getTaskSecretKey(taskId);
+  setSharedVar(key, pass);
 };

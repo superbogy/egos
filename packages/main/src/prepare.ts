@@ -9,12 +9,12 @@ import { registerEvent } from './event';
 
 export default async (win: BrowserWindow) => {
   const setting = await loadSetting();
-  console.log('ss', setting.setup);
+  // can't move into if conditon
+  const db = await addConnection('egos', {
+    filename: setting.db as string,
+  });
   // @todo
-  if (setting.setup) {
-    const db = await addConnection('egos', {
-      filename: setting.db as string,
-    });
+  if (!setting.setup) {
     const folder = path.join(path.dirname(__filename), 'migration');
     const migrate = new Migration(db, folder);
     await migrate.run();

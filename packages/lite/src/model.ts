@@ -1,11 +1,11 @@
 import Debug from 'debug';
 import { Builder } from './builder';
-import { Dict, ModelOpts, QueryOptions } from './interface';
+import { Dict, FindOpts, InsertOpts, ModelOpts } from './interface';
 import { isEmpty, pick, has } from 'ramda';
 import { Database, ISqlite } from 'sqlite';
 import { TimestampSchema, ColumnSchema } from './schema';
 
-const debug = Debug('@egos/lite:model');
+const debug = Debug('lite-orm:model');
 export class Model {
   private _db: Database;
   public _table: string;
@@ -42,11 +42,15 @@ export class Model {
 
   initialize(): Model {
     const schema = this.schema;
-    for (const key in schema) {
-      if (schema[key].pk) {
-        this._pk.push(key);
-      }
-    }
+    this._pk = Object.entries(schema)
+      .filter((item) => {
+        const v = item[1] as ColumnSchema;
+        return !!v.pk;
+      })
+      .map((item) => {
+        const [k] = item;
+        return k;
+      });
     if (this.options?.timestamp) {
       Reflect.defineMetadata(
         'model:schema',
@@ -73,7 +77,7 @@ export class Model {
     return this.schema[field];
   }
 
-  encode<T>(filed: string, value: T): T {
+  encode<T>(filed: string, value: any): T {
     if (value === undefined) {
       return this.schema[filed]?.default;
     }
@@ -84,7 +88,7 @@ export class Model {
     return value;
   }
 
-  decode<T>(filed: string, value: T): T {
+  decode<T>(filed: string, value: any): T {
     if (value === undefined) {
       return value;
     }
@@ -99,7 +103,9 @@ export class Model {
     const schema = this.schema;
     const data: Record<string, any> = {};
     Object.keys(schema).forEach((k: string) => {
-      data[k] = this[k];
+      if (has(k, this)) {
+        data[k] = this[k];
+      }
     });
     return { ...this._attributes, ...data };
   }
@@ -118,11 +124,9 @@ export class Model {
   }
 
   purify(data: Dict): Dict {
-    const res: Dict = {};
-    for (const key in data) {
-      res[key] = this.encode(key, data[key]);
-    }
-    return res;
+    return Object.entries(data).reduce((acc: Dict, [key, val]) => {
+      return { ...acc, [key]: this.encode(key, val) };
+    }, {});
   }
 
   toRowData(props: Dict) {
@@ -199,113 +203,45 @@ export class Model {
     return stmt[method](params);
   }
 
-  async find(where: Dict = {}, options: QueryOptions = {}): Promise<Model[]> {
-    const { limit, offset, order, fields, group } = options;
+  async insert(payload: Dict, options?: InsertOpts): Promise<this | number> {
     const builder = new Builder({});
-    const { sql, params } = builder
-      .table(this.table)
-      .where(this.toRowData(where))
-      .fields(fields)
-      .order(order)
-      .group(group)
-      .limit(limit)
-      .offset(offset)
-      .select();
-    const res = await this.call('all', sql, params);
-    if (options.rows) {
-      return res;
-    }
-    return res.map((item: Record<string, any>) => {
-      return this.instance(item);
-    });
-  }
-
-  async count(where: Dict): Promise<number> {
-    const res = (await this.findOne(where, {
-      fields: ['count(*) as count'],
-      rows: true,
-    })) as Model;
-    return Number(res.count);
-  }
-
-  async findOne(where: Dict, options: Dict = {}): Promise<Model | null> {
-    options.limit = 1;
-    const res = await this.find(where, options);
-    if (res.length) {
-      return res[0];
-    }
-    return null;
-  }
-
-  findAll(where: Dict, options: Dict = {}): Promise<Model[]> {
-    return this.find(where, options);
-  }
-
-  findById(id: number | string): Promise<Model | null> {
-    return this.findOne({ id });
-  }
-
-  findByIds(ids: number[]): Promise<Model[]> {
-    return this.find({ id: { $in: ids } });
-  }
-
-  defaultData(): Dict {
-    const payload: Dict = {};
-    Object.entries(this.schema).map(([k, col]: [string, any]) => {
-      const def = col.default;
-      if (typeof def === 'undefined') {
-        return;
-      }
-      payload[k] = typeof def === 'function' ? def() : def;
-    });
-    return payload;
-  }
-
-  async onChange(changed: Dict): Promise<void> {
-    for (const k in changed) {
-      const col: ColumnSchema = this.schema[k];
-      if (!col) {
-        continue;
-      }
-      if (!col.onChange) {
-        continue;
-      }
-      const v = await Promise.resolve(col.onChange.call(this, changed[k]));
-    }
-  }
-
-  async create(data: Dict): Promise<Model> {
-    return this.insert(data);
-  }
-
-  async insert(payload: Dict): Promise<Model> {
-    const builder = new Builder({});
-    const date = new Date().toISOString();
     const data = this.toRowData(this.purify({ ...payload }));
     const defaultData = this.toRowData(this.defaultData());
     const { sql, params } = builder
       .table(this.table)
       .insert({ ...defaultData, ...data });
-    const { lastID } = await this.call('run', sql, params);
+    const res = await this.call('run', sql, params);
+    const { lastID } = res;
     if (this.options?.onInsert) {
       await Promise.resolve(this.options.onInsert);
     }
-    return (await this.findById(lastID)) as Model;
+    if (options?.lastId) {
+      return lastID;
+    }
+    return (await this.findById(lastID)) as this;
+  }
+
+  async create(data: Dict, options?: InsertOpts): Promise<this> {
+    return (await this.insert(data, options)) as this;
   }
 
   async update(where: Dict, payload: Dict): Promise<ISqlite.RunResult> {
     const builder = new Builder({});
-    const data = this.toRowData(this.attachTimestamp(this.purify(payload)));
+    const data = this.purify(payload);
+    console.log('data', data);
+    const witTimestamp = this.attachTimestamp(data);
+    console.log(witTimestamp);
+    const row = this.toRowData(witTimestamp);
     const { sql, params } = builder
       .table(this.table)
       .where(where)
-      .update({ ...data });
+      .update({ ...row });
     const res = await this.call('run', sql, params);
-    await this.onChange(data);
+    await this.onChange(row);
     return res;
   }
 
-  updateAttributes(payload: Dict): Promise<Model> {
+  updateAttributes(payload: Dict): Promise<this> {
     if (!this._pk) {
       throw new Error('updateAttributes must be called on instance');
     }
@@ -320,7 +256,7 @@ export class Model {
     return this.save();
   }
 
-  async upsert(data: Dict): Promise<Model> {
+  async upsert(data: Dict): Promise<this> {
     if (data.id) {
       const record = await this.findById(data.id);
       if (record) {
@@ -328,44 +264,69 @@ export class Model {
       }
     }
 
-    return this.insert(data);
+    return (await this.insert(data)) as this;
   }
 
-  getChange() {
-    const res = Object.entries(this._attributes).reduce(
-      (acc: Dict, cur: any[]) => {
-        const [k, v] = cur;
-        if (this[k] !== v) {
-          acc[k] = this[k];
-        }
-        return acc;
-      },
-      {},
-    );
-    if (this.options?.timestamp && Object.keys(res).length) {
-      return this.attachTimestamp(res);
+  async find(where: Dict = {}, options: FindOpts = {}): Promise<this[]> {
+    const { limit, offset, order, fields, group } = options;
+    const builder = new Builder({});
+    const { sql, params } = builder
+      .table(this.table)
+      .where(this.toRowData(where))
+      .fields(fields)
+      .order(order)
+      .group(group)
+      .limit(limit)
+      .offset(offset)
+      .select();
+    const res = await this.call('all', sql, params);
+    if (options.rows) {
+      return res.map((row: Dict) => this.toProps(row));
     }
-    return res;
+    return res.map((item: Dict) => {
+      return this.instance(item);
+    });
   }
 
-  attachTimestamp(data: Dict) {
-    if (!this.options?.timestamp) {
-      return data;
+  async count(where: Dict): Promise<number> {
+    const res = (await this.findOne(where, {
+      fields: ['count(*) as count'],
+      rows: true,
+    })) as any;
+    return Number(res.count);
+  }
+
+  async findOne(where: Dict, options: FindOpts = {}): Promise<this | null> {
+    const res = await this.find(where, { ...options, limit: 1 });
+    if (res.length) {
+      return res[0] as this;
     }
-    return { ...data, updatedAt: new Date().toISOString() };
+    return null;
   }
 
-  async save(): Promise<Model> {
+  findAll(options?: FindOpts): Promise<this[]> {
+    return this.find({}, options);
+  }
+
+  findById(id: number | string, options?: FindOpts): Promise<this | null> {
+    return this.findOne({ id }, options);
+  }
+
+  findByIds(ids: number[], options?: FindOpts): Promise<this[]> {
+    return this.find({ id: { $in: ids } }, options);
+  }
+
+  async save(): Promise<this> {
     const pk = pick(this._pk, this.getAttrs());
     if (!this._pk || isEmpty(pk)) {
       throw new Error('save must be called on instance');
     }
     const changed = this.getChange();
     if (!Object.keys(changed).length) {
-      return this;
+      return this as any;
     }
     await this.update(pk, changed);
-    return (await this.findOne(pk)) as Model;
+    return (await this.findOne(pk)) as this;
   }
 
   async remove(): Promise<ISqlite.RunResult> {
@@ -396,5 +357,54 @@ export class Model {
     const builder = new Builder({});
     const { sql, params } = builder.table(this.table).where(where).delete();
     return await this.call('run', sql, params);
+  }
+
+  defaultData(): Dict {
+    const payload: Dict = {};
+    Object.entries(this.schema).map(([k, col]: [string, any]) => {
+      const def = col.default;
+      if (typeof def === 'undefined') {
+        return;
+      }
+      payload[k] = typeof def === 'function' ? def() : def;
+    });
+    return payload;
+  }
+
+  async onChange(changed: Dict): Promise<void> {
+    for (const k in changed) {
+      const col: ColumnSchema = this.schema[k];
+      if (!col) {
+        continue;
+      }
+      if (!col.onChange) {
+        continue;
+      }
+      await Promise.resolve(col.onChange.call(this, changed[k]));
+    }
+  }
+
+  getChange() {
+    const res = Object.entries(this._attributes).reduce(
+      (acc: Dict, cur: any[]) => {
+        const [k, v] = cur;
+        if (this[k] !== v) {
+          acc[k] = this[k];
+        }
+        return acc;
+      },
+      {},
+    );
+    if (this.options?.timestamp && Object.keys(res).length) {
+      return this.attachTimestamp(res);
+    }
+    return res;
+  }
+
+  attachTimestamp(data: Dict) {
+    if (!this.options?.timestamp) {
+      return data;
+    }
+    return { ...data, updatedAt: new Date().toISOString() };
   }
 }

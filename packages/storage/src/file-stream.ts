@@ -38,9 +38,11 @@ export class FileDriver extends Driver {
   }
 
   async download(remote: string, save: string) {
-    const readable = await this.getStream(remote);
-    const writable = fs.createWriteStream(save);
-    return Stream.promises.pipeline(readable, writable);
+    const file = this.getPath(remote);
+    if (fs.existsSync(file)) {
+      return;
+    }
+    await fsp.link(file, save);
   }
 
   async replaceFile(source: string, dest: string) {

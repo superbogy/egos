@@ -1,12 +1,14 @@
-import { getBucketByName } from '@/lib/bucket';
-import { getFileMeta } from '@/lib/helper';
-import { column, connect, Model, table } from '@egos/lite';
+import { column, table } from '@egos/lite';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
-import path from 'path';
+
+export interface BackupItem {
+  bucket: string;
+  status: string;
+}
 
 @table('file_objects')
-class FileObjectModel extends Base {
+export class FileObjectModel extends Base {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT })
@@ -34,7 +36,7 @@ class FileObjectModel extends Base {
   @column({ type: FieldTypes.INT, default: '0' })
   isEncrypt: number;
   @column({ type: FieldTypes.TEXT, default: '' })
-  backup: string;
+  backup: BackupItem[];
   @column({ type: FieldTypes.TEXT, default: '' })
   checkpoint: string;
 

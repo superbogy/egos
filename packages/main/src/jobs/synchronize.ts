@@ -93,7 +93,7 @@ export class SynchronizeJob {
         return null;
       }
       const backup = file.backup || [];
-      const backFailed = { [toBucket]: 'failed' };
+      const backFailed = { bucket: toBucket, status: 'failed' };
       const index = backup.findIndex((item: any) => item.bucket === toBucket);
       if (!local) {
         // @todo upload from driver
@@ -103,7 +103,7 @@ export class SynchronizeJob {
         } else {
           backup[index] = backFailed;
         }
-        await FileObject.update({ id: fileId }, backup);
+        await FileObject.update({ id: fileId }, { backup });
         await this.model.update({ id: job.id }, { failed });
         return null;
       }

@@ -1,9 +1,10 @@
 import { getBucketByName } from '@/lib/bucket';
-import { File, FileObject, Task } from '@/models';
+import { File, FileModel, FileObject, Task } from '@/models';
 import { Job, Model } from '@egos/lite';
 import { getDriver } from '@egos/storage';
 import { IpcMainEvent } from 'electron';
 import { FileUploadJob } from './file-upload';
+import { BucketItem } from '@/config';
 
 export class CryptJob extends FileUploadJob {
   async run(event: IpcMainEvent, options?: any) {
@@ -37,15 +38,13 @@ export class CryptJob extends FileUploadJob {
             status: 'processing',
             retry: task.retry,
           });
-          const bucket = getBucketByName(fileObj.bucket);
+          const bucket = getBucketByName(fileObj.bucket) as BucketItem;
           const driver = getDriver(bucket);
           const local = driver.getPath(fileObj.remote);
           await this.addFile(event, {
             ...payload,
             local,
             fileId: fileObj.id,
-            type: task.type,
-            event,
             taskId: task.id,
             bucket,
           })

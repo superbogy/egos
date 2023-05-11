@@ -3,13 +3,9 @@ import { column, table } from '@egos/lite';
 import crypto from 'crypto';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
-import { File } from './file';
+import { File, FileModel } from './file';
 import fs from 'fs';
 import { jsonParser, jsonStringify } from '../lib/helper';
-import { FileObject } from './file-object';
-import { getDriver } from '@egos/storage';
-import { getDriverByBucket } from '@/lib/bucket';
-import Driver from '@egos/storage/dist/abstract';
 
 export enum QueueStatus {
   PENDING = 'pending',
@@ -20,9 +16,9 @@ export enum QueueStatus {
 }
 
 @table('tasks')
-class TaskModel extends Base {
+export class TaskModel extends Base {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
-  id: string;
+  id: number;
   @column({ type: FieldTypes.TEXT })
   action: string;
   @column({ type: FieldTypes.TEXT })
@@ -30,7 +26,7 @@ class TaskModel extends Base {
   @column({ type: FieldTypes.TEXT })
   status: string;
   @column({ type: FieldTypes.TEXT, decode: jsonParser, encode: jsonStringify })
-  payload: string;
+  payload: Record<string, any>;
   @column({ type: FieldTypes.INT, default: 0 })
   retry: number;
   @column({ type: FieldTypes.INT, default: 3 })
