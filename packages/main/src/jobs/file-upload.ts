@@ -33,6 +33,8 @@ export interface UploadPayload {
   bucket?: { name: string };
   fileId?: number;
   isEncrypt?: boolean;
+  isDecrypt?: boolean;
+  password?: string;
 }
 
 export interface CheckPoint {
@@ -45,18 +47,17 @@ export interface CheckPoint {
 
 export interface JobOptions {
   channel: string;
+  action: string;
   [key: string]: any;
 }
 export class FileUploadJob extends FileJob {
-  static locker = new Locker();
+  private locker = new Locker();
   private readonly options: JobOptions;
-  private locker: Locker;
   private syncJob: any;
   protected channel: string;
   constructor(options: JobOptions) {
     super();
     this.options = options;
-    this.locker = new Locker();
     this.syncJob = new SynchronizeJob();
     this.channel = options.channel;
   }
@@ -98,23 +99,22 @@ export class FileUploadJob extends FileJob {
 
   async run(event: IpcMainEvent, options?: any): Promise<any> {
     try {
-      await FileUploadJob.locker.acquireAsync();
+      await this.locker.acquireAsync();
       // make sure only one task in running
-      const where = { action: 'upload', type: 'file', ...options };
+      const where = { action: this.action, type: 'file', ...options };
       const tasks = await Task.dequeue({ where, limit: 50, retry: 100 });
       if (!tasks.length) {
         return;
       }
       for (const task of tasks) {
         if (task.retry >= task.maxRetry) {
+          task.status = 'failure';
+          task.err = 'over max retry';
           continue;
         }
-        const payload: UploadPayload = task.payload as UploadPayload;
+
+        const payload = await this.buildPayload(task);
         if (!payload) {
-          continue;
-        }
-        const secret = getTaskSecret(task.id);
-        if (!secret && payload.isEncrypt) {
           continue;
         }
         await task.updateAttributes({ status: 'processing' });
@@ -146,7 +146,6 @@ export class FileUploadJob extends FileJob {
           });
       }
     } catch (err) {
-      console.log(err);
       this.failure(
         event,
         {
@@ -156,15 +155,43 @@ export class FileUploadJob extends FileJob {
         err,
       );
     } finally {
-      FileUploadJob.locker.release();
+      this.locker.release();
     }
+  }
+
+  async buildPayload(task: TaskModel) {
+    const payload = task.payload as UploadPayload;
+    const password = getTaskPassword(task.id as number);
+    if (payload.isDecrypt || payload.isEncrypt) {
+      if (!password) {
+        return;
+      }
+    }
+    if (payload.fileId) {
+      const file = await File.findById(payload.fileId);
+      if (!file) {
+        throw new Error('File not found');
+      }
+      const fileObj = await FileObject.findById(file.fileId);
+      if (!fileObj) {
+        throw new Error('Fileobject not found');
+      }
+      const driver = getDriverByBucket(fileObj.bucket) as Driver;
+      const local = driver.getPath(fileObj.remote);
+      const ext = '.encrypt';
+      const name = payload.isEncrypt
+        ? fileObj.filename + ext
+        : fileObj.filename.replace(ext, '');
+      return { ...payload, local, name, password };
+    }
+    return { ...payload, password };
   }
 
   async upload(event: IpcMainEvent, payload: UploadPayload) {
     const bucket = getAvailableBucket('file');
-    const { local, parentId, name, taskId } = payload;
+    const { local, parentId, name, taskId, password } = payload;
     if (!local) {
-      return false;
+      throw new Error('local file not found');
     }
     const filepath = ['/'];
     if (parentId) {
@@ -172,7 +199,7 @@ export class FileUploadJob extends FileJob {
       filepath.push(parent.path);
     }
     const stat = await promisify(fs.stat)(local);
-    const password = getTaskPassword(taskId as number);
+    const pwdHash = password ? md5(password) : '';
     if (stat.isDirectory()) {
       const folderName = path.basename(local);
       const folder = {
@@ -185,7 +212,7 @@ export class FileUploadJob extends FileJob {
         fileId: 0,
         description: '',
         bucket: bucket.name,
-        password,
+        password: pwdHash,
       };
       let current = await File.findOne({ path: folder.path });
       if (!current) {
@@ -194,6 +221,7 @@ export class FileUploadJob extends FileJob {
       const files = await sfp.readdir(local);
       for (const item of files) {
         await this.upload(event, {
+          ...payload,
           local: path.join(local, item),
           parentId: current.id,
           name,
@@ -208,7 +236,7 @@ export class FileUploadJob extends FileJob {
         taskId,
       });
       if (!fileObj) {
-        return null;
+        throw new Error('upload file failed');
       }
       const filename = fileObj.filename;
       const res = await File.create({
@@ -220,7 +248,7 @@ export class FileUploadJob extends FileJob {
         isFolder: 0,
         fileId: fileObj.id,
         description: '',
-        password,
+        password: pwdHash,
       });
       this.success(event, {
         ...payload,
@@ -259,7 +287,6 @@ export class FileUploadJob extends FileJob {
     await driver.deleteFile(cur.remote);
     const password = getTaskPassword(payload.taskId as number);
     if (password) {
-      // @fixme simple md5 hash without any salt
       await File.update({ id: payload.fileId }, { password: md5(password) });
     }
     return fileObj;

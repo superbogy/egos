@@ -83,7 +83,7 @@ export const getBucketByName = (name: string) => {
 export const getDriverByBucket = (name: string) => {
   const bucket = getBucketByName(name);
   if (!bucket) {
-    return null;
+    throw new Error('Bucket not found');
   }
   return getDriver(bucket);
 };

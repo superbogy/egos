@@ -4,7 +4,7 @@ import {
   getDriverByBucket,
 } from '../lib/bucket';
 import { getFileMeta } from '../lib/helper';
-import { FileObject, Task } from '../models';
+import { File, FileObject, Task } from '../models';
 import { getDriver } from '@egos/storage';
 import fs from 'fs';
 import { ServiceError } from '../error';
@@ -71,9 +71,10 @@ export abstract class FileJob {
     const { source, meta } = await this.getSourceInfo(payload);
     const remote = name || uuid().toHexString();
     const dest = driver.getPath(remote);
+    const secret = getTaskPassword(taskId as number);
     const res = await driver.multipartUpload(source, dest, {
       taskId,
-      secret: getTaskPassword(taskId as number),
+      secret,
       onProgress: this.progress(event, source),
       onFinish: async () => {
         event.reply(this.channel, {
@@ -87,7 +88,6 @@ export abstract class FileJob {
     if (!res) {
       return null;
     }
-    const password = getTaskPassword(payload.taskId as number);
     const data = {
       ...meta,
       id: payload.fileId,
@@ -95,9 +95,14 @@ export abstract class FileJob {
       remote,
       md5: res,
       bucket: bucket.name,
-      password,
+      password: secret,
     };
-
+    if (payload.fileId) {
+      const file = await File.findById(payload.fileId);
+      const fileObj = await FileObject.findById(file?.fileId as number);
+      const originSource = driver.getPath(fileObj?.remote as string);
+      fs.unlinkSync(originSource);
+    }
     const fileObj = await FileObject.upsert({ ...data });
     return fileObj;
   }
