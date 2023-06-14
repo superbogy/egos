@@ -45,5 +45,7 @@ export interface UploadOptions {
   onProgress?: speedCallback;
   interval?: number;
   secret?: string;
+  isEncrypt?: boolean;
+  isDecrypt?: boolean;
   onFinish?: (params: { taskId: number }) => void;
 }

@@ -37,5 +37,9 @@ class File extends Model {
   async encrypt(id: number, password: string) {
     return this.exec('encrypt', id, password);
   }
+
+  async decrypt(id: number, password: string) {
+    return this.exec('decrypt', id, password);
+  }
 }
 export default new File('files');

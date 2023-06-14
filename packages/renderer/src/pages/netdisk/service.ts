@@ -293,9 +293,14 @@ export const updateFileTags = (payload: { id: number; tags: string[] }) => {
   return FileSystem.updateFileTags(id, tags);
 };
 
-
-export const encrypt = async (payload: {id: number, password: string}) => {
-  const { id, password} = payload;
+export const encrypt = async (payload: { id: number; password: string }) => {
+  const { id, password } = payload;
   console.log(id, password);
   await FileSystem.encrypt(id, password);
-}
+};
+
+export const decrypt = async (payload: { id: number; password: string }) => {
+  const { id, password } = payload;
+  console.log(id, password);
+  await FileSystem.decrypt(id, password);
+};

@@ -1,12 +1,16 @@
 import { Transform, TransformCallback, TransformOptions } from 'stream';
 
-export type CAlculateCallback = (len: number, cost: number) => any;
+export type CalculateCallback = (
+  cursor: number,
+  lastPoint: number,
+  span: number,
+) => void;
 
 export class SpeedStream extends Transform {
   private cursor: number;
   private lastPoint: number;
-  private interval: NodeJS.Timer | null;
   public span: any;
+  private speedCB: CalculateCallback;
 
   constructor(opts?: TransformOptions & { span?: number }) {
     super(opts);
@@ -14,9 +18,15 @@ export class SpeedStream extends Transform {
     this.lastPoint = 0;
     this.span = opts?.span || 1000;
     this.on('finish', () => {
-      setTimeout(() => {
-        this.reset();
-      }, this.span);
+      console.log('stream finish');
+      this.reset();
+    });
+    this.on('data', async () => {
+      // console.log(this.cursor, this.lastPoint);
+      await Promise.resolve(
+        this.speedCB.apply(this, [this.cursor, this.lastPoint, this.span]),
+      );
+      this.lastPoint = this.cursor;
     });
   }
   _transform(
@@ -30,10 +40,6 @@ export class SpeedStream extends Transform {
   }
 
   reset() {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
     this.cursor = 0;
     this.lastPoint = 0;
   }
@@ -42,14 +48,7 @@ export class SpeedStream extends Transform {
     callback();
   }
 
-  calculate(cb: any) {
-    if (this.interval) {
-      clearInterval(this.interval);
-      this.interval = null;
-    }
-    this.interval = setInterval(async () => {
-      await cb(this.cursor, this.lastPoint, this.span);
-      this.lastPoint = this.cursor;
-    }, this.span);
+  calculate(cb: CalculateCallback) {
+    this.speedCB = cb;
   }
 }

@@ -141,7 +141,6 @@ export default abstract class Driver {
 
   async doneChunk({ dest, type, cursor }: ChunkProps) {
     const file = this.getLocalChunkFilename(dest, type);
-    console.log('doneChunk', file);
     await fs.promises.writeFile(file, JSON.stringify({ cursor }));
   }
 

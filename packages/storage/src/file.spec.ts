@@ -61,7 +61,7 @@ describe('FileDriver', () => {
     fs.unlinkSync(source);
     fs.unlinkSync(dest);
   });
-  it('should upload file and encrypt', async () => {
+  it.only('should upload file and encrypt', async () => {
     const taskId = 2;
     const driver = new FileDriver(bucket);
     const totalBytes = 1024 * 1024;
@@ -71,16 +71,20 @@ describe('FileDriver', () => {
     await fillFile(source, totalBytes);
     const sourceMd5 = await md5File(source);
     const secret = md5('abrsf').substring(16);
-    await driver.upload(source, dest, { secret, taskId });
+    await driver.upload(source, dest, { secret, taskId, isEncrypt: true });
     await setTimeout(1000);
-    await driver.decrypt(dest, decryptFile, { secret });
+    await driver.upload(dest, decryptFile, {
+      secret,
+      taskId: 3,
+      isDecrypt: true,
+    });
     const deCryptMd5 = await md5File(decryptFile);
     expect(sourceMd5).toEqual(deCryptMd5);
     fs.unlinkSync(source);
     fs.unlinkSync(dest);
     fs.unlinkSync(decryptFile);
   }, 10000);
-  it.only('should able to download magnet torrent', async () => {
+  it('should able to download magnet torrent', async () => {
     const driver = new FileDriver(bucket);
     const magnet =
       'magnet:?xt=urn:btih:406303B2216385DF6AFFAB26BA83281D26DDC628';

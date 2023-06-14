@@ -239,6 +239,9 @@ const model = {
     *crypt({ payload }: AnyAction, { call }: EffectsCommandMap) {
       yield call(services.encrypt, payload);
     },
+    *decrypt({ payload }: AnyAction, { call }: EffectsCommandMap) {
+      yield call(services.decrypt, payload);
+    },
   },
   reducers: {
     updateState(state: Record<string, any>, { payload }: any) {

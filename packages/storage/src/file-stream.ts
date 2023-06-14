@@ -95,7 +95,6 @@ export class FileDriver extends Driver {
   }
   async upload(source: string, dest: string, options: UploadOptions) {
     try {
-      const readable = fs.createReadStream(source);
       const isInflight = this.inflight(options.taskId);
       console.log('isInflight', isInflight, options, this._inflight);
       if (isInflight) {
@@ -103,7 +102,7 @@ export class FileDriver extends Driver {
       }
       const donePart = await this.getDoneParts(dest, 'upload');
       const stat = await fsp.stat(source);
-      console.log('donePart', donePart, stat);
+      // console.log('donePart', donePart, stat);
       if (stat.size === donePart.cursor) {
         return md5file(source);
       }
@@ -114,15 +113,22 @@ export class FileDriver extends Driver {
         mode: 0o666,
       });
       const md5 = new HashStream();
-      let sourceStream: Readable | Transform = readable;
+      let sourceStream: Readable | Transform;
       if (options.secret) {
-        sourceStream = createEncryptStream(readable, options.secret);
+        if (options.isEncrypt) {
+          sourceStream = createEncryptStream(source, options.secret);
+        } else {
+          sourceStream = await createDecryptStream(source, options.secret);
+        }
+      } else {
+        sourceStream = fs.createReadStream(source);
       }
+
       const pipelines: Stream[] = [sourceStream, md5];
       const speedStream = new SpeedStream({ span: options.interval });
       speedStream.calculate(
         async (cursor: number, lastPoint: number, span: number) => {
-          console.log('speed', cursor, lastPoint);
+          // console.log('speed', cursor, lastPoint);
           if (options.onProgress) {
             await Promise.resolve(
               options.onProgress({
@@ -149,7 +155,7 @@ export class FileDriver extends Driver {
       pipelines.push(writable);
       await Stream.promises.pipeline(pipelines as ReadonlyArray<any>);
       const fuck = fs.statSync(remote);
-      console.log('fffuck', fuck);
+      // console.log('fffuck', fuck);
       return md5.getHash();
     } catch (err) {
       throw err;

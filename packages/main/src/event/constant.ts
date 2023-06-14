@@ -8,3 +8,6 @@ export const FILE_UPLOAD_FAILED = 'file:upload:failed';
 export const FILE_UPLOAD_PROGRESSING = 'file:upload:progressing';
 export const FILE_ENCRYPT_PWD = 'file:encrypt:pwd';
 export const FILE_DOWANLOAD_START = 'file:dowanload:start';
+export const FILE_CRYPT_START = 'file:crypt:start';
+export const FILE_CRYPT_STOP = 'file:crypt:stop';
+export const FILE_CRYPT_CANCEL = 'file:crypt:cancel';
