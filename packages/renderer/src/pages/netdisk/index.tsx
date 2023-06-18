@@ -1,21 +1,11 @@
 import Header from '@/components/Header/Common';
 import {
-  DeleteOutlined,
-  DownloadOutlined,
-  EditOutlined,
-  ExportOutlined,
   FolderOpenOutlined,
-  FundViewOutlined,
-  LockOutlined,
   PlusOutlined,
   QrcodeOutlined,
-  ShareAltOutlined,
-  SortAscendingOutlined,
-  StarFilled,
-  UnlockFilled,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Breadcrumb, Button, Empty, Menu, Popover, Select, Space } from 'antd';
+import { Breadcrumb, Button, Empty, Menu, Popover, Space } from 'antd';
 import {
   useLayoutEffect,
   useRef,
@@ -27,13 +17,7 @@ import {
 import Share from '@/components/Share';
 import QRUploader from '@/components/Uploader/qrUpload';
 import { Dispatch, history } from 'umi';
-import {
-  Item,
-  Menu as ContextMenu,
-  Separator,
-  TriggerEvent,
-  useContextMenu,
-} from 'react-contexify';
+import { TriggerEvent } from 'react-contexify';
 import { connect, useIntl, useLocation } from 'umi';
 import Card from './components/Card';
 import Edit from './components/Edit';
@@ -51,7 +35,9 @@ import { DiskState } from './model';
 import { FileSchema } from '@/services/file';
 import './index.less';
 import { registerUploadEvent } from './events';
-import Crypt from './components/Crypt';
+// import Crypt from './components/PasswordForm';
+import { CtxProps } from './components/CtxMenu';
+import { CtxMenu } from './components/CtxMenu';
 
 const sortMenus = [
   {
@@ -67,7 +53,6 @@ const sortMenus = [
     key: 'filename',
   },
 ];
-const ctxIds = ['netdisk-item-ctx', 'netdisk-container-ctx'];
 
 interface NetDiskProps {
   dispatch: Dispatch;
@@ -85,8 +70,9 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const [currentItem, setCurrentItem] = useState<FileSchema | null>(null);
   const { display = 'card' }: { display?: string } = netdisk.query;
   const [modalVisible, setModalVisible] = useState(false);
-  const [showCrypt, setShowCrypt] = useState<boolean>(false);
+  // const [showCrypt, setShowCrypt] = useState(false);
   const [isDragging, setDragging] = useState(false);
+  const ctxRef = useRef<any>(null);
   const tagList = meta.tags.map((tag: any) => {
     return {
       key: tag.name,
@@ -109,7 +95,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       payload: { location },
     });
     registerUploadEvent(dispatch);
-    console.log('location.state', location.state);
   }, [location]);
   const handleUpload = () => {
     Remote.Electron.dialog
@@ -126,50 +111,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
           payload: { files: res.filePaths, parentId: currentFolder.id },
         });
       });
-  };
-
-  const contextHandlers = {
-    open({ props }: { props: { file: string } }) {
-      Remote.Electron.ipcRenderer.send('openFile', props.file);
-    },
-    showInFolder({ props }: any) {
-      if (!props.file) {
-        return;
-      }
-      Remote.Electron.ipcRenderer.send('showFile', props.file);
-    },
-    detail() {
-      setEditable(true);
-    },
-    download({ props }: any) {
-      dispatch({
-        type: 'netdisk/download',
-        payload: { ids: [props.id] },
-      });
-    },
-    rename({ props }: any) {
-      const elmId = 'file-item-id-' + props.id;
-      const elm = document.getElementById(elmId) as HTMLElement;
-      elm.focus();
-    },
-    like({ props }: { props: FileSchema } | any) {
-      liked.push(props.id as any);
-      setLiked(liked);
-      dispatch({
-        type: 'netdisk/likeIt',
-        payload: { id: props.id },
-      });
-    },
-    getLikedStyle() {
-      const style: { color?: string } = {};
-      if (!currentItem) {
-        return style;
-      }
-      if (currentItem.starred || liked.includes(currentItem.id)) {
-        style.color = 'red';
-      }
-      return style;
-    },
   };
 
   const headerProps = {
@@ -229,23 +170,23 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   useLayoutEffect(() => {
     selectedRef.current = selected;
   });
-  const [showItemCtx, showContainerCtx] = ctxIds.map((menuId) => {
-    /* eslint-disable */
-    const { show } = useContextMenu({
-      id: menuId,
-    });
-    return show;
-  });
-  const onContainerCtx = (ev: TriggerEvent) => {
-    if (ev.defaultPrevented) {
-      return;
-    }
-    ev.preventDefault();
-    showContainerCtx({
-      event: ev,
-      props: currentFolder,
-    });
-  };
+  // const [showItemCtx, showContainerCtx] = ctxIds.map((menuId) => {
+  //   /* eslint-disable */
+  //   const { show } = useContextMenu({
+  //     id: menuId,
+  //   });
+  //   return show;
+  // });
+  // const onContainerCtx = (ev: TriggerEvent) => {
+  //   if (ev.defaultPrevented) {
+  //     return;
+  //   }
+  //   ev.preventDefault();
+  //   showContainerCtx({
+  //     event: ev,
+  //     props: currentFolder,
+  //   });
+  // };
   const gotoFolder = (id: number | string) => {
     if (Number.isNaN(Number(id))) {
       return;
@@ -281,6 +222,20 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     },
     [selectedRef, dispatch],
   );
+  const handleNativeDrop = ({
+    files,
+    parentId,
+  }: {
+    files: File[];
+    parentId?: number;
+  }) => {
+    const paths = files.map((file: any) => file.path);
+    dispatch({
+      type: 'netdisk/upload',
+      payload: { files: paths, parentId },
+    });
+  };
+
   const cardProps = {
     data: files,
     selected,
@@ -297,7 +252,8 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       }
       ev.preventDefault();
       setCurrentItem(item);
-      showItemCtx({
+      console.log('123123123', ctxRef.current);
+      ctxRef.current?.item.show({
         event: ev,
         props: item,
       });
@@ -359,11 +315,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const onNewFolder = () => {
     setModalVisible(!modalVisible);
   };
-  const refresh = () => {
-    history.replace({
-      ...location,
-    });
-  };
   const modalProps = {
     visible: modalVisible,
     onCancel: onNewFolder,
@@ -392,7 +343,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     if (path === '/') {
       history.replace(location.pathname, {});
     } else {
-      const q = dispatch({
+      dispatch({
         type: 'netdisk/gotoPath',
         payload: { path },
       });
@@ -433,22 +384,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       });
     },
   };
-
-  const handleNativeDrop = ({
-    files,
-    parentId,
-  }: {
-    files: File[];
-    parentId?: number;
-  }) => {
-    console.log('handleNativeDrop', files, parentId);
-    const paths = files.map((file: any) => file.path);
-    dispatch({
-      type: 'netdisk/upload',
-      payload: { files: paths, parentId },
-    });
-  };
-
   const cancelSelected = (e: any) => {
     if (!e.defaultPrevented && !isDragging) {
       setSelect([]);
@@ -494,15 +429,91 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     });
     setQrUpload(!qrUpload);
   };
-  const cryptProps = {
-    type: 'encrypt',
-    fileItem: currentItem,
-    visible: showCrypt,
-    onOk: ({ password }: { password: string }) => {
+  const cryptType = currentItem?.isEncrypt ? 'decrypt' : 'encrypt';
+  // const cryptProps = {
+  //   type: cryptType,
+  //   fileItem: currentItem,
+  //   visible: showCrypt,
+  //   onClose: () => setShowCrypt(!showCrypt),
+  //   onOk: async ({ password }: { password: string }) => {
+  //     await dispatch({
+  //       type: 'netdisk/crypt',
+  //       payload: {
+  //         id: currentItem?.id,
+  //         password,
+  //         type: cryptType,
+  //       },
+  //     });
+  //     setShowCrypt(false);
+  //   },
+  // };
+  const contextHandlers = {
+    move: console.log,
+    open({ props }: { props: { file: string } }) {
+      Remote.Electron.ipcRenderer.send('openFile', props.file);
+    },
+    showInFolder({ props }: any) {
+      if (!props.file) {
+        return;
+      }
+      Remote.Electron.ipcRenderer.send('showFile', props.file);
+    },
+    detail() {
+      setEditable(true);
+    },
+    download({ props }: any) {
       dispatch({
-        type: 'netdisk/crypt',
-        payload: { id: currentItem?.id, password },
+        type: 'netdisk/download',
+        payload: { ids: [props.id] },
       });
+    },
+    rename({ props }: any) {
+      const elmId = 'file-item-id-' + props.id;
+      const elm = document.getElementById(elmId) as HTMLElement;
+      elm.focus();
+    },
+    star({ props }: { props: FileSchema } | any) {
+      liked.push(props.id as any);
+      setLiked(liked);
+      dispatch({
+        type: 'netdisk/star',
+        payload: { id: props.id },
+      });
+    },
+    delete: (params: any) => {
+      handleDel(params);
+    },
+    onCrypto: async (password: string) => {
+      return dispatch({
+        type: 'netdisk/crypt',
+        payload: {
+          id: currentItem?.id,
+          password,
+          type: cryptType,
+        },
+      });
+    },
+  };
+
+  const ctxProps: CtxProps = {
+    currentItem,
+    starred: [],
+    tagList,
+    onDetail: contextHandlers.detail,
+    onRemove: contextHandlers.delete,
+    onRename: contextHandlers.rename,
+    onDownload: contextHandlers.download,
+    onMove: () => contextHandlers.move,
+    onNewFolder: onNewFolder,
+    onStar: contextHandlers.star,
+    onSearchTag: console.log,
+    onTagChange: () => console.log,
+    onCrypto: contextHandlers.onCrypto,
+    onShare: handleShare,
+    onUpload: handleUpload,
+    onSort: console.log,
+    setCtx: ({ container, item }: any) => {
+      console.log('?????? ', item, container);
     },
   };
 
@@ -561,7 +572,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
             </div>
             <div
               className="netdisk-main"
-              onContextMenu={onContainerCtx}
+              onContextMenu={() => ctxRef.current?.container.show}
               onDrop={(e) => {
                 const { target } = e as any;
                 const classList = [
@@ -600,120 +611,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
             </div>
           </div>
         </Provider>
-        <ContextMenu id="netdisk-item-ctx">
-          <Item onClick={contextHandlers.detail}>
-            <div className="netdisk-ctx-text">
-              <span>show</span>
-              <FundViewOutlined />
-            </div>
-          </Item>
-          <Item onClick={contextHandlers.rename}>
-            <div className="netdisk-ctx-text">
-              <span>rename</span>
-              <EditOutlined />
-            </div>
-          </Item>
-          <Item onClick={console.log}>
-            <div className="netdisk-ctx-text">
-              <span>move</span>
-              <ExportOutlined />
-            </div>
-          </Item>
-          <Item onClick={handleDel}>
-            <div className="netdisk-ctx-text">
-              <span>delete</span>
-              <DeleteOutlined />
-            </div>
-          </Item>
-          <Item onClick={contextHandlers.download}>
-            <div className="netdisk-ctx-text">
-              <span>download</span>
-              <DownloadOutlined />
-            </div>
-          </Item>
-          <Separator />
-          <Item>
-            <div
-              className="netdisk-ctx-text"
-              onClick={(ev) => {
-                ev.stopPropagation();
-              }}
-            >
-              <Select
-                mode="tags"
-                allowClear={false}
-                size="small"
-                bordered={false}
-                placeholder="choose tags"
-                defaultValue={
-                  currentItem?.tags ? currentItem?.tags.map((t) => t.name) : []
-                }
-                options={tagList}
-                style={{ width: '80%' }}
-                onSearch={(...args: any[]) => console.log('fffffuck', args)}
-                onChange={(values) =>
-                  dispatch({
-                    type: 'netdisk/save',
-                    payload: { id: currentItem?.id, tags: values },
-                  })
-                }
-              />
-            </div>
-          </Item>
-          <Item onClick={contextHandlers.like}>
-            <div className="netdisk-ctx-text">
-              <span>star</span>
-              <StarFilled style={contextHandlers.getLikedStyle()} />
-            </div>
-          </Item>
-          <Item onClick={() => setShowCrypt(!showCrypt)}>
-            <div className="netdisk-ctx-text">
-              {currentItem?.password ? (
-                <>
-                  <span>decrypt</span>
-                  <UnlockFilled />
-                </>
-              ) : (
-                <>
-                  <span>encrypt</span>
-                  <LockOutlined />
-                </>
-              )}
-            </div>
-          </Item>
-          <Item onClick={handleShare}>
-            <div className="netdisk-ctx-text">
-              <span>share</span>
-              <ShareAltOutlined />
-            </div>
-          </Item>
-        </ContextMenu>
-        <ContextMenu id="netdisk-container-ctx">
-          <Item onClick={onNewFolder}>
-            <div className="netdisk-ctx-text">
-              <span>new folder</span>
-              <PlusOutlined />
-            </div>
-          </Item>
-          <Item onClick={console.log}>
-            <div className="netdisk-ctx-text">
-              <span>show</span>
-              <FundViewOutlined />
-            </div>
-          </Item>
-          <Item onClick={handleUpload}>
-            <div className="netdisk-ctx-text">
-              <span>upload</span>
-              <UploadOutlined />
-            </div>
-          </Item>
-          <Item onClick={console.log}>
-            <div className="netdisk-ctx-text">
-              <span>sort</span>
-              <SortAscendingOutlined />
-            </div>
-          </Item>
-        </ContextMenu>
+        <CtxMenu {...ctxProps} ref={ctxRef} />
         <Modal {...modalProps} />
         <Edit {...editProps} />
         <Selecto
@@ -742,7 +640,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       </div>
       <Share {...shareProps} />
       <QRUploader visible={qrUpload} url={netdisk.uploadUrl} />
-      <Crypt {...cryptProps}></Crypt>
+      {/* <Crypt {...cryptProps}></Crypt> */}
     </>
   );
 };

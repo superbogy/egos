@@ -1,6 +1,11 @@
 import './card.less';
 
-import { FileUnknownFilled, FolderFilled } from '@ant-design/icons';
+import {
+  FileUnknownFilled,
+  FolderFilled,
+  LockFilled,
+  LockOutlined,
+} from '@ant-design/icons';
 import { Badge, Empty, Pagination, Space } from 'antd';
 import moment from 'moment';
 import path from 'path';
@@ -41,7 +46,6 @@ interface CardProps {
   data: FileSchema[];
 }
 export default (props: CardProps) => {
-  console.log('card s', props);
   const { pagination, onMove, selected, disable = [] } = props;
   const [preview, setPreview] = useState<FileSchema | null>(null);
   const handleImagePreview = (file: FileSchema) => {
@@ -69,6 +73,21 @@ export default (props: CardProps) => {
               <FolderFilled
                 style={{ fontSize: 72, height: 72, color: 'cyan' }}
               />
+              {item.isEncrypt ? (
+                <div
+                  style={{
+                    marginTop: -72,
+                    width: 72,
+                    height: 72,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 18,
+                  }}
+                >
+                  <LockOutlined />
+                </div>
+              ) : null}
             </div>
           </DragBox>
         </DropBox>
@@ -77,12 +96,30 @@ export default (props: CardProps) => {
     if (item.type) {
       return (
         <DragBox {...dragProps}>
-          <Exhibit
-            file={file}
-            itemClass="card-img"
-            className="drag-item"
-            onDoubleClick={() => handleImagePreview(item)}
-          />
+          {item.isEncrypt ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignContent: 'center',
+                height: 72,
+                background: 'gray',
+              }}
+            >
+              <span style={{ textAlign: 'center', fontSize: 16 }}>
+                <LockFilled />
+              </span>
+              <span>文件已加密</span>
+            </div>
+          ) : (
+            <Exhibit
+              file={file}
+              itemClass="card-img"
+              className="drag-item"
+              onDoubleClick={() => handleImagePreview(item)}
+            />
+          )}
         </DragBox>
       );
     }

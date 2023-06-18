@@ -71,8 +71,10 @@ export abstract class FileJob {
     const { source, meta } = await this.getSourceInfo(payload);
     const remote = name || uuid().toHexString();
     const dest = driver.getPath(remote);
-    const secret = getTaskPassword(taskId as number);
+    const secret = payload.password;
+    console.log('bbbbbefore--', { ...payload, taskId, secret });
     const res = await driver.multipartUpload(source, dest, {
+      ...payload,
       taskId,
       secret,
       onProgress: this.progress(event, source),
@@ -85,6 +87,7 @@ export abstract class FileJob {
         });
       },
     });
+    console.log('storage upload res', res);
     if (!res) {
       return null;
     }
@@ -95,7 +98,6 @@ export abstract class FileJob {
       remote,
       md5: res,
       bucket: bucket.name,
-      password: secret,
     };
     if (payload.fileId) {
       const file = await File.findById(payload.fileId);

@@ -73,7 +73,9 @@ export function createEncryptStream(
   const iv = crypto.randomBytes(16);
   const readable =
     source instanceof Stream ? source : fs.createReadStream(source);
-  const encryptStream = crypto.createCipheriv('aes-128-cbc', pass, iv);
+  console.log(pass);
+  const key = crypto.scryptSync(pass, 'salt', 32);
+  const encryptStream = crypto.createCipheriv('aes-256-cbc', key, iv);
   const transform = new Transform({
     transform(chunk, encoding, callback) {
       if (!initialized) {
@@ -95,6 +97,8 @@ export const createDecryptStream = async (source: string, pass: string) => {
   await fd.read(iv, 0, 16, 0);
   await fd.close();
   const readable = fs.createReadStream(source, { start: 16 });
-  const decryptStream = crypto.createDecipheriv('aes-128-cbc', pass, iv);
+  console.log('decrypt', pass, pass.length);
+  const key = crypto.scryptSync(pass, 'salt', 32);
+  const decryptStream = crypto.createDecipheriv('aes-256-cbc', key, iv);
   return readable.pipe<Transform>(decryptStream);
 };

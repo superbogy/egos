@@ -70,7 +70,7 @@ describe('FileDriver', () => {
     const decryptFile = createTmpFile();
     await fillFile(source, totalBytes);
     const sourceMd5 = await md5File(source);
-    const secret = md5('abrsf').substring(16);
+    const secret = md5('abrsf');
     await driver.upload(source, dest, { secret, taskId, isEncrypt: true });
     await setTimeout(1000);
     await driver.upload(dest, decryptFile, {

@@ -98,7 +98,7 @@ export class FileDriver extends Driver {
       const isInflight = this.inflight(options.taskId);
       console.log('isInflight', isInflight, options, this._inflight);
       if (isInflight) {
-        return false;
+        // return false;
       }
       const donePart = await this.getDoneParts(dest, 'upload');
       const stat = await fsp.stat(source);

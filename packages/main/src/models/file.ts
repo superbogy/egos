@@ -73,6 +73,8 @@ export class FileModel extends Base {
   tags: string[];
   @column({ type: FieldTypes.TEXT, default: '' })
   password: string;
+  @column({ type: FieldTypes.INT, default: 0 })
+  isEncrypt: number;
 
   async buildDefaultFolders() {
     const isRoot = await this.findOne({ parentId: 0 });

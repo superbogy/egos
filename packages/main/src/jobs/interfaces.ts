@@ -6,6 +6,7 @@ export interface UploadPayload {
   bucket?: { name: string };
   fileId?: number;
   isEncrypt?: boolean;
+  password?: string;
 }
 
 export interface CheckPoint {

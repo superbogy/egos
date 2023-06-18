@@ -15,6 +15,7 @@ export interface FileSchema {
   file?: FileObjectSchema;
   tags: any[];
   password?: string;
+  isEncrypt: number;
   createdAt: string;
   updatedAt: string;
 }

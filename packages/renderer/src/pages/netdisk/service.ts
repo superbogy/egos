@@ -301,6 +301,5 @@ export const encrypt = async (payload: { id: number; password: string }) => {
 
 export const decrypt = async (payload: { id: number; password: string }) => {
   const { id, password } = payload;
-  console.log(id, password);
   await FileSystem.decrypt(id, password);
 };

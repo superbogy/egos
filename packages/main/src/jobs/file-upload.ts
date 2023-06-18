@@ -60,10 +60,12 @@ export class FileUploadJob extends FileJob {
     this.options = options;
     this.syncJob = new SynchronizeJob();
     this.channel = options.channel;
+    this.action = options.action;
   }
 
   watch() {
     ipcMain.on(FILE_UPLOAD_START, (event: IpcMainEvent) => {
+      console.log('file:upload:start ---1');
       event.reply(this.channel, { message: 'upload job started' });
       this.run(event)
         .then(() => {
@@ -167,6 +169,7 @@ export class FileUploadJob extends FileJob {
         return;
       }
     }
+    const passHash = md5(password);
     if (payload.fileId) {
       const file = await File.findById(payload.fileId);
       if (!file) {
@@ -182,9 +185,9 @@ export class FileUploadJob extends FileJob {
       const name = payload.isEncrypt
         ? fileObj.filename + ext
         : fileObj.filename.replace(ext, '');
-      return { ...payload, local, name, password };
+      return { ...payload, local, name, password: passHash };
     }
-    return { ...payload, password };
+    return { ...payload, password: passHash };
   }
 
   async upload(event: IpcMainEvent, payload: UploadPayload) {
@@ -231,12 +234,14 @@ export class FileUploadJob extends FileJob {
       return current.toJSON();
     } else {
       const fileObj = await this.addFile(event, {
+        ...payload,
         local,
         name,
         taskId,
+        password,
       });
       if (!fileObj) {
-        throw new Error('upload file failed');
+        throw new Error('upload file failed1');
       }
       const filename = fileObj.filename;
       const res = await File.create({
@@ -249,6 +254,7 @@ export class FileUploadJob extends FileJob {
         fileId: fileObj.id,
         description: '',
         password: pwdHash,
+        isEncrypted: payload.isEncrypt ? 1 : 0,
       });
       this.success(event, {
         ...payload,

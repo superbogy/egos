@@ -4,6 +4,7 @@ import { isEmpty } from 'ramda';
 import { AnyAction, EffectsCommandMap } from 'umi';
 import * as services from './service';
 import { FileSchema } from '@/services/file';
+import { Remote } from '@/lib/remote';
 
 export enum FileDisplay {
   CARD = 'card',
@@ -74,6 +75,7 @@ const model = {
           payload: { entrance },
         });
       }
+      Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
       yield put({
         type: 'query',
         payload: qs || {},
