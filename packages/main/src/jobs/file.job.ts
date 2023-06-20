@@ -1,8 +1,4 @@
-import {
-  getAvailableBucket,
-  getBucketByName,
-  getDriverByBucket,
-} from '../lib/bucket';
+import { getAvailableBucket, getBucketByName } from '../lib/bucket';
 import { getFileMeta } from '../lib/helper';
 import { File, FileObject, Task } from '../models';
 import { getDriver } from '@egos/storage';
@@ -11,14 +7,37 @@ import { ServiceError } from '../error';
 import { UploadPayload } from './interfaces';
 import { IpcMainEvent } from 'electron';
 import uuid from 'bson-objectid';
-import { getTaskPassword } from './helper';
-import Driver from '@egos/storage/dist/abstract';
 
 export abstract class FileJob {
   protected channel: string;
   protected action: string;
 
   async getSourceInfo(payload: { local?: string; fileId?: number }) {
+    console.log('getSrouceInfo payload---->', payload);
+    if (payload.fileId) {
+      const file = await File.findById(payload.fileId);
+      if (!file) {
+        throw new Error('File not found');
+      }
+      const fileObj = await FileObject.findById(file.objectId);
+      if (!fileObj) {
+        throw new Error('File object not found');
+      }
+      const bucket = getBucketByName(fileObj.bucket);
+      const driver = getDriver(bucket);
+      const source = driver.getPath(fileObj.remote);
+      return {
+        source,
+        meta: {
+          filename: fileObj.filename,
+          type: fileObj.type,
+          mime: fileObj.mime,
+          ext: fileObj.ext,
+          size: fileObj.size,
+          mtime: fileObj.mtime,
+        },
+      };
+    }
     if (payload.local) {
       if (!fs.existsSync(payload.local)) {
         throw new Error('file not exists');
@@ -26,21 +45,14 @@ export abstract class FileJob {
       const meta = await getFileMeta(payload.local);
       return { source: payload.local, meta };
     }
-    if (payload.fileId) {
-      const fileObj = (await FileObject.findById(payload.fileId)) as any;
-      const bucket = getBucketByName(fileObj.bucket);
-      const driver = getDriver(bucket);
-      const source = driver.getPath(fileObj.remote);
-      return { source, meta: fileObj.toJSON() };
-    }
     throw new ServiceError({
       message: 'invalid upload payload',
     });
   }
 
-  progress(event: IpcMainEvent, file: any) {
+  progress(event: IpcMainEvent, file: any, taskId: string) {
     return async (checkpoint: any) => {
-      const { size, cursor, lastPoint, taskId, interval } = checkpoint;
+      const { size, cursor, lastPoint, interval } = checkpoint;
       const task = await Task.findById(taskId);
       if (!task) {
         return;
@@ -69,15 +81,17 @@ export abstract class FileJob {
     const bucket = getAvailableBucket('file');
     const driver = getDriver(bucket);
     const { source, meta } = await this.getSourceInfo(payload);
-    const remote = name || uuid().toHexString();
+    const remote = name || uuid().toHexString() + meta.ext;
     const dest = driver.getPath(remote);
     const secret = payload.password;
-    console.log('bbbbbefore--', { ...payload, taskId, secret });
+    console.log('add file ', source, dest);
     const res = await driver.multipartUpload(source, dest, {
       ...payload,
+      isEncrypt: payload.cryptType === 'encrypt',
+      isDecrypt: payload.cryptType === 'decrypt',
       taskId,
       secret,
-      onProgress: this.progress(event, source),
+      onProgress: this.progress(event, source, taskId as string),
       onFinish: async () => {
         event.reply(this.channel, {
           taskId,
@@ -91,21 +105,21 @@ export abstract class FileJob {
     if (!res) {
       return null;
     }
-    const data = {
+    const data: Record<string, any> = {
       ...meta,
-      id: payload.fileId,
       local: '',
       remote,
       md5: res,
       bucket: bucket.name,
     };
+    console.log('create file object', data);
+    const fileObj = await FileObject.create({ ...data });
     if (payload.fileId) {
       const file = await File.findById(payload.fileId);
-      const fileObj = await FileObject.findById(file?.fileId as number);
+      const fileObj = await FileObject.findById(file?.objectId as number);
       const originSource = driver.getPath(fileObj?.remote as string);
       fs.unlinkSync(originSource);
     }
-    const fileObj = await FileObject.upsert({ ...data });
     return fileObj;
   }
 

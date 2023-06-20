@@ -112,7 +112,7 @@ export const createFolder = async ({
     size: 0,
     type: 'folder',
     isFolder: 1,
-    fileId: 0,
+    objectId: 0,
     description: '',
   };
   return Promise.resolve(FileSystem.create(data));
@@ -293,13 +293,24 @@ export const updateFileTags = (payload: { id: number; tags: string[] }) => {
   return FileSystem.updateFileTags(id, tags);
 };
 
-export const encrypt = async (payload: { id: number; password: string }) => {
-  const { id, password } = payload;
-  console.log(id, password);
-  await FileSystem.encrypt(id, password);
+export const verify = async (id: number, password: string) => {
+  await FileSystem.verify(id, password);
 };
 
-export const decrypt = async (payload: { id: number; password: string }) => {
-  const { id, password } = payload;
-  await FileSystem.decrypt(id, password);
+export const crypto = async (payload: {
+  id: number;
+  password: string;
+  type: string;
+}) => {
+  try {
+    const { id, password, type } = payload;
+    if (type === 'decrypt') {
+      await verify(id, password);
+    }
+    await FileSystem.crypto(id, password, type);
+    Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
+  } catch (err) {
+    console.log(err);
+    message.error((err as Error).message);
+  }
 };

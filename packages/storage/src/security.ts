@@ -73,7 +73,6 @@ export function createEncryptStream(
   const iv = crypto.randomBytes(16);
   const readable =
     source instanceof Stream ? source : fs.createReadStream(source);
-  console.log(pass);
   const key = crypto.scryptSync(pass, 'salt', 32);
   const encryptStream = crypto.createCipheriv('aes-256-cbc', key, iv);
   const transform = new Transform({

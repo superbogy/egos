@@ -1,3 +1,4 @@
+import { ServiceError } from '@/lib/error';
 import { Remote } from '@/lib/remote';
 
 export default class BaseService {
@@ -28,6 +29,10 @@ export default class BaseService {
       method,
       args: payload,
     });
+    console.log('execut res', res);
+    if (res.error) {
+      throw new ServiceError(res.message, { ...res });
+    }
     return res;
   }
 

@@ -4,7 +4,7 @@ import { FileObjectSchema } from './file-object';
 export interface FileSchema {
   id: number;
   type: string;
-  fileId: number;
+  objectId: number;
   parentId: number;
   isFolder: number;
   path: string;
@@ -35,12 +35,12 @@ class File extends Model {
     return this.exec('updateFileTags', id, tags);
   }
 
-  async encrypt(id: number, password: string) {
-    return this.exec('encrypt', id, password);
+  async crypto(id: number, password: string, type: string) {
+    return this.exec('crypto', id, password, type);
   }
 
-  async decrypt(id: number, password: string) {
-    return this.exec('decrypt', id, password);
+  async verify(id: number, password: string) {
+    return this.exec('verify', id, password);
   }
 }
 export default new File('files');

@@ -26,16 +26,16 @@ export class SynchronizeJob {
   async add({
     fromBucket,
     toBucket,
-    fileId,
+    objectId,
   }: {
     fromBucket: string;
     toBucket: string;
-    fileId: number;
+    objectId: number;
   }) {
     await Synchronize.create({
       fromBucket,
       toBucket,
-      fileId,
+      objectId,
       status: 'pending',
     });
   }
@@ -60,20 +60,20 @@ export class SynchronizeJob {
         if (!job) {
           continue;
         }
-        const file = (await FileObject.findById(job.fileId)) as Model;
-        const backup = file.backup || [];
+        const fileObj = (await FileObject.findById(job.fileId)) as Model;
+        const backup = fileObj.backup || [];
         const itemStatus = item.status === 'fulfilled' ? 'success' : 'failure';
         const backValue = { [job.toBucket]: itemStatus };
         const index = backup.findIndex(
-          (item: any) => item.bucket === file.toBucket,
+          (item: any) => item.bucket === fileObj.toBucket,
         );
         if (index < 0) {
           backup.push(backValue);
         } else {
           backup[index] = backValue;
         }
-        file.backup = [...backup];
-        await file.save();
+        fileObj.backup = [...backup];
+        await fileObj.save();
         await this.model.update({ id: job.id }, { status: itemStatus });
       }
     } catch (err) {
@@ -85,8 +85,8 @@ export class SynchronizeJob {
 
   async handle(job: any) {
     try {
-      const { local, toBucket, fileId } = job;
-      const file = await FileObject.findById(fileId);
+      const { local, toBucket, fileObj } = job;
+      const file = await FileObject.findById(fileObj);
       if (!file) {
         // file have been deleted
         await job.remove();
@@ -103,13 +103,13 @@ export class SynchronizeJob {
         } else {
           backup[index] = backFailed;
         }
-        await FileObject.update({ id: fileId }, { backup });
+        await FileObject.update({ id: fileObj }, { backup });
         await this.model.update({ id: job.id }, { failed });
         return null;
       }
       const driver = getDriver(toBucket);
       await driver.multipartUpload(local, file.remote, {
-        fileId,
+        objectId: fileObj.id,
       });
       return job;
     } catch (err) {

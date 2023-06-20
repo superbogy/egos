@@ -5,7 +5,7 @@ export interface UploadPayload {
   taskId: string | number;
   bucket?: { name: string };
   fileId?: number;
-  isEncrypt?: boolean;
+  cryptType?: string;
   password?: string;
 }
 

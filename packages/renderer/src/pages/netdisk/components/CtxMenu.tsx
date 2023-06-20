@@ -79,7 +79,7 @@ export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
             <FundViewOutlined />
           </div>
         </Item>
-        <Item onClick={({ props }) => props.onRename}>
+        <Item onClick={props.onRename}>
           <div className="netdisk-ctx-text">
             <span>rename</span>
             <EditOutlined />

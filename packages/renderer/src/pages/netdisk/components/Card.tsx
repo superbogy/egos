@@ -53,6 +53,7 @@ export default (props: CardProps) => {
   };
   const getCard = (item: FileSchema) => {
     const file = item.file as FileObjectSchema;
+    console.log(item);
     const dragProps = {
       currentItem: item,
       onMove,

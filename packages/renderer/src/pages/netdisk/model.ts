@@ -85,7 +85,6 @@ const model = {
       { payload = {} }: AnyAction,
       { call, put, select }: EffectsCommandMap,
     ) {
-      console.log('query payload', payload);
       if (!payload || isEmpty(payload)) {
         const { query } = yield select((s: any) => {
           const { netdisk } = s;
@@ -97,7 +96,6 @@ const model = {
       }
       const { meta: newMeta, data } = yield call(services.query, payload);
       const { files, parent } = data;
-      console.log(newMeta, data);
       const inProgressNumber: number = yield call(
         services.progressTaskNumber,
         payload,
@@ -238,11 +236,8 @@ const model = {
         payload: {},
       });
     },
-    *crypt({ payload }: AnyAction, { call }: EffectsCommandMap) {
-      yield call(services.encrypt, payload);
-    },
-    *decrypt({ payload }: AnyAction, { call }: EffectsCommandMap) {
-      yield call(services.decrypt, payload);
+    *crypto({ payload }: AnyAction, { call }: EffectsCommandMap) {
+      yield call(services.crypto, payload);
     },
   },
   reducers: {

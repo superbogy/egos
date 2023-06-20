@@ -2,7 +2,7 @@ import { getSharedVar, setSharedVar } from '../global';
 import crypto from 'crypto';
 
 export const getTaskSecretKey = (taskId: number) => {
-  return ['encrypt', 'task', 'secret', 'key', taskId].join(':');
+  return ['task', 'secret', 'key', taskId].join(':');
 };
 export const getTaskPassword = (taskId: number) => {
   const key = getTaskSecretKey(taskId);
@@ -21,5 +21,6 @@ export const getTaskSecret = (taskId: number) => {
 
 export const setTaskSecret = (taskId: number, pass: string) => {
   const key = getTaskSecretKey(taskId);
+  console.log(key);
   setSharedVar(key, pass);
 };

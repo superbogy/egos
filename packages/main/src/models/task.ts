@@ -95,7 +95,7 @@ export class TaskModel extends Base {
       return false;
     }
     const task = {
-      action: 'encrypt',
+      action: 'upload',
       type: 'file',
       payload: { fileId: file.fileId, password },
       status: 'pending',

@@ -16,7 +16,7 @@ export class SyncModel extends Model {
   @column({ type: FieldTypes.TEXT })
   toBucket: string;
   @column({ type: FieldTypes.INT })
-  fileId: number;
+  objectId: number;
   @column({ type: FieldTypes.INT })
   status: number;
   @column({ type: FieldTypes.TEXT })

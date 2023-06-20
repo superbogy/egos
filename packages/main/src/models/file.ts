@@ -11,6 +11,7 @@ import R from 'ramda';
 import { ServiceError } from '../error';
 import { Task } from './task';
 import { setTaskSecret } from '../jobs/helper';
+import { md5 } from '@egos/storage';
 
 export const quickEntrance = [
   { filename: 'Document', path: '/Document' },
@@ -32,7 +33,7 @@ export interface QueryPayload {
 export interface FileSchema {
   id: number;
   type: string;
-  fileId: number;
+  objectId: number;
   parentId: number;
   isFolder: number;
   path: string;
@@ -51,7 +52,7 @@ export class FileModel extends Base {
   @column({ type: FieldTypes.TEXT })
   type: string;
   @column({ type: FieldTypes.INT, default: '' })
-  fileId: number;
+  objectId: number;
   @column({ type: FieldTypes.INT, default: '' })
   parentId: number;
   @column({ type: FieldTypes.INT, default: '' })
@@ -89,7 +90,7 @@ export class FileModel extends Base {
       size: 0,
       type: 'folder',
       isFolder: 1,
-      fileId: 0,
+      objectId: 0,
       description: '',
     };
     const root = await this.create(base);
@@ -116,7 +117,7 @@ export class FileModel extends Base {
   }
 
   async getFileInfo(item: any) {
-    let file = await FileObject.findById(item.fileId);
+    let file = await FileObject.findById(item.objectId);
     if (!file) {
       return;
     }
@@ -203,7 +204,7 @@ export class FileModel extends Base {
     file.tags = tagList;
     await file.save();
   }
-  async encrypt(fid: number, password: string) {
+  async crypto(fid: number, password: string, type: string) {
     console.log('encrypt payload', fid, password);
     const fileInfo = await this.findById(fid);
     if (!fileInfo) {
@@ -211,25 +212,35 @@ export class FileModel extends Base {
         message: 'file  not found',
       });
     }
-    const fileObj = (await FileObject.findById(
-      fileInfo.fileId,
-    )) as FileObjectModel;
-    const driver = getDriverByBucket(fileObj.bucket);
-    const source = driver?.getPath(fileObj.remote);
-    console.log('?????', source);
     const task = {
       type: 'file',
       action: 'upload',
       payload: {
-        fileId: fileObj.id,
-        local: source,
-        isEncrypt: true,
+        fileId: fileInfo.id,
+        cryptType: type,
       },
       status: 'pending',
     };
     const res = await Task.create(task);
-    console.log(res, password);
     setTaskSecret(res.id, password);
+  }
+
+  async verify(id: number, password: string) {
+    const file = await File.findById(id);
+    if (!file) {
+      throw new ServiceError({
+        message: 'File not found',
+        code: 10404,
+      });
+    }
+    console.log('vvvvverify', file.password, md5(password));
+    if (file.isEncrypt && file.password !== md5(password)) {
+      throw new ServiceError({
+        message: 'Password incorrect',
+        code: 10401,
+      });
+    }
+    return true;
   }
 }
 

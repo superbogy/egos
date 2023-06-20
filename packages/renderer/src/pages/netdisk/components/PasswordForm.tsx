@@ -3,7 +3,7 @@ import { Form, Input, Modal } from 'antd';
 interface CryptProps {
   type: string;
   visible: boolean;
-  onOk: (payload: { password: string }) => void;
+  onOk: (payload: { password: string; type: string }) => void;
   onClose: any;
 }
 export default (props: CryptProps) => {
@@ -12,7 +12,7 @@ export default (props: CryptProps) => {
   const handleOk = async () => {
     await form.validateFields();
     const values = form.getFieldsValue();
-    props.onOk(values);
+    props.onOk({ password: values.password, type });
   };
   return (
     <>

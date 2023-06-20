@@ -34,6 +34,7 @@ class ModelProxy {
       return res;
     } catch (err) {
       console.log('exec err', err);
+      return err;
     } finally {
       this.lock.release();
     }

@@ -35,7 +35,6 @@ import { DiskState } from './model';
 import { FileSchema } from '@/services/file';
 import './index.less';
 import { registerUploadEvent } from './events';
-// import Crypt from './components/PasswordForm';
 import { CtxProps } from './components/CtxMenu';
 import { CtxMenu } from './components/CtxMenu';
 
@@ -170,23 +169,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   useLayoutEffect(() => {
     selectedRef.current = selected;
   });
-  // const [showItemCtx, showContainerCtx] = ctxIds.map((menuId) => {
-  //   /* eslint-disable */
-  //   const { show } = useContextMenu({
-  //     id: menuId,
-  //   });
-  //   return show;
-  // });
-  // const onContainerCtx = (ev: TriggerEvent) => {
-  //   if (ev.defaultPrevented) {
-  //     return;
-  //   }
-  //   ev.preventDefault();
-  //   showContainerCtx({
-  //     event: ev,
-  //     props: currentFolder,
-  //   });
-  // };
   const gotoFolder = (id: number | string) => {
     if (Number.isNaN(Number(id))) {
       return;
@@ -429,7 +411,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     });
     setQrUpload(!qrUpload);
   };
-  const cryptType = currentItem?.isEncrypt ? 'decrypt' : 'encrypt';
   // const cryptProps = {
   //   type: cryptType,
   //   fileItem: currentItem,
@@ -470,6 +451,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     rename({ props }: any) {
       const elmId = 'file-item-id-' + props.id;
       const elm = document.getElementById(elmId) as HTMLElement;
+      console.log(elm);
       elm.focus();
     },
     star({ props }: { props: FileSchema } | any) {
@@ -483,13 +465,12 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     delete: (params: any) => {
       handleDel(params);
     },
-    onCrypto: async (password: string) => {
+    onCrypto: async (params: { password: string; type: string }) => {
       return dispatch({
-        type: 'netdisk/crypt',
+        type: 'netdisk/crypto',
         payload: {
           id: currentItem?.id,
-          password,
-          type: cryptType,
+          ...params,
         },
       });
     },
@@ -640,7 +621,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       </div>
       <Share {...shareProps} />
       <QRUploader visible={qrUpload} url={netdisk.uploadUrl} />
-      {/* <Crypt {...cryptProps}></Crypt> */}
     </>
   );
 };

@@ -41,8 +41,13 @@ export default class Base extends Model {
         }
         return res.toJSON ? res.toJSON() : res;
       } catch (err) {
-        console.log('model ipc main error', err);
-        return err;
+        console.log('model ipc main error', err.message);
+        return {
+          error: true,
+          message: err.message,
+          code: err.code || 500,
+          data: err.data,
+        };
       }
     });
   }

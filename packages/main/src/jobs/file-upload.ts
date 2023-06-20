@@ -1,16 +1,11 @@
 import Locker from 'await-lock';
-import { getDriver, md5 } from '@egos/storage';
+import { md5 } from '@egos/storage';
 import fs, { promises as sfp } from 'fs';
 import path from 'path';
 import { promisify } from 'util';
-import {
-  getAvailableBucket,
-  getBucketByName,
-  getDriverByBucket,
-} from '../lib/bucket';
-import { getFileMeta } from '../lib/helper';
+import { getAvailableBucket, getDriverByBucket } from '../lib/bucket';
 import { File, FileModel } from '../models/file';
-import { FileObject, FileObjectModel } from '../models/file-object';
+import { FileObject } from '../models/file-object';
 import { Task, TaskModel } from '../models/task';
 import { SynchronizeJob } from './synchronize';
 import { ipcMain, IpcMainEvent } from 'electron';
@@ -20,8 +15,7 @@ import {
   FILE_UPLOAD_RESUME,
   FILE_UPLOAD_START,
 } from '../event/constant';
-import { getTaskPassword, getTaskSecret } from './helper';
-import { ServiceError } from '../error';
+import { getTaskPassword } from './helper';
 import Driver from '@egos/storage/dist/abstract';
 import { FileJob } from './file.job';
 
@@ -32,8 +26,7 @@ export interface UploadPayload {
   taskId: string | number;
   bucket?: { name: string };
   fileId?: number;
-  isEncrypt?: boolean;
-  isDecrypt?: boolean;
+  cryptType?: string;
   password?: string;
 }
 
@@ -116,6 +109,7 @@ export class FileUploadJob extends FileJob {
         }
 
         const payload = await this.buildPayload(task);
+        console.log('1111>>>>>>', payload);
         if (!payload) {
           continue;
         }
@@ -148,6 +142,7 @@ export class FileUploadJob extends FileJob {
           });
       }
     } catch (err) {
+      console.log('upload error', err);
       this.failure(
         event,
         {
@@ -164,33 +159,40 @@ export class FileUploadJob extends FileJob {
   async buildPayload(task: TaskModel) {
     const payload = task.payload as UploadPayload;
     const password = getTaskPassword(task.id as number);
-    if (payload.isDecrypt || payload.isEncrypt) {
+    console.log('build payload', password, payload);
+    let passHash = '';
+    if (payload.cryptType) {
       if (!password) {
         return;
       }
+      passHash = md5(password);
     }
-    const passHash = md5(password);
     if (payload.fileId) {
       const file = await File.findById(payload.fileId);
       if (!file) {
         throw new Error('File not found');
       }
-      const fileObj = await FileObject.findById(file.fileId);
+      if (payload.cryptType === 'encrypt' && file.isEncrypt) {
+        return;
+      }
+      const fileObj = await FileObject.findById(file.objectId);
       if (!fileObj) {
         throw new Error('Fileobject not found');
       }
       const driver = getDriverByBucket(fileObj.bucket) as Driver;
       const local = driver.getPath(fileObj.remote);
       const ext = '.encrypt';
-      const name = payload.isEncrypt
-        ? fileObj.filename + ext
-        : fileObj.filename.replace(ext, '');
+      const name =
+        payload.cryptType === 'encrypt'
+          ? fileObj.remote + ext
+          : fileObj.remote.replace(ext, '');
       return { ...payload, local, name, password: passHash };
     }
     return { ...payload, password: passHash };
   }
 
   async upload(event: IpcMainEvent, payload: UploadPayload) {
+    console.log('upload payload', payload);
     const bucket = getAvailableBucket('file');
     const { local, parentId, name, taskId, password } = payload;
     if (!local) {
@@ -212,7 +214,7 @@ export class FileUploadJob extends FileJob {
         size: 0,
         type: 'folder',
         isFolder: 1,
-        fileId: 0,
+        objectId: 0,
         description: '',
         bucket: bucket.name,
         password: pwdHash,
@@ -241,21 +243,31 @@ export class FileUploadJob extends FileJob {
         password,
       });
       if (!fileObj) {
-        throw new Error('upload file failed1');
+        throw new Error('upload file failed');
       }
       const filename = fileObj.filename;
-      const res = await File.create({
-        parentId: parentId || 0,
-        filename,
-        path: path.join(...filepath, fileObj.filename),
-        size: fileObj.size,
-        type: fileObj.type,
-        isFolder: 0,
-        fileId: fileObj.id,
-        description: '',
-        password: pwdHash,
-        isEncrypted: payload.isEncrypt ? 1 : 0,
-      });
+      let res: FileModel;
+      if (payload.fileId) {
+        const file = (await File.findById(payload.fileId)) as FileModel;
+        file.objectId = fileObj.id;
+        file.password = pwdHash;
+        file.isEncrypt = payload.cryptType === 'encrypt' ? 1 : 0;
+        res = await file.save();
+      } else {
+        res = await File.create({
+          parentId: parentId || 0,
+          filename,
+          path: path.join(...filepath, fileObj.filename),
+          size: fileObj.size,
+          type: fileObj.type,
+          isFolder: 0,
+          objectId: fileObj.id,
+          description: '',
+          password: pwdHash,
+          isEncrypt: payload.cryptType === 'encrypt',
+        });
+      }
+
       this.success(event, {
         ...payload,
         taskId: taskId,
@@ -266,7 +278,7 @@ export class FileUploadJob extends FileJob {
           this.syncJob.add({
             fromBucket: bucket.name,
             toBucket,
-            fileId: fileObj.id,
+            objectId: fileObj.id,
           });
         });
         this.syncJob.start();
@@ -276,59 +288,24 @@ export class FileUploadJob extends FileJob {
     }
   }
 
-  async encrypt(event: IpcMainEvent, payload: UploadPayload) {
-    const fileObj = await this.addFile(event, payload);
-    if (!fileObj) {
-      return null;
-    }
-    if (!payload.fileId) {
-      return fileObj;
-    }
-    const cur = (await FileObject.findById(payload.fileId)) as Record<
-      string,
-      any
-    >;
-    const driver = getDriverByBucket(fileObj.bucket) as Driver;
-    // clean origin file
-    await driver.deleteFile(cur.remote);
-    const password = getTaskPassword(payload.taskId as number);
-    if (password) {
-      await File.update({ id: payload.fileId }, { password: md5(password) });
-    }
-    return fileObj;
-  }
-
-  async decrypt(event: IpcMainEvent, payload: any) {
-    const { taskId, fileId } = payload;
-    const fileObj = await FileObject.findById(payload.fileId);
-    if (!fileObj) {
-      return;
-    }
-    const driver = getDriverByBucket(fileObj.bucket) as Driver;
-    const password = getTaskPassword(payload.taskId as number);
-    const source = driver.getPath(fileObj.remote);
-    const dest = payload.dest;
-    //
-  }
-
-  async getSourceInfo(payload: { local?: string; fileId?: number }) {
-    console.log('getSourceInfo', payload);
-    if (payload.local) {
-      if (!fs.existsSync(payload.local)) {
-        throw new Error('file not exists');
-      }
-      const meta = await getFileMeta(payload.local);
-      return { source: payload.local, meta };
-    }
-    if (payload.fileId) {
-      const fileObj = (await FileObject.findById(payload.fileId)) as any;
-      const bucket = getBucketByName(fileObj.bucket);
-      const driver = getDriver(bucket);
-      const source = driver.getPath(fileObj.remote);
-      return { source, meta: fileObj.toJSON() };
-    }
-    throw new ServiceError({
-      message: 'invalid upload payload',
-    });
-  }
+  // async getSourceInfo(payload: { local?: string; fileId?: number }) {
+  //   console.log('getSourceInfo', payload);
+  //   if (payload.local) {
+  //     if (!fs.existsSync(payload.local)) {
+  //       throw new Error('file not exists');
+  //     }
+  //     const meta = await getFileMeta(payload.local);
+  //     return { source: payload.local, meta };
+  //   }
+  //   if (payload.fileId) {
+  //     const fileObj = (await FileObject.findById(payload.fileId)) as any;
+  //     const bucket = getBucketByName(fileObj.bucket);
+  //     const driver = getDriver(bucket);
+  //     const source = driver.getPath(fileObj.remote);
+  //     return { source, meta: fileObj.toJSON() };
+  //   }
+  //   throw new ServiceError({
+  //     message: 'invalid upload payload',
+  //   });
+  // }
 }
