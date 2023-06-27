@@ -47,13 +47,13 @@ interface CardProps {
 }
 export default (props: CardProps) => {
   const { pagination, onMove, selected, disable = [] } = props;
+  console.log('card props selected', selected);
   const [preview, setPreview] = useState<FileSchema | null>(null);
   const handleImagePreview = (file: FileSchema) => {
     setPreview(file);
   };
   const getCard = (item: FileSchema) => {
     const file = item.file as FileObjectSchema;
-    console.log(item);
     const dragProps = {
       currentItem: item,
       onMove,
@@ -70,7 +70,7 @@ export default (props: CardProps) => {
       return (
         <DropBox {...dropProps}>
           <DragBox {...dragProps}>
-            <div className="drag-item" data-id={item.id}>
+            <div>
               <FolderFilled
                 style={{ fontSize: 72, height: 72, color: 'cyan' }}
               />
@@ -111,13 +111,13 @@ export default (props: CardProps) => {
               <span style={{ textAlign: 'center', fontSize: 16 }}>
                 <LockFilled />
               </span>
-              <span>文件已加密</span>
+              <span style={{ textAlign: 'center' }}>文件已加密</span>
             </div>
           ) : (
             <Exhibit
               file={file}
+              boxClass="visible-file"
               itemClass="card-img"
-              className="drag-item"
               onDoubleClick={() => handleImagePreview(item)}
             />
           )}
@@ -128,7 +128,7 @@ export default (props: CardProps) => {
     return (
       <DragBox {...dragProps}>
         <div
-          className="card-file-icon drag-item"
+          className="card-file-icon"
           data-id={item.id}
           onDoubleClick={() => handleImagePreview(item)}
         >
@@ -170,9 +170,12 @@ export default (props: CardProps) => {
     return (
       <div key={item.id} className={classNames('card-box')}>
         <div
-          className={classNames('card-icon', {
+          className={classNames({
             selected: selected.includes(item.id),
+            'drag-item': true,
+            'card-icon': true,
           })}
+          data-id={item.id}
           onClick={(e) => handleClick(item, e)}
           onContextMenu={props.onContext(item)}
           onDoubleClick={directToDetail(item)}

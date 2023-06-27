@@ -7,12 +7,12 @@ import 'reflect-metadata';
 import { genSql } from '../../src/utils';
 import { Job } from '../../src/migration';
 
-@connect({ name: 'default', filename: '' })
+@connect('default')
 @table('m_users')
 class User extends Model {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   name: string;
   @column({ type: FieldTypes.INT, default: () => 'A' })
   age: number;
@@ -27,6 +27,7 @@ export default class UserJob extends Job {
     const user = new User();
     console.log('uuuuuuu', user);
     await this.dropTable(user.table);
+    console.log('11111', genSql(user.table, user.schema));
     await this.exec(genSql(user.table, user.schema));
     await this.addColumn(user.table, {
       name: 'user_age',

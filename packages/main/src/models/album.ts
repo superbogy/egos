@@ -8,19 +8,19 @@ class AlbumModel extends Base {
   id: number;
   @column({ type: FieldTypes.TEXT })
   name: string;
-  @column({ type: FieldTypes.INT, default: '' })
+  @column({ type: FieldTypes.INT, default: '""' })
   rank: number;
-  @column({ type: FieldTypes.INT, default: '' })
+  @column({ type: FieldTypes.INT, default: '""' })
   cover: number;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   source: string;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   sourceId: number;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   sortBy: string;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   description: number;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   tags?: number;
 }
 

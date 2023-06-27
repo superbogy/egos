@@ -1,11 +1,9 @@
 import Locker from 'await-lock';
-import { md5 } from '@egos/storage';
 import fs, { promises as sfp } from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { getAvailableBucket, getDriverByBucket } from '../lib/bucket';
 import { File, FileModel } from '../models/file';
-import { FileObject } from '../models/file-object';
 import { Task, TaskModel } from '../models/task';
 import { SynchronizeJob } from './synchronize';
 import { ipcMain, IpcMainEvent } from 'electron';
@@ -18,31 +16,9 @@ import {
 import { getTaskPassword } from './helper';
 import Driver from '@egos/storage/dist/abstract';
 import { FileJob } from './file.job';
+import { FileObject } from '../models';
+import { JobOptions, UploadPayload } from './interfaces';
 
-export interface UploadPayload {
-  local: string;
-  parentId?: number;
-  name?: string;
-  taskId: string | number;
-  bucket?: { name: string };
-  fileId?: number;
-  cryptType?: string;
-  password?: string;
-}
-
-export interface CheckPoint {
-  size: number;
-  total: number;
-  partNumber: number;
-  taskId: number | string;
-  percent: number;
-}
-
-export interface JobOptions {
-  channel: string;
-  action: string;
-  [key: string]: any;
-}
 export class FileUploadJob extends FileJob {
   private locker = new Locker();
   private readonly options: JobOptions;
@@ -56,39 +32,28 @@ export class FileUploadJob extends FileJob {
     this.action = options.action;
   }
 
-  watch() {
-    ipcMain.on(FILE_UPLOAD_START, (event: IpcMainEvent) => {
-      console.log('file:upload:start ---1');
-      event.reply(this.channel, { message: 'upload job started' });
-      this.run(event)
-        .then(() => {
-          event.reply(this.channel, {
-            status: 'done',
-            type: 'job',
-            message: 'upload job done',
-          });
-        })
-        .catch((err: Error) => {
-          event.reply(this.channel, {
-            status: 'error',
-            type: 'job',
-            message: err.message,
-          });
-        });
-    });
-    ipcMain.on(FILE_UPLOAD_RESUME, (event, { taskIds = [] }) => {
-      this.run(event, { id: { $in: taskIds }, status: 'pause' }).catch(
-        (err: Error) => {
-          event.reply(this.channel, {
-            status: 'failure',
-            type: 'job',
-            message: err.message,
-          });
+  async getTasks(): Promise<TaskModel[]> {
+    const where = {
+      $and: [
+        {
+          type: 'file',
         },
-      );
-    });
-    ipcMain.on(FILE_UPLOAD_PAUSE, (ev, payload) => {
-      this.pause(ev, payload);
+        { action: this.action },
+      ],
+      $or: [
+        { status: 'pending' },
+        {
+          status: 'processing',
+          updatedAt: new Date(Date.now() - 3600000).toISOString(),
+        },
+      ],
+    };
+    const tasks = await Task.find(where, { limit: 50 });
+    if (!tasks.length) {
+      return [];
+    }
+    return tasks.filter((t) => {
+      return t.retry < t.maxRetry;
     });
   }
 
@@ -96,20 +61,9 @@ export class FileUploadJob extends FileJob {
     try {
       await this.locker.acquireAsync();
       // make sure only one task in running
-      const where = { action: this.action, type: 'file', ...options };
-      const tasks = await Task.dequeue({ where, limit: 50, retry: 100 });
-      if (!tasks.length) {
-        return;
-      }
+      const tasks = await this.getTasks();
       for (const task of tasks) {
-        if (task.retry >= task.maxRetry) {
-          task.status = 'failure';
-          task.err = 'over max retry';
-          continue;
-        }
-
         const payload = await this.buildPayload(task);
-        console.log('1111>>>>>>', payload);
         if (!payload) {
           continue;
         }
@@ -135,8 +89,15 @@ export class FileUploadJob extends FileJob {
                 err: err.message,
                 retry: task.retry + 1,
               });
-              this.failure(event, payload, err.message);
             } else {
+              this.failure(
+                event,
+                {
+                  type: 'task',
+                  payload,
+                },
+                err.message,
+              );
               throw err;
             }
           });
@@ -156,43 +117,7 @@ export class FileUploadJob extends FileJob {
     }
   }
 
-  async buildPayload(task: TaskModel) {
-    const payload = task.payload as UploadPayload;
-    const password = getTaskPassword(task.id as number);
-    console.log('build payload', password, payload);
-    let passHash = '';
-    if (payload.cryptType) {
-      if (!password) {
-        return;
-      }
-      passHash = md5(password);
-    }
-    if (payload.fileId) {
-      const file = await File.findById(payload.fileId);
-      if (!file) {
-        throw new Error('File not found');
-      }
-      if (payload.cryptType === 'encrypt' && file.isEncrypt) {
-        return;
-      }
-      const fileObj = await FileObject.findById(file.objectId);
-      if (!fileObj) {
-        throw new Error('Fileobject not found');
-      }
-      const driver = getDriverByBucket(fileObj.bucket) as Driver;
-      const local = driver.getPath(fileObj.remote);
-      const ext = '.encrypt';
-      const name =
-        payload.cryptType === 'encrypt'
-          ? fileObj.remote + ext
-          : fileObj.remote.replace(ext, '');
-      return { ...payload, local, name, password: passHash };
-    }
-    return { ...payload, password: passHash };
-  }
-
   async upload(event: IpcMainEvent, payload: UploadPayload) {
-    console.log('upload payload', payload);
     const bucket = getAvailableBucket('file');
     const { local, parentId, name, taskId, password } = payload;
     if (!local) {
@@ -204,7 +129,6 @@ export class FileUploadJob extends FileJob {
       filepath.push(parent.path);
     }
     const stat = await promisify(fs.stat)(local);
-    const pwdHash = password ? md5(password) : '';
     if (stat.isDirectory()) {
       const folderName = path.basename(local);
       const folder = {
@@ -217,7 +141,7 @@ export class FileUploadJob extends FileJob {
         objectId: 0,
         description: '',
         bucket: bucket.name,
-        password: pwdHash,
+        password,
       };
       let current = await File.findOne({ path: folder.path });
       if (!current) {
@@ -235,13 +159,28 @@ export class FileUploadJob extends FileJob {
       }
       return current.toJSON();
     } else {
-      const fileObj = await this.addFile(event, {
+      const data = await this.addFile(event, {
         ...payload,
         local,
         name,
         taskId,
         password,
       });
+      if (!data) {
+        return null;
+      }
+      console.log('create file object', data);
+      const fileObj = await FileObject.create({ ...data });
+      if (payload.fileId) {
+        const file = await File.findById(payload.fileId);
+        const previosObj = await FileObject.findById(file?.objectId as number);
+        if (!previosObj) {
+          return null;
+        }
+        const driver = getDriverByBucket(previosObj.bucket);
+        const originSource = driver.getPath(previosObj.remote as string);
+        fs.unlinkSync(originSource);
+      }
       if (!fileObj) {
         throw new Error('upload file failed');
       }
@@ -250,7 +189,7 @@ export class FileUploadJob extends FileJob {
       if (payload.fileId) {
         const file = (await File.findById(payload.fileId)) as FileModel;
         file.objectId = fileObj.id;
-        file.password = pwdHash;
+        file.password = password || '';
         file.isEncrypt = payload.cryptType === 'encrypt' ? 1 : 0;
         res = await file.save();
       } else {
@@ -263,7 +202,7 @@ export class FileUploadJob extends FileJob {
           isFolder: 0,
           objectId: fileObj.id,
           description: '',
-          password: pwdHash,
+          password,
           isEncrypt: payload.cryptType === 'encrypt',
         });
       }
@@ -287,25 +226,4 @@ export class FileUploadJob extends FileJob {
       return res.toJSON();
     }
   }
-
-  // async getSourceInfo(payload: { local?: string; fileId?: number }) {
-  //   console.log('getSourceInfo', payload);
-  //   if (payload.local) {
-  //     if (!fs.existsSync(payload.local)) {
-  //       throw new Error('file not exists');
-  //     }
-  //     const meta = await getFileMeta(payload.local);
-  //     return { source: payload.local, meta };
-  //   }
-  //   if (payload.fileId) {
-  //     const fileObj = (await FileObject.findById(payload.fileId)) as any;
-  //     const bucket = getBucketByName(fileObj.bucket);
-  //     const driver = getDriver(bucket);
-  //     const source = driver.getPath(fileObj.remote);
-  //     return { source, meta: fileObj.toJSON() };
-  //   }
-  //   throw new ServiceError({
-  //     message: 'invalid upload payload',
-  //   });
-  // }
 }

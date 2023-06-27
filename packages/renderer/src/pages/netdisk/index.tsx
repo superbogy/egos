@@ -411,23 +411,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     });
     setQrUpload(!qrUpload);
   };
-  // const cryptProps = {
-  //   type: cryptType,
-  //   fileItem: currentItem,
-  //   visible: showCrypt,
-  //   onClose: () => setShowCrypt(!showCrypt),
-  //   onOk: async ({ password }: { password: string }) => {
-  //     await dispatch({
-  //       type: 'netdisk/crypt',
-  //       payload: {
-  //         id: currentItem?.id,
-  //         password,
-  //         type: cryptType,
-  //       },
-  //     });
-  //     setShowCrypt(false);
-  //   },
-  // };
   const contextHandlers = {
     move: console.log,
     open({ props }: { props: { file: string } }) {
@@ -597,15 +580,16 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
         <Edit {...editProps} />
         <Selecto
           container={document.getElementsByTagName('main')[0]}
-          dragContainer={'.ant-layout'}
+          dragContainer={'.netdisk-main'}
           selectableTargets={['.drag-item']}
           selectByClick={false}
-          selectFromInside={false}
+          selectFromInside={true}
           continueSelect={true}
           toggleContinueSelect={'shift'}
           keyContainer={window}
-          hitRate={0}
+          hitRate={80}
           onSelect={(e) => {
+            console.log('selecto e', e);
             setDragging(true);
             const selectedIds: number[] = [];
             e.selected.map((item) => {
@@ -615,7 +599,10 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
               }
               return item;
             });
-            setSelect([...selected, ...selectedIds]);
+            if (selectedIds.length) {
+              console.log('?????', selectedIds);
+              setSelect([...selected, ...selectedIds]);
+            }
           }}
         />
       </div>

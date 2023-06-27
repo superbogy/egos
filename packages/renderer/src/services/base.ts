@@ -30,7 +30,7 @@ export default class BaseService {
       args: payload,
     });
     console.log('execut res', res);
-    if (res.error) {
+    if (res?.error) {
       throw new ServiceError(res.message, { ...res });
     }
     return res;

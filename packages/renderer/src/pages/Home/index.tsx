@@ -4,7 +4,7 @@ import styles from './index.less';
 
 const HomePage: React.FC = () => {
   const global = useModel<any>('global');
-  console.log('fuck home', global);
+  console.log('home', global);
   return (
     <PageContainer ghost>
       <div className={styles.container}>fuck 123</div>

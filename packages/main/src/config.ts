@@ -38,6 +38,7 @@ export interface Configuration {
   translators: string[];
   articleUploadUrl: string;
   buckets: Record<string, any>[];
+  downloadFolder?: string;
 }
 
 export interface BucketItem {
@@ -146,8 +147,7 @@ export const writeConfig = async (config: any) => {
   }
 };
 
-
 export const encryptConfig = () => {
   const ciphertext = JSON.stringify(config);
   const pass = getSharedVar('password');
-}
+};

@@ -51,28 +51,28 @@ export class FileModel extends Base {
   id: number;
   @column({ type: FieldTypes.TEXT })
   type: string;
-  @column({ type: FieldTypes.INT, default: '' })
+  @column({ type: FieldTypes.INT, default: '""' })
   objectId: number;
-  @column({ type: FieldTypes.INT, default: '' })
+  @column({ type: FieldTypes.INT, default: '""' })
   parentId: number;
-  @column({ type: FieldTypes.INT, default: '' })
+  @column({ type: FieldTypes.INT, default: '""' })
   isFolder: number;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   path: string;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   filename: string;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   size: number;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   description: string;
   @column({
     type: FieldTypes.TEXT,
-    default: '',
+    default: '""',
     encode: jsonStringify,
     decode: jsonParser,
   })
   tags: string[];
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   password: string;
   @column({ type: FieldTypes.INT, default: 0 })
   isEncrypt: number;

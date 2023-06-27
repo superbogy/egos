@@ -131,13 +131,18 @@ export class Model {
 
   toRowData(props: Dict) {
     const schema = this.schema;
+    console.log('schema>>>>', schema);
     return Object.entries(props).reduce((acc, cur) => {
       const [k, v]: [string, any] = cur;
       const col: ColumnSchema = schema[k];
       if (col && k in props) {
         acc[col.name || k] = v;
       } else {
-        acc[k] = v;
+        if (v && typeof v === 'object') {
+          acc[k] = this.toRowData(v);
+        } else {
+          acc[k] = v;
+        }
       }
 
       return acc;
@@ -197,7 +202,7 @@ export class Model {
   ): Promise<any> {
     await this.connect();
     if (this.options?.debug) {
-      debug('[sql]: %s, [params]: %j', sql, params);
+      console.info('[sql]: %s, [params]: %j', sql, params);
     }
     const stmt: any = await this.db.prepare(sql);
     return stmt[method](params);
@@ -270,6 +275,7 @@ export class Model {
   async find(where: Dict = {}, options: FindOpts = {}): Promise<this[]> {
     const { limit, offset, order, fields, group } = options;
     const builder = new Builder({});
+    console.log('000000', this.toRowData(where));
     const { sql, params } = builder
       .table(this.table)
       .where(this.toRowData(where))

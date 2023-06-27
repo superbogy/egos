@@ -6,6 +6,7 @@ import Base from './base';
 import { File, FileModel } from './file';
 import fs from 'fs';
 import { jsonParser, jsonStringify } from '../lib/helper';
+import { FileObject } from './file-object';
 
 export enum QueueStatus {
   PENDING = 'pending',
@@ -31,9 +32,9 @@ export class TaskModel extends Base {
   retry: number;
   @column({ type: FieldTypes.INT, default: 3 })
   maxRetry: number;
-  @column({ type: FieldTypes.INT, default: '' })
+  @column({ type: FieldTypes.INT, default: '""' })
   targetId: number;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   err: string;
 
   enqueue(data: any) {
@@ -105,6 +106,24 @@ export class TaskModel extends Base {
     };
     await Task.create(task);
     return true;
+  }
+  async download({ ids, local }: { ids: number[]; local: string }) {
+    const files = await File.findByIds(ids);
+    for (const file of files) {
+      const task = {
+        action: 'download',
+        type: 'file',
+        payload: {
+          fileId: file.id,
+          local,
+        },
+        retry: 0,
+        status: 'pending',
+        maxRetry: 10,
+        err: '',
+      };
+      await Task.create(task);
+    }
   }
 }
 

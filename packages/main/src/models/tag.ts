@@ -8,7 +8,7 @@ class TagModel extends Base {
   id: number;
   @column({ type: FieldTypes.TEXT })
   name: string;
-  @column({ type: FieldTypes.TEXT, default: '' })
+  @column({ type: FieldTypes.TEXT, default: '""' })
   color: string;
 
   async findAndCreate(tag: string, color?: string) {

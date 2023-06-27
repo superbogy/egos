@@ -4,6 +4,7 @@ export enum FieldTypes {
   NULL = 'NULL',
   TEXT = 'TEXT',
   BLOB = 'BLOB',
+  TIMESTAMP = 'TIMESTAMP',
 }
 
 export interface ColumnSchema {

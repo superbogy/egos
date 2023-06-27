@@ -3,7 +3,7 @@ import { EventEmitter } from 'events';
 import { getDriver } from '@egos/storage';
 import { FileObject } from '../models/file-object';
 import { Synchronize } from '../models/synchronize';
-import Base from '@/models/base';
+import Base from '../models/base';
 import { Model } from '@egos/lite';
 
 export class SynchronizeJob {

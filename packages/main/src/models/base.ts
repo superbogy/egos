@@ -7,7 +7,7 @@ export default class Base extends Model {
   _channel: string;
   static channels: string[] = [];
   constructor(options?: ModelOpts) {
-    super(options);
+    super({ ...options, timestamp: true });
     this._channel = `egos.model.${this.table}`;
     this._options.debug = true;
     this.registerChannel();

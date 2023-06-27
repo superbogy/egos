@@ -16,9 +16,8 @@ export const objToKVPairs = (obj: any): any[] => {
 export const columnToSql = (column: ColumnSchema) => {
   let def: any = '';
   if (column.default !== undefined) {
-    def =
-      typeof column.default === 'function' ? column.default() : column.default;
-    def = `DEFAULT '${def}'`;
+    def = typeof column.default === 'function' ? '""' : column.default;
+    def = `DEFAULT ${String(def).toString()}`;
   }
   const colSql = [
     `\`${column.name}\``,
