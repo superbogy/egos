@@ -9,11 +9,13 @@ export interface UploadPayload {
   password?: string;
 }
 
-export interface AddFile {
-  name: string;
+export interface WriteFileParams {
+  source: string;
+  dest: string;
+  bucket: string;
   taskId: number | string;
-  local: string;
-  password: string;
+  password: string | undefined;
+  crypto?: string;
 }
 
 export interface CheckPoint {

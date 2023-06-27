@@ -6,15 +6,7 @@ import { getAvailableBucket, getDriverByBucket } from '../lib/bucket';
 import { File, FileModel } from '../models/file';
 import { Task, TaskModel } from '../models/task';
 import { SynchronizeJob } from './synchronize';
-import { ipcMain, IpcMainEvent } from 'electron';
-import {
-  // FILE_UPLOAD_CANCEL,
-  FILE_UPLOAD_PAUSE,
-  FILE_UPLOAD_RESUME,
-  FILE_UPLOAD_START,
-} from '../event/constant';
-import { getTaskPassword } from './helper';
-import Driver from '@egos/storage/dist/abstract';
+import { IpcMainEvent } from 'electron';
 import { FileJob } from './file.job';
 import { FileObject } from '../models';
 import { JobOptions, UploadPayload } from './interfaces';
@@ -30,31 +22,6 @@ export class FileUploadJob extends FileJob {
     this.syncJob = new SynchronizeJob();
     this.channel = options.channel;
     this.action = options.action;
-  }
-
-  async getTasks(): Promise<TaskModel[]> {
-    const where = {
-      $and: [
-        {
-          type: 'file',
-        },
-        { action: this.action },
-      ],
-      $or: [
-        { status: 'pending' },
-        {
-          status: 'processing',
-          updatedAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-      ],
-    };
-    const tasks = await Task.find(where, { limit: 50 });
-    if (!tasks.length) {
-      return [];
-    }
-    return tasks.filter((t) => {
-      return t.retry < t.maxRetry;
-    });
   }
 
   async run(event: IpcMainEvent, options?: any): Promise<any> {

@@ -3,12 +3,12 @@ import {
   getBucketByName,
   getDriverByBucket,
 } from '../lib/bucket';
-import { getDownloadPath, getFileMeta } from '../lib/helper';
+import { getFileMeta } from '../lib/helper';
 import { File, FileObject, Task, TaskModel } from '../models';
 import { getDriver, md5 } from '@egos/storage';
 import fs from 'fs';
 import { ServiceError } from '../error';
-import { UploadPayload } from './interfaces';
+import { UploadPayload, WriteFileParams } from './interfaces';
 import { IpcMainEvent, ipcMain } from 'electron';
 import uuid from 'bson-objectid';
 import Driver from '@egos/storage/dist/abstract';
@@ -21,10 +21,33 @@ export abstract class FileJob {
 
   async run(event: IpcMainEvent, options?: Record<string, any>) {}
 
+  async getTasks(): Promise<TaskModel[]> {
+    const where = {
+      $and: [
+        {
+          type: 'file',
+        },
+        { action: this.action },
+      ],
+      $or: [
+        { status: 'pending' },
+        // {
+        //   status: 'processing',
+        //   updatedAt: { $lt: new Date(Date.now() - 3600000).toISOString() },
+        // },
+      ],
+    };
+    const tasks = await Task.find(where, { limit: 50 });
+    return tasks.filter((t) => {
+      return t.retry < t.maxRetry;
+    });
+  }
+
   watch() {
+    console.log(`${this.channel}:start`);
     ipcMain.on(`${this.channel}:start`, (event: IpcMainEvent) => {
-      console.log('file:upload:start ---1');
-      event.reply(this.channel, { message: 'upload job started' });
+      console.log(`${this.channel}:start`);
+      event.reply(this.channel, { message: `${this.action} job started` });
       this.run(event)
         .then(() => {
           event.reply(this.channel, {
@@ -133,10 +156,6 @@ export abstract class FileJob {
     return payload;
   }
 
-  async getTasks(): Promise<TaskModel[]> {
-    return [];
-  }
-
   progress(event: IpcMainEvent, file: any, taskId: string) {
     return async (checkpoint: any) => {
       const { size, cursor, lastPoint, interval } = checkpoint;
@@ -163,7 +182,7 @@ export abstract class FileJob {
     };
   }
 
-  async write(event: IpcMainEvent, payload: any) {
+  async write(event: IpcMainEvent, payload: WriteFileParams) {
     const { bucket, source, dest, taskId, password, crypto } = payload;
     const driver = getDriverByBucket(bucket);
     const isEncrypt = crypto === 'encrypt';
@@ -184,6 +203,7 @@ export abstract class FileJob {
         });
       },
     });
+    return res;
   }
 
   async addFile(event: IpcMainEvent, payload: Omit<UploadPayload, 'parentId'>) {
@@ -193,24 +213,32 @@ export abstract class FileJob {
     const { source, meta } = await this.getSourceInfo(payload);
     const remote = name || uuid().toHexString() + '.' + meta.ext || 'unknow';
     const dest = driver.getPath(remote);
-    const secret = payload.password;
-    console.log('add file ', source, dest);
-    const res = await driver.multipartUpload(source, dest, {
-      ...payload,
-      isEncrypt: payload.cryptType === 'encrypt',
-      isDecrypt: payload.cryptType === 'decrypt',
-      taskId,
-      secret,
-      onProgress: this.progress(event, source, taskId as string),
-      onFinish: async () => {
-        event.reply(this.channel, {
-          taskId,
-          status: 'finish',
-          action: this.action,
-          type: 'task',
-        });
-      },
-    });
+    const writeParams = {
+      source,
+      dest,
+      taskId: payload.taskId,
+      bucket: bucket.name,
+      password: payload.password,
+      crypto: payload.cryptType,
+    };
+    const res = await this.write(event, writeParams);
+    // const secret = payload.password;
+    // const res = await driver.multipartUpload(source, dest, {
+    //   ...payload,
+    //   isEncrypt: payload.cryptType === 'encrypt',
+    //   isDecrypt: payload.cryptType === 'decrypt',
+    //   taskId,
+    //   secret,
+    //   onProgress: this.progress(event, source, taskId as string),
+    //   onFinish: async () => {
+    //     event.reply(this.channel, {
+    //       taskId,
+    //       status: 'finish',
+    //       action: this.action,
+    //       type: 'task',
+    //     });
+    //   },
+    // });
     const data: Record<string, any> = {
       ...meta,
       local: '',

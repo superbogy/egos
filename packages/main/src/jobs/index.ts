@@ -1,7 +1,6 @@
 import { ipcMain, IpcMainEvent } from 'electron';
-import { FILE_UPLOAD_CHANNEL } from './constants';
+import { FILE_DOWNLOAD_CHANNEL, FILE_UPLOAD_CHANNEL } from './constants';
 import { FileUploadJob } from './file-upload';
-import { FILE_DECRYPT_CANCEL, FILE_ENCRYPT_CANCEL } from '../event/constant';
 import { FileDownloadJob } from './file-download';
 
 export const registerJob = () => {
@@ -11,7 +10,8 @@ export const registerJob = () => {
   });
   fileUploadJob.watch();
   const downloadJob = new FileDownloadJob({
-    channel: FILE_DECRYPT_CANCEL,
+    channel: FILE_DOWNLOAD_CHANNEL,
     action: 'download',
   });
+  downloadJob.watch();
 };

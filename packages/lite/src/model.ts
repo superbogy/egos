@@ -131,15 +131,14 @@ export class Model {
 
   toRowData(props: Dict) {
     const schema = this.schema;
-    console.log('schema>>>>', schema);
     return Object.entries(props).reduce((acc, cur) => {
       const [k, v]: [string, any] = cur;
       const col: ColumnSchema = schema[k];
       if (col && k in props) {
         acc[col.name || k] = v;
       } else {
-        if (v && typeof v === 'object') {
-          acc[k] = this.toRowData(v);
+        if (Array.isArray(v)) {
+          acc[k] = v.map((vv) => this.toRowData(vv));
         } else {
           acc[k] = v;
         }
@@ -233,9 +232,7 @@ export class Model {
   async update(where: Dict, payload: Dict): Promise<ISqlite.RunResult> {
     const builder = new Builder({});
     const data = this.purify(payload);
-    console.log('data', data);
     const witTimestamp = this.attachTimestamp(data);
-    console.log(witTimestamp);
     const row = this.toRowData(witTimestamp);
     const { sql, params } = builder
       .table(this.table)

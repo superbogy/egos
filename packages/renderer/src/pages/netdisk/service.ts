@@ -38,6 +38,7 @@ export interface QueryInterface {
 export const query = async (payload: QueryInterface) => {
   const res = await FileSystem.getFiles(payload || {});
   Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
+  Remote.Electron.ipcRenderer.send('file:download:start', { type: 'file' });
   return res;
 };
 
@@ -61,7 +62,7 @@ export const download = async ({
 }) => {
   const { ipcRenderer } = Remote.Electron;
   await Task.download({ ids, local, type: 'file' });
-  return ipcRenderer.send('download', { type: 'file' });
+  return ipcRenderer.send('file:download:start', { type: 'file' });
 };
 
 export const openLocal = async ({ local }: { local: string }) => {

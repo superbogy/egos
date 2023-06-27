@@ -1,18 +1,13 @@
 import Locker from 'await-lock';
-import { getDriver, getNoneExistedFilename } from '@egos/storage';
+import { getNoneExistedFilename } from '@egos/storage';
 import fs, { promises as fsp } from 'fs';
 import path from 'path';
 
-import {
-  getAvailableBucket,
-  getBucketByName,
-  getDriverByBucket,
-} from '../lib/bucket';
-import { getDownloadPath, getFileMeta } from '../lib/helper';
+import { getDriverByBucket } from '../lib/bucket';
+import { getDownloadPath } from '../lib/helper';
 import { File } from '../models/file';
 import { FileObject } from '../models/file-object';
-import { Task } from '../models/task';
-import { SynchronizeJob } from './synchronize';
+import { Task, TaskModel } from '../models/task';
 import { IpcMainEvent } from 'electron';
 import { ServiceError } from '../error';
 import { FileJob } from './file.job';
@@ -23,17 +18,21 @@ export class FileDownloadJob extends FileJob {
   private readonly options: JobOptions;
   private locker: Locker;
   protected channel: string;
+
   constructor(options: JobOptions) {
     super();
     this.options = options;
     this.locker = new Locker();
     this.channel = options.channel;
+    this.action = options.action;
   }
 
   async run(event: IpcMainEvent, options?: any): Promise<any> {
     try {
       await this.locker.acquireAsync();
       const tasks = await this.getTasks();
+      console.log('download tasks');
+      console.log(tasks);
       for (const task of tasks) {
         if (task.retry >= task.maxRetry) {
           continue;
@@ -137,11 +136,13 @@ export class FileDownloadJob extends FileJob {
       return false;
     }
     const driver = getDriverByBucket(fileObj.bucket);
-    const dest = getNoneExistedFilename(savePath, payload.name as string);
+    const dest = await getNoneExistedFilename(payload.name as string, savePath);
     const source = driver.getPath(fileObj.remote);
     const writeParams = {
       source,
       dest,
+      taskId: payload.taskId,
+      bucket: fileObj.bucket,
       password: payload.password,
       crypto: file?.isEncrypt ? 'decrypt' : '',
     };
