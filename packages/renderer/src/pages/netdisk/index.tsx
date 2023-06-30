@@ -588,8 +588,8 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
           toggleContinueSelect={'shift'}
           keyContainer={window}
           hitRate={80}
+          ratio={0}
           onSelect={(e) => {
-            console.log('selecto e', e);
             setDragging(true);
             const selectedIds: number[] = [];
             e.selected.map((item) => {

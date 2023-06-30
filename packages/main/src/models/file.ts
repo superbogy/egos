@@ -116,7 +116,20 @@ export class FileModel extends Base {
     return folders;
   }
 
-  async getFileInfo(item: any) {
+  async getFilePath(id: number) {
+    const file = await this.findByIdOrError(id);
+    const obj = await FileObject.findByIdOrError(file.objectId);
+    const driver = getDriverByBucket(obj.bucket);
+    return driver.getPath(obj.remote);
+  }
+
+  async getFileInfoById(id: number) {
+    const file = await this.findByIdOrError(id);
+    const info = await this.getFileInfo(file);
+    return Object.assign({}, file.toJSON(), info);
+  }
+
+  async getFileInfo(item: this) {
     let file = await FileObject.findById(item.objectId);
     if (!file) {
       return;
@@ -179,7 +192,7 @@ export class FileModel extends Base {
           .filter((t: any) => t);
       }
       if (!item.isFolder) {
-        const newItem = await this.getFileInfo(file);
+        const newItem = await this.getFileInfo(item);
         list.push({ ...file, ...newItem });
         continue;
       }

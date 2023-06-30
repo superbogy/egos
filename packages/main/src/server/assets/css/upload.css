@@ -1,0 +1,86 @@
+#uploader {
+  background-color: rgba(105, 106, 112, 0.53);
+  padding: 30px;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  display: none;
+  justify-content: center;
+  align-items: center;
+}
+#uploader .uploader-wrapper {
+  height: auto;
+}
+#uploader .upload-content{
+  background-color: #fff;
+  min-width: 400px;
+  margin: 24px;
+  padding: 12px;
+}
+
+#uploader .input-group {
+  margin-bottom: 15px;
+
+}
+
+#uploader label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+#uploader input {
+  padding: 12px 20px;
+  width: 100%;
+  border: 1px solid #ccc;
+}
+
+.upload-btn {
+  width: 100%;
+  border: none;
+  background: rgb(64, 141, 223);
+  font-size: 16px;
+  color: white;
+  border-radius: 3px;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.nav-group .active {
+  background-color: rgb(57 129 198 / 60%);
+}
+
+tr.active {
+  background-color: rgba(53, 144, 229, 0.6) !important;
+}
+#up-drop {
+  width: 100%;
+  height: 240px;
+  background-color: #b2b2b24a;
+  border: 1px dashed #b2b2b2;
+  justify-content: center;
+  display: flex;
+  align-items: center;
+}
+
+.up-drop-over {
+  background-color: #d3cece4a !important;
+}
+
+.msg-popup{
+  position: fixed;
+  top: 120px;
+  right: 100px;
+  min-width: 120px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #55c83ab5;
+  padding: 24px;
+}
+
+.file-download {
+  cursor: pointer;
+  color: rgb(49, 86, 234);
+}

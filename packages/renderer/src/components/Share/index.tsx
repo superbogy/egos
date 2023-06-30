@@ -32,6 +32,7 @@ export default (props: ShareProps) => {
   const [qrLink, setQrLink] = useState<string>('');
   useEffect(() => {
     if (props.detail) {
+      console.log('share props', props);
       QRCode.toDataURL(props.detail.url as string).then((qrUrl) => {
         setQrLink(qrUrl);
       });

@@ -1,6 +1,7 @@
 import { connect, Model, ModelOpts } from '@egos/lite';
 import { ipcMain } from 'electron';
 import { getConfig } from '../config';
+import { ServiceError } from '../error';
 
 @connect('egos')
 export default class Base extends Model {
@@ -49,6 +50,15 @@ export default class Base extends Model {
           data: err.data,
         };
       }
+    });
+  }
+
+  async findByIdOrError(id: number | string) {
+    return this.findById(id).then((res) => {
+      if (!res) {
+        throw new ServiceError({ message: 'Record not found', code: 404 });
+      }
+      return res;
     });
   }
 }

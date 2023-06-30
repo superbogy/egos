@@ -6,6 +6,7 @@ import os from 'os';
 import { FileMeta } from '../interface';
 import { getConfig } from '../config';
 import { app } from 'electron';
+import getAvailablePort from 'get-port';
 
 export const getFileMeta = async (file: string) => {
   const stat = await fs.promises.stat(file);
@@ -74,4 +75,40 @@ export const genNoneExistFilename = (p: string, n: string): string => {
     }
     i++;
   }
+};
+
+let port = process.env.NODE_ENV === 'development' ? 6789 : '';
+let host: string = '';
+
+export const getPort = async () => {
+  if (port) {
+    return port;
+  }
+  port = await getAvailablePort();
+  return port;
+};
+
+export const getIPAddress = () => {
+  if (host) {
+    return host;
+  }
+  const interfaces = os.networkInterfaces();
+  for (let devName in interfaces) {
+    const iface = interfaces[devName];
+    if (!iface) {
+      continue;
+    }
+    for (let i = 0; i < iface.length; i++) {
+      const alias = iface[i];
+      if (
+        alias.family === 'IPv4' &&
+        alias.address !== '127.0.0.1' &&
+        !alias.internal
+      ) {
+        host = alias.address;
+        return host;
+      }
+    }
+  }
+  return '127.0.0.1';
 };

@@ -1,0 +1,88 @@
+<html>
+  <head>
+    <title>2Gos internal share</title>
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="css/photon.min.css" />
+    <link rel="stylesheet" href="css/upload.css" />
+    <script src="js/index.js" charset="utf-8"></script>
+  </head>
+  <body>
+    <form id="uploader" action='#' enctype='multipart/form-data' onclick="hideUploadForm(event)" >
+      <div class="uploader-wrapper">
+        <div class="upload-content">
+          <div class="input-group">
+            <label for='name'>Your name</label>
+            <input  class="form-control" name='username' id='up-username' placeholder="Enter your name" />
+          </div>
+          <input id='up-file' name="files" type="file" multiple style="display: none">
+          <div class="input-group">
+            <div id="up-drop" onclick="openFileDialog()">drop folder here</div>
+          </div>
+          <button class="upload-btn" type='submit'>Upload</button>
+        </div>
+      </div>
+    </form>
+    <div class="window">
+      <!-- .toolbar-header sits at the top of your app -->
+      <!-- Your app's content goes inside .window-content -->
+      <div class="window-content">
+        <div class="pane-group">
+          <div class="pane pane-sm sidebar">
+            <nav class="nav-group">
+              <h5 class="nav-group-title">
+                <span class="icon icon-share"></span>
+                <span>Share</span>
+              </h5>
+              <% category.forEach(function(item) { %>
+                <span class="nav-group-item<%= type===item.name ? ' active' : '' %>" onclick="handleNavClick(event,'<%= item.name %>')">
+                  <span class="icon icon-<%= item.icon %>"></span>
+                  <span><%= item.alias %></span>
+                </span>
+              <% }) %>
+            </nav>
+            <nav class="nav-group">
+              <h5 class="nav-group-title">
+                <span class="icon icon-upload"></span>
+                <span>Upload</span>
+              </h5>
+              <span class="nav-group-item" onclick="handleNavClick(event, 'upload')">
+                <span class="icon icon-direction"></span>
+                Current upload
+              </span>
+              <span class="nav-group-item">
+                <span class="icon icon-upload-cloud"></span>
+                <span onclick="showUploadForm()">Upload files</span>
+              </span>
+          </div>
+
+          <div class="pane">
+            <table class="table-striped">
+              <thead>
+                <tr>
+                  <th>type</th>
+                  <th>Name</th>
+                  <th>mime</th>
+                  <th>Expired At</th>
+                  <th>Author</th>
+                  <td>Action</td>
+                </tr>
+              </thead>
+              <tbody>
+                <% data.forEach(function(item) { %>
+                  <tr onclick="handleColumnClick(event)">
+                  <td><%= item.type %></td>
+                  <td><%= item.resource.filename%></td>
+                  <td><%= item.resource.type%></td>
+                  <td><%= item.expiredAt %></td>
+                  <td>Tommy</td>
+                  <td><span class="icon icon-download file-download" onclick="download('<%= item.id %>', '<%= item.resource.filename %>')"></span></td>
+                </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

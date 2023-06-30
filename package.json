@@ -6,7 +6,12 @@
     "build:m": "pnpm --filter=./packages/main run app:dist",
     "build:r": "pnpm --filter=./packages/renderer run build",
     "dev:m": "pnpm --filter=./packages/main run dev",
-    "dev:r": "pnpm --filter=./packages/renderer run dev"
+    "dev:r": "pnpm --filter=./packages/renderer run dev",
+    "dev:w": "pnpm --filter=./packages/web run dev"
+  },
+  "dependencies": {
+    "concurrently": "^7.6.0",
+    "jest": "^29.4.3"
   },
   "devDependencies": {
     "@types/react": "^18.0.0",
@@ -42,9 +47,5 @@
         "eslint"
       ]
     }
-  },
-  "dependencies": {
-    "concurrently": "^7.6.0",
-    "jest": "^29.4.3"
   }
 }

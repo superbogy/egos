@@ -1,0 +1,51 @@
+{
+  "name": "@egos/web",
+  "private": true,
+  "scripts": {
+    "build": "max build",
+    "dev": "max dev",
+    "format": "prettier --cache --write .",
+    "postinstall": "max setup",
+    "setup": "max setup",
+    "start": "npm run dev"
+  },
+  "lint-staged": {
+    "*.{js,jsx,less,md,json}": [
+      "prettier --write"
+    ],
+    "*.ts?(x)": [
+      "prettier --parser=typescript --write"
+    ]
+  },
+  "dependencies": {
+    "@ant-design/icons": "^4.0.0",
+    "@ant-design/pro-layout": "^6.5.0",
+    "@umijs/max": "^4.0.47",
+    "@umijs/plugins": "^4.0.41",
+    "@videojs-player/react": "^1.0.0",
+    "antd": "^4.22.3",
+    "classnames": "^2.2.6",
+    "dva-core": "^2.0.4",
+    "dva-model-extend": "^0.1.2",
+    "file-icons-js": "^1.1.0",
+    "human-format": "^1.0.0",
+    "qrcode": "^1.5.1",
+    "react-infinite-scroller": "^1.2.6",
+    "video.js": "^7.20.2"
+  },
+  "devDependencies": {
+    "@types/human-format": "^1.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@typescript-eslint/eslint-plugin": "^5.36.2",
+    "@umijs/preset-react": "1.x",
+    "@umijs/test": "^3.5.34",
+    "lint-staged": "^10.0.7",
+    "prettier": "^2.2.0",
+    "typescript": "^4.1.2",
+    "yorkie": "^2.0.0"
+  },
+  "gitHooks": {
+    "pre-commit": "lint-staged"
+  }
+}

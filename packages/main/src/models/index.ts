@@ -4,3 +4,5 @@ export * from './file-object';
 export * from './task';
 export * from './tag';
 export * from './favorite';
+export * from './share';
+export * from './photo';

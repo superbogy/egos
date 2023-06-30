@@ -5,6 +5,7 @@ import { File } from '../models/file';
 import { FileObject } from '../models/file-object';
 import { Task } from '../models/task';
 import { Tag } from '../models/tag';
+import { Share } from '../models/share';
 
 export default class SetupJob extends Job {
   async up() {
@@ -21,5 +22,7 @@ export default class SetupJob extends Job {
     await this.exec(tagSql);
     const favoriteSql = utils.genSql(Favorite.table, Favorite.schema);
     await this.exec(favoriteSql);
+    const shareSql = utils.genSql(Share.table, Share.schema);
+    await this.exec(shareSql);
   }
 }

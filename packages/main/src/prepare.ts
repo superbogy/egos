@@ -6,6 +6,7 @@ import { registerJob } from './jobs';
 import './models';
 import { BrowserWindow } from 'electron';
 import { registerEvent } from './event';
+import { getServer } from './server';
 
 export default async (win: BrowserWindow) => {
   const setting = await loadSetting();
@@ -14,7 +15,7 @@ export default async (win: BrowserWindow) => {
     filename: setting.db as string,
   });
   // @todo
-  if (!setting.setup) {
+  if (setting.setup) {
     const folder = path.join(path.dirname(__filename), 'migration');
     const migrate = new Migration(db, folder);
     await migrate.run();
@@ -22,4 +23,5 @@ export default async (win: BrowserWindow) => {
   registerChannel();
   registerJob();
   registerEvent(win);
+  getServer;
 };

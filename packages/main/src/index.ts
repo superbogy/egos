@@ -11,6 +11,7 @@ import fs from 'fs';
 import url from 'url';
 import { getFileMeta } from './lib/helper';
 import './global';
+import { getServer } from './server';
 
 let mainWindow: any;
 const publicDir = path.join(__dirname, './public');
@@ -155,4 +156,10 @@ app.on('activate', () => {
   if (!mainWindow) {
     createWindow();
   }
+});
+
+getServer().then(({ app, ip, port }) => {
+  app.listen(port as number, '0.0.0.0', () => {
+    console.log(`http server listen on----- http://${ip}:${port}`);
+  });
 });

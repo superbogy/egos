@@ -198,7 +198,6 @@ const model = {
       });
     },
     *save({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
-      console.log('ssssave', payload);
       yield call(services.save, payload);
       yield put({
         type: 'query',
@@ -207,6 +206,11 @@ const model = {
     },
     *share({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
       const res: Record<string, any> = yield call(services.share, payload);
+      console.log('share result', res);
+      const shareDetail: Record<string, any> = yield call(services.getShare, {
+        id: res.sourceId,
+      });
+      console.log('new share detail', shareDetail);
       yield put({
         type: 'updateState',
         payload: { shareDetail: res },
@@ -217,6 +221,7 @@ const model = {
         services.getShare,
         payload,
       );
+      console.log('?????', payload, shareDetail);
       yield put({
         type: 'updateState',
         payload: { shareDetail },

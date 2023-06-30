@@ -52,28 +52,36 @@ export class TaskModel extends Base {
   async buildUploadTasks({
     files,
     parentId,
+    type = 'file',
   }: {
     files: string[];
     parentId: number;
+    type: string;
   }) {
     for (const file of files) {
-      await this.uploadJob(file, parentId);
+      await this.uploadJob({ local: file, parentId, type });
     }
   }
 
-  async uploadJob(file: string, parentId: number) {
+  async uploadJob(payload: {
+    local?: string;
+    parentId: number;
+    fileId?: number;
+    type: string;
+  }) {
     try {
+      const { local, fileId, parentId } = payload;
       const parent = await File.findById(parentId);
       if (!parent) {
         throw new ServiceError({
           message: 'Upload folder not found1',
         });
       }
-      const stat = fs.statSync(file);
+      const file = fileId ? await File.getFilePath(fileId) : local;
       const task = {
         action: 'upload',
         type: 'file',
-        payload: { local: file, size: stat.size, parentId },
+        payload: { local: file, parentId },
         status: 'pending',
         retry: 0,
         maxRetry: 10,
