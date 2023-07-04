@@ -1,5 +1,5 @@
 import CryptoJS from 'crypto-js';
-import Stream, { Transform, Readable } from 'stream';
+import Stream, { Transform, Readable, Writable, ReadableOptions } from 'stream';
 import crypto from 'crypto';
 import { md5 } from './utils';
 import fs from 'fs';
@@ -71,6 +71,7 @@ export function createEncryptStream(
 ): Transform {
   let initialized: boolean = false;
   const iv = crypto.randomBytes(16);
+  console.log(iv);
   const readable =
     source instanceof Stream ? source : fs.createReadStream(source);
   const key = crypto.scryptSync(pass, 'salt', 32);
@@ -90,14 +91,29 @@ export function createEncryptStream(
   return readable.pipe(encryptStream).pipe<Transform>(transform);
 }
 
-export const createDecryptStream = async (source: string, pass: string) => {
-  const fd = await fs.promises.open(source);
-  const iv = Buffer.alloc(16);
-  await fd.read(iv, 0, 16, 0);
-  await fd.close();
-  const readable = fs.createReadStream(source, { start: 16 });
-  console.log('decrypt', pass, pass.length);
-  const key = crypto.scryptSync(pass, 'salt', 32);
-  const decryptStream = crypto.createDecipheriv('aes-256-cbc', key, iv);
-  return readable.pipe<Transform>(decryptStream);
+export const createDecryptStream = async (
+  source: string | Readable,
+  pass: string,
+) => {
+  if (source instanceof Readable) {
+    const iv: Buffer = await new Promise((resolve, reject) => {
+      source.once('readable', () => {
+        resolve(source.read(16));
+      });
+      source.once('error', reject);
+    });
+    const key = crypto.scryptSync(pass, 'salt', 32);
+    const decryptStream = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    return source.pipe<Transform>(decryptStream);
+  } else {
+    const fd = await fs.promises.open(source);
+    const iv = Buffer.alloc(16);
+    await fd.read(iv, 0, 16, 0);
+    await fd.close();
+    const readable = fs.createReadStream(source, { start: 16 });
+    console.log('decrypt', pass, pass.length);
+    const key = crypto.scryptSync(pass, 'salt', 32);
+    const decryptStream = crypto.createDecipheriv('aes-256-cbc', key, iv);
+    return readable.pipe<Transform>(decryptStream);
+  }
 };

@@ -27,6 +27,7 @@ type CtxFn = (props: any) => void;
 export interface CtxProps {
   currentItem: any;
   starred: string[];
+  selected: any[];
   onDetail?: CtxFn;
   onRename?: CtxFn;
   onMove?: CtxFn;
@@ -46,6 +47,7 @@ export interface CtxProps {
 
 export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
   const currentItem = props.currentItem;
+  const selected = props.selected || [];
   const [pwd, setPwd] = useState<boolean>(false);
   const ctxItem = useContextMenu<any>({
     id: 'netdisk-item-ctx',
@@ -59,27 +61,31 @@ export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
     item: ctxItem,
     container: ctxContainer,
   }));
-  const getStarredStyle = () => {
+  const getHighlightStyle = (key: string) => {
     const style: { color?: string } = {};
     if (!currentItem) {
       return style;
     }
-    if (currentItem.starred || props.starred.includes(currentItem.id)) {
+    if (currentItem[key] || props[key]?.includes(currentItem.id)) {
       style.color = 'red';
     }
     return style;
   };
   const cryptType = currentItem?.isEncrypt ? 'decrypt' : 'encrypt';
+  const isMultiSelected = selected.length > 1;
   return (
     <>
       <ContextMenu id="netdisk-item-ctx">
-        <Item onClick={(ctx: any) => props.onDetail(ctx.props)}>
+        <Item
+          onClick={(ctx: any) => props.onDetail(ctx.props)}
+          disabled={isMultiSelected}
+        >
           <div className="netdisk-ctx-text">
             <span>show</span>
             <FundViewOutlined />
           </div>
         </Item>
-        <Item onClick={props.onRename}>
+        <Item onClick={props.onRename} disabled={isMultiSelected}>
           <div className="netdisk-ctx-text">
             <span>rename</span>
             <EditOutlined />
@@ -132,10 +138,10 @@ export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
         <Item onClick={props.onStar}>
           <div className="netdisk-ctx-text">
             <span>star</span>
-            <StarFilled style={getStarredStyle()} />
+            <StarFilled style={getHighlightStyle('starred')} />
           </div>
         </Item>
-        <Item onClick={() => setPwd(true)}>
+        <Item onClick={() => setPwd(true)} disabled={isMultiSelected}>
           <div className="netdisk-ctx-text">
             {currentItem?.isEncrypt ? (
               <>
@@ -150,10 +156,10 @@ export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
             )}
           </div>
         </Item>
-        <Item onClick={props.onShare}>
+        <Item onClick={props.onShare} disabled={isMultiSelected}>
           <div className="netdisk-ctx-text">
             <span>share</span>
-            <ShareAltOutlined />
+            <ShareAltOutlined style={getHighlightStyle('shared')} />
           </div>
         </Item>
       </ContextMenu>

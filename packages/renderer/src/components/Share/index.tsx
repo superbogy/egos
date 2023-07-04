@@ -1,6 +1,6 @@
 import { dayMs } from '@/lib/helper';
 import { FileSchema } from '@/services/file';
-import { ShareSchema } from '@/services/share';
+import { ShareSchema, UrlItem } from '@/services/share';
 import { CopyOutlined } from '@ant-design/icons';
 import {
   Button,
@@ -15,6 +15,8 @@ import {
 import QRCode from 'qrcode';
 import { useEffect, useState } from 'react';
 import './index.less';
+import { timeScale } from '@/utils';
+import humanFormat from 'human-format';
 
 interface ShareProps {
   visible: boolean;
@@ -25,16 +27,22 @@ interface ShareProps {
 }
 export default (props: ShareProps) => {
   const file = props.file as FileSchema;
+  console.log('shuihuzhuang share props', props);
   const [formData, setFormData] = useState<any>({
     expiry: 1,
     isExternal: false,
   });
-  const [qrLink, setQrLink] = useState<string>('');
+  const [qrLink, setQrLink] = useState<string[]>([]);
   useEffect(() => {
-    if (props.detail) {
-      console.log('share props', props);
-      QRCode.toDataURL(props.detail.url as string).then((qrUrl) => {
-        setQrLink(qrUrl);
+    const { internal } = props.detail?.url || {};
+    if (internal) {
+      console.log('share props', props.detail);
+      Promise.all(
+        internal.map((item: UrlItem) => {
+          return QRCode.toDataURL(item.url as string);
+        }),
+      ).then((urls) => {
+        setQrLink(urls);
       });
     }
   }, [props.detail]);
@@ -65,21 +73,26 @@ export default (props: ShareProps) => {
     props.onShare({ ...formData, id: (file as FileSchema).id });
   };
   const [isCopyUrl, setIsCopyUrl] = useState(false);
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(formData.url);
+  const copyToClipboard = (url: string) => {
+    navigator.clipboard.writeText(url);
     setIsCopyUrl(true);
   };
+  const ttl = props.detail
+    ? new Date(props.detail.expiredAt).getTime() - Date.now()
+    : 0;
+  console.log('ffffformData', formData.url);
   return (
     <>
       <Modal
         open={props.visible}
         onCancel={handleCancel}
+        width={640}
         footer={[
           <Button key="back" onClick={console.log} danger>
             Cancel
           </Button>,
           <Button key="submit" type="primary" onClick={handleOk}>
-            Generate
+            {ttl ? 'Refresh' : 'Generate'}
           </Button>,
         ]}
       >
@@ -87,10 +100,24 @@ export default (props: ShareProps) => {
           {props.detail ? (
             <Card
               hoverable
-              style={{ width: 240, marginRight: 12 }}
-              cover={<img src={qrLink} />}
+              style={{ width: 280, marginRight: 12 }}
+              cover={qrLink.map((link: string) => (
+                <img src={link} key={link} />
+              ))}
             >
-              <Card.Meta title={file.filename} />
+              <Card.Meta
+                title={file.filename}
+                description={
+                  <>
+                    <span>TTL: </span>
+                    <span>
+                      {humanFormat(ttl, {
+                        scale: timeScale,
+                      })}
+                    </span>
+                  </>
+                }
+              />
             </Card>
           ) : null}
 
@@ -107,31 +134,64 @@ export default (props: ShareProps) => {
                   <Select.Option value={-1}> forever</Select.Option>
                 </Select>
               </Form.Item>
-              <Form.Item label="Type" name="isExternal">
+              <Form.Item label="Disable external url" name="isExternal">
                 <Switch
                   className="switch-url-type"
-                  checkedChildren="external"
-                  unCheckedChildren="internal"
+                  checkedChildren="false"
+                  unCheckedChildren="true"
                   defaultChecked={formData.isExternal}
                   onChange={(value) => updateFormData({ isExternal: value })}
                 />
               </Form.Item>
               {formData.url ? (
-                <Form.Item label="Url" name="url">
-                  <Input.Group compact>
-                    <Input
-                      value={formData.url}
-                      style={{ width: 'calc(100% - 28px)' }}
-                    />
-                    <Tooltip title="copy to clipboard">
-                      <Button
-                        type={isCopyUrl ? 'dashed' : 'default'}
-                        icon={<CopyOutlined />}
-                        onClick={copyToClipboard}
-                      />
-                    </Tooltip>
-                  </Input.Group>
-                </Form.Item>
+                <>
+                  {formData.url.internal?.map((item: UrlItem) => (
+                    <Form.Item
+                      label={item.bucket}
+                      name={item.bucket}
+                      key={item.bucket}
+                    >
+                      <span
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'row',
+                        }}
+                      >
+                        <Input value={item.url} style={{ marginRight: 2 }} />
+                        <Tooltip title="copy to clipboard">
+                          <Button
+                            type={isCopyUrl ? 'dashed' : 'default'}
+                            icon={<CopyOutlined />}
+                            onClick={() => copyToClipboard(item.url)}
+                          />
+                        </Tooltip>
+                      </span>
+                    </Form.Item>
+                  ))}
+                  {formData.url.external.map((item: UrlItem) => (
+                    <Form.Item
+                      label={item.bucket}
+                      name={item.bucket}
+                      key={item.bucket}
+                    >
+                      <span
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'row',
+                        }}
+                      >
+                        <Input value={item.url} style={{ marginRight: 2 }} />
+                        <Tooltip title="copy to clipboard">
+                          <Button
+                            type={isCopyUrl ? 'dashed' : 'default'}
+                            icon={<CopyOutlined />}
+                            onClick={() => copyToClipboard(item.url)}
+                          />
+                        </Tooltip>
+                      </span>
+                    </Form.Item>
+                  ))}
+                </>
               ) : null}
             </Form>
           </div>

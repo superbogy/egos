@@ -1,15 +1,19 @@
-(global as any).shared = {
-  password: 'eng',
-  username: 'egos',
-};
+import { LRUCache } from 'lru-cache';
+
 export default global;
 
+const shared = new LRUCache({
+  ttl: 30 * 60 * 100,
+  max: 500,
+  updateAgeOnGet: true,
+});
+(global as any).shared = shared;
+
 export const setSharedVar = (name: string, val: any) => {
-  (global as any).shared[name] = val;
-  console.log('set global', (global as any).shared);
+  shared.set(name, val);
 };
 
 export const getSharedVar = (name: string) => {
-  console.log('get global', (global as any).shared, name);
-  return (global as any).shared[name];
+  shared.get(name);
+  return shared.get(name) as string;
 };

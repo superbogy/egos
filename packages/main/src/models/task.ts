@@ -7,6 +7,7 @@ import { File, FileModel } from './file';
 import fs from 'fs';
 import { jsonParser, jsonStringify } from '../lib/helper';
 import { FileObject } from './file-object';
+import { getAvailableBucket } from '@/lib/bucket';
 
 export enum QueueStatus {
   PENDING = 'pending',
@@ -77,7 +78,13 @@ export class TaskModel extends Base {
           message: 'Upload folder not found1',
         });
       }
-      const file = fileId ? await File.getFilePath(fileId) : local;
+      const file = local ? local : await File.getFilePath(fileId as number);
+      // const bucket = getAvailableBucket('file');
+      // const obj = await FileObject.create({
+      //   bucket: bucket.name,
+      //   remote: '',
+      // });
+      // await File.create({});
       const task = {
         action: 'upload',
         type: 'file',

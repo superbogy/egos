@@ -4,7 +4,7 @@ import { FieldTypes } from '@egos/lite/dist/schema';
 import Driver from '@egos/storage/dist/abstract';
 import Base from './base';
 import fs from 'fs';
-import { FileObject, FileObjectModel } from './file-object';
+import { FileObject } from './file-object';
 import { jsonParser, jsonStringify } from '../lib/helper';
 import { Tag } from './tag';
 import R from 'ramda';
@@ -12,6 +12,8 @@ import { ServiceError } from '../error';
 import { Task } from './task';
 import { setTaskSecret } from '../jobs/helper';
 import { md5 } from '@egos/storage';
+import { Favorite } from './favorite';
+import { Share } from './share';
 
 export const quickEntrance = [
   { filename: 'Document', path: '/Document' },
@@ -67,7 +69,7 @@ export class FileModel extends Base {
   description: string;
   @column({
     type: FieldTypes.TEXT,
-    default: '""',
+    default: '[]',
     encode: jsonStringify,
     decode: jsonParser,
   })
@@ -76,6 +78,8 @@ export class FileModel extends Base {
   password: string;
   @column({ type: FieldTypes.INT, default: 0 })
   isEncrypt: number;
+  @column({ type: FieldTypes.TEXT, default: 'uploading' })
+  status: string;
 
   async buildDefaultFolders() {
     const isRoot = await this.findOne({ parentId: 0 });
@@ -180,7 +184,20 @@ export class FileModel extends Base {
     const tagNames: string[] = R.flatten(R.pluck('tags', files)).filter(
       (i) => i,
     );
+    const sourceIds = files.map((f) => f.id);
     const tags = await Tag.find({ name: { $in: tagNames } });
+    const starred = await Favorite.find({
+      type: 'file',
+      sourceId: { $in: sourceIds },
+    });
+    const starredIds = starred.map((item) => Number(item.sourceId));
+    const shares = await Share.find({
+      type: 'file',
+      sourceId: { $in: sourceIds },
+    });
+    const shareIds = shares
+      .filter((item) => new Date(item.expiredAt).getTime() > Date.now())
+      .map((s) => Number(s.sourceId));
     for (const item of files) {
       const file = item.toJSON();
       if (file.tags?.length) {
@@ -196,6 +213,9 @@ export class FileModel extends Base {
         list.push({ ...file, ...newItem });
         continue;
       }
+      file.starred = starredIds.includes(file.id);
+      file.shared = shareIds.includes(file.id);
+      console.log('fuck', shareIds, file.id, file.shared);
       list.push(file);
     }
     return {

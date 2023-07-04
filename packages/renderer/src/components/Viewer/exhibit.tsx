@@ -18,6 +18,9 @@ interface ExhibitProps {
 }
 export default (props: ExhibitProps) => {
   const file = props.file || {};
+  if (!file) {
+    return null;
+  }
   const { boxClass, itemClass, avatarClass } = props;
   const fileClass = getClassWithColor('.' + file.ext);
   const getContent = () => {
@@ -25,12 +28,11 @@ export default (props: ExhibitProps) => {
       return (
         <img
           className={classNames('exhibit-file-item', [itemClass])}
-          src={`atom://${file.local}`}
+          src={`atom://${file.local}?fileId=${file.id}`}
           onClick={(e) => e.preventDefault()}
         />
       );
     }
-
     if (file.type === 'video') {
       return (
         <Fragment>
@@ -39,7 +41,7 @@ export default (props: ExhibitProps) => {
             controls={props.controls}
           >
             <source
-              src={`http://local-egos${file.local}#t=0.5`}
+              src={`http://local-egos${file.local}?fileId=${file.id}`}
               type="video/mp4"
             />
           </video>

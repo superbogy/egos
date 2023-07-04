@@ -1,8 +1,16 @@
 import Model from './base';
 
+export interface UrlItem {
+  bucket: string;
+  url: string;
+}
+
 export interface ShareSchema {
   id: number;
-  url: string;
+  url: {
+    internal: UrlItem[];
+    external: UrlItem[];
+  };
   type: string;
   sourceId: number;
   action: string;

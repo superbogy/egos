@@ -10,9 +10,14 @@ import prepare from './prepare';
 import fs from 'fs';
 import url from 'url';
 import { getFileMeta } from './lib/helper';
+import { getDriverByBucket } from './lib/bucket';
 import './global';
 import { getServer } from './server';
-
+import { getSharedVar, setSharedVar } from './global';
+import { File, FileObject } from './models';
+import { createDecryptStream } from '@egos/storage/dist/security';
+import { md5 } from '@egos/storage';
+import { PassThrough } from 'stream';
 let mainWindow: any;
 const publicDir = path.join(__dirname, './public');
 const fileURL = path.join('file:', publicDir, 'index.html');
@@ -111,25 +116,54 @@ app.whenReady().then(async () => {
     const filePath = path.join(__dirname, pathName);
     respond({ path: filePath });
   });
-  protocol.registerFileProtocol('atom', async (request, callback) => {
+  protocol.registerStreamProtocol('atom', async (request, callback) => {
     const filePath = url.fileURLToPath(
       'file://' + request.url.slice('atom://'.length),
     );
+    const parmas = new URL(request.url);
+    console.log(request, parmas);
+    const fileId = parmas.searchParams.get('fileId');
     const meta = await getFileMeta(filePath);
+    const fileObj = await FileObject.findById(fileId as string);
+    if (!fileObj) {
+      return callback({
+        statusCode: 404,
+      });
+    }
+    const file = await File.findOne({ objectId: fileId });
+    if (!file) {
+      return callback({
+        statusCode: 404,
+      });
+    }
     const readable = fs.createReadStream(filePath);
+    console.log(file.isEncrypt);
+    if (file.isEncrypt) {
+      setSharedVar(`file:preview:secret:${fileId}`, '123');
+      const secret = getSharedVar(`file:preview:secret:${fileId}`);
+      const driver = getDriverByBucket(fileObj.bucket);
+      const source = driver.getPath(fileObj.remote);
+      const stream = await createDecryptStream(source, md5(secret));
+      return callback({
+        statusCode: 200,
+        data: stream,
+        method: 'GET',
+        mimeType: fileObj.mime,
+      });
+    }
+    // const readable = fs.createReadStream(filePath);
     callback({
       statusCode: 200,
       data: readable,
       method: 'GET',
       mimeType: meta.mime,
-      path: filePath,
     });
   });
 
   session.defaultSession.webRequest.onBeforeRequest(
     { urls: [`${LOCAL_FILE_HOST}/*`] },
     (details, callback) => {
-      // console.log('before request', details);
+      console.log('before request', details);
       callback({
         redirectURL: `atom://${details.url.replace(LOCAL_FILE_HOST, '')}`,
       });
@@ -137,10 +171,9 @@ app.whenReady().then(async () => {
   );
   await prepare(mainWindow);
 });
-// app.on('ready', () => {
-//   devtoolsInstall();
-//   createWindow();
-// });
+app.on('ready', () => {
+  createWindow();
+});
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true } },

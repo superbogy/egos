@@ -10,6 +10,7 @@ import error from './error';
 import { getShareFileObj } from './helper';
 import { Application, Request, Response } from 'express';
 import { NextFunction } from 'express-serve-static-core';
+import { getFileMeta } from '@/lib/helper';
 
 const upload = multer({ dest: path.join(os.tmpdir(), 'egos') });
 export default (app: Application) => {
@@ -27,11 +28,9 @@ export default (app: Application) => {
           token,
         });
         const driver = getDriverByBucket(file.bucket);
-        const local = await driver.getCacheFilePath(file.remote);
-        // const local = '/Users/tommy/Downloads/video.mp4';
-        // @todo bucket config changed, need to clean up db;
+        const local = await driver.getCacheFilePath(file);
         const range = req.headers.range;
-        if (file.type === 'video' && range) {
+        if (file.type === 'video' && range && !req.query.download) {
           const parts = range.replace(/bytes=/, '').split('-');
           const start = parseInt(parts[0], 10);
           const fileSize = file.size;
@@ -79,6 +78,13 @@ export default (app: Application) => {
           // });
           // return stream.pipe(res);
         } else {
+          if (req.query.download) {
+            console.log('fffffname', file.filename);
+            res.setHeader(
+              'Content-disposition',
+              'attachment; filename=' + encodeURI(file.filename),
+            );
+          }
           res.writeHead(200, {
             'Content-Length': file.size,
             'Content-Type': file.mime,

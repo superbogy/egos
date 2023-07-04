@@ -35,8 +35,7 @@ import { DiskState } from './model';
 import { FileSchema } from '@/services/file';
 import './index.less';
 import { registerUploadEvent } from './events';
-import { CtxProps } from './components/CtxMenu';
-import { CtxMenu } from './components/CtxMenu';
+import { CtxMenu, CtxProps } from './components/CtxMenu';
 
 const sortMenus = [
   {
@@ -65,11 +64,11 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const location = useLocation();
   const intl = useIntl();
   const { meta, files, currentFolder, selected } = netdisk;
+  console.log('list files', files);
   const [editable, setEditable] = useState(false);
   const [currentItem, setCurrentItem] = useState<FileSchema | null>(null);
   const { display = 'card' }: { display?: string } = netdisk.query;
   const [modalVisible, setModalVisible] = useState(false);
-  // const [showCrypt, setShowCrypt] = useState(false);
   const [isDragging, setDragging] = useState(false);
   const ctxRef = useRef<any>(null);
   const tagList = meta.tags.map((tag: any) => {
@@ -88,7 +87,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     };
   });
   useEffect(() => {
-    // const res = await service.query({});
     dispatch({
       type: 'netdisk/init',
       payload: { location },
@@ -234,7 +232,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       }
       ev.preventDefault();
       setCurrentItem(item);
-      console.log('123123123', ctxRef.current);
       ctxRef.current?.item.show({
         event: ev,
         props: item,
@@ -462,6 +459,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const ctxProps: CtxProps = {
     currentItem,
     starred: [],
+    selected,
     tagList,
     onDetail: contextHandlers.detail,
     onRemove: contextHandlers.delete,

@@ -93,6 +93,7 @@ export class FileDriver extends Driver {
   ): Promise<string | boolean> {
     return this.upload(source, dest, options);
   }
+
   async upload(source: string, dest: string, options: UploadOptions) {
     try {
       const isInflight = this.inflight(options.taskId);
@@ -107,7 +108,6 @@ export class FileDriver extends Driver {
         return md5file(source);
       }
       const remote = dest;
-      console.log('file-->', source, remote);
       const writable = fs.createWriteStream(remote, {
         start: donePart.cursor,
         mode: 0o666,
@@ -162,14 +162,15 @@ export class FileDriver extends Driver {
     }
   }
 
-  async decrypt(source: string, dest: string, options: any) {
+  async encrypt(source: string | Readable, dest: string, options: any) {
+    const readable = createEncryptStream(source, options.secret);
+    const writable = fs.createWriteStream(dest);
+    return Stream.promises.pipeline(readable, writable);
+  }
+
+  async decrypt(source: string | Readable, dest: string, options: any) {
     const readable = await createDecryptStream(source, options.secret);
     const writable = fs.createWriteStream(dest);
-    if (options.speed) {
-      const speedStream = new SpeedStream();
-      speedStream.calculate(options.speed);
-      return Stream.promises.pipeline(readable, speedStream, writable);
-    }
     return Stream.promises.pipeline(readable, writable);
   }
 

@@ -5,6 +5,8 @@ import {
   FolderFilled,
   LockFilled,
   LockOutlined,
+  ShareAltOutlined,
+  StarFilled,
 } from '@ant-design/icons';
 import { Badge, Empty, Pagination, Space } from 'antd';
 import moment from 'moment';
@@ -97,7 +99,7 @@ export default (props: CardProps) => {
     if (item.type) {
       return (
         <DragBox {...dragProps}>
-          {item.isEncrypt ? (
+          {item.isEncrypt === 34 ? (
             <div
               style={{
                 display: 'flex',
@@ -197,6 +199,18 @@ export default (props: CardProps) => {
         </p>
         <div className="card-date">
           {moment(item.createdAt).format('YYYY-MM-DD')}
+        </div>
+        <div className="file-extra-info">
+          {item.starred || item.shared ? (
+            <Space size="middle" align="center">
+              <span>
+                <StarFilled />
+              </span>
+              <span>
+                <ShareAltOutlined />
+              </span>
+            </Space>
+          ) : null}
         </div>
       </div>
     );

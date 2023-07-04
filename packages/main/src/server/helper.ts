@@ -15,6 +15,7 @@ export const getShareFileObj = async ({
   token: string;
 }) => {
   const share = await Share.findById(shareId);
+  console.log('sssshare view', share, shareId);
   if (!share || share.token !== token) {
     throw new ServiceError({ message: 'share not found' });
   }

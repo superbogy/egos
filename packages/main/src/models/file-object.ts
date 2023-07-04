@@ -3,6 +3,7 @@ import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
 import { getDriverByBucket } from '../lib/bucket';
 import fs from 'fs';
+import { jsonParser, jsonStringify } from '../lib/helper';
 
 export interface BackupItem {
   bucket: string;
@@ -37,7 +38,12 @@ export class FileObjectModel extends Base {
   md5: string;
   @column({ type: FieldTypes.INT, default: '0' })
   isEncrypt: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({
+    type: FieldTypes.TEXT,
+    default: '""',
+    decode: jsonParser,
+    encode: jsonStringify,
+  })
   backup: BackupItem[];
   @column({ type: FieldTypes.TEXT, default: '""' })
   checkpoint: string;

@@ -18,6 +18,7 @@ export interface FileSchema {
   isEncrypt: number;
   createdAt: string;
   updatedAt: string;
+  shared: boolean;
 }
 class File extends Model {
   async getFiles(payload: any): Promise<FileSchema[]> {

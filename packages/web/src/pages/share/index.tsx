@@ -38,7 +38,7 @@ const Index: React.FC<ShareProps> = (props) => {
     });
   }, [location]);
   const getUrl = (item: FileItem): string => {
-    const p = ['share'];
+    const p = ['/share'];
     const q: Record<string, any> = {};
     if (item.isFolder) {
       const ids = (query.parentIds as string) || '';

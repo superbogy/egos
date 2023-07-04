@@ -136,7 +136,6 @@ export class FileUploadJob extends FileJob {
       if (!data) {
         return null;
       }
-      console.log('create file object', data);
       const fileObj = await FileObject.create({ ...data });
       if (payload.fileId) {
         const file = await File.findById(payload.fileId);

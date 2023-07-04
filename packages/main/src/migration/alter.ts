@@ -10,10 +10,10 @@ export default class AlterJob extends Job {
     // await this.modifyColumn(File.table, {
     //   type:
     // })
-    await this.addColumn(Share.table, {
-      type: FieldTypes.INT,
-      name: 'is_external',
-      default: 0,
+    await this.addColumn(File.table, {
+      name: 'status',
+      type: FieldTypes.TEXT,
+      default: 'uploading',
     });
     // await this.addColumn(Task.table, {
     //   type: FieldTypes.TEXT,

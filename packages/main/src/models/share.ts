@@ -161,31 +161,51 @@ class ShareModel extends Base {
     const host = getIPAddress();
     const port = await getPort();
     const baseUrl = ['http://', host, `:${port}`].join('');
-    if (['photo', 'file'].includes(record.type)) {
-      if (record.isExternal) {
-        const q =
-          record.type === ''
-            ? File.findById(record.sourceId)
-            : Photo.findById(record.sourceId);
-        const source = await q;
-        if (!source) {
-          return '';
-        }
-        const file = await File.findById(source.fileId);
-        if (!file) {
-          return '';
-        }
-        const fileObj = await FileObject.findById(file?.objectId);
-        const driver = getDriverByBucket(file.bucket);
-        return await driver.getUrl(fileObj?.remote as string);
-      }
-      return `${baseUrl}/web#/share?token=${record.token}&id=${record.id}`;
+    const externalUrls = [];
+    const defValue = { external: [], internal: [] };
+    if (!['photo', 'file'].includes(record.type)) {
+      return defValue;
     }
-    if (record.type === 'album') {
-      return `${baseUrl}/web#/album?token=${record.token}&id=${record.id}&type=${record.type}`;
+    if (record.isExternal) {
+      const q =
+        record.type === ''
+          ? File.findById(record.sourceId)
+          : Photo.findById(record.sourceId);
+      const source = await q;
+      if (!source) {
+        return defValue;
+      }
+      const file = await File.findById(source.fileId);
+      if (!file) {
+        return defValue;
+      }
+      const fileObj = await FileObject.findByIdOrError(file?.objectId);
+      const backup = fileObj.backup;
+      for (const item of backup) {
+        const driver = getDriverByBucket(item.bucket);
+        const externalUrl = await driver.getUrl(fileObj?.remote as string);
+        externalUrls.push({
+          bucket: item.bucket,
+          url: externalUrl,
+        });
+      }
     }
 
-    return `${baseUrl}/web#/share?token=${record.token}&id=${record.id}`;
+    // if (record.type === 'album') {
+    //   const interal =  `${baseUrl}/web#/album?token=${record.token}&id=${record.id}&type=${record.type}`;
+
+    // }
+    const internal = [
+      {
+        bucket: 'Local',
+        url: `${baseUrl}/web#/share?token=${record.token}&id=${record.id}`,
+      },
+    ];
+
+    return {
+      external: externalUrls,
+      internal,
+    };
   }
 
   async getShareByFileId(fileId: string) {
@@ -201,7 +221,6 @@ class ShareModel extends Base {
       return null;
     }
     const url = await this.getUrl(shared);
-    console.log('??url', url);
     return { ...shared.toJSON(), url: url };
   }
 

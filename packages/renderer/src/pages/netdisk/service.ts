@@ -39,6 +39,7 @@ export const query = async (payload: QueryInterface) => {
   const res = await FileSystem.getFiles(payload || {});
   Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
   Remote.Electron.ipcRenderer.send('file:download:start', { type: 'file' });
+  console.log('get file sss', res);
   return res;
 };
 

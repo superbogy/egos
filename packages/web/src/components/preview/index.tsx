@@ -34,7 +34,7 @@ const FileViewer = (props: ViewerProps) => {
     setVisible(!visible);
   };
   return (
-    <Modal visible={visible} onCancel={handleCancel}>
+    <Modal open={visible} onCancel={handleCancel}>
       <div className="eg-share-detail">
         {getViewer({ file })}
         <div className="action-menu">

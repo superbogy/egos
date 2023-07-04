@@ -1,13 +1,17 @@
-import {
-  DvaModel,
-  EffectsMapObject,
-  ReducersMapObject,
-  SubscriptionAPI,
-} from 'umi';
+import { SubscriptionAPI } from 'umi';
+import humanFormat from 'human-format';
 
 export function trim(str: string) {
   return str.trim();
 }
+
+export const timeScale = new humanFormat.Scale({
+  seconds: 1000,
+  minutes: 60000,
+  hours: 3600000,
+  days: 86400000,
+  months: 2592000000,
+});
 
 export const mergeModel = (model: any, pagePath?: string[]) => {
   return model;
