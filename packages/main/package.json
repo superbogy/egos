@@ -37,6 +37,7 @@
     "mime": "^3.0.0",
     "tldr": "^3.3.8",
     "torrent-search-api": "^2.1.4",
+    "ts-mixer": "^6.0.3",
     "webtorrent": "^2.0.14"
   },
   "devDependencies": {

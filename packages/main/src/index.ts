@@ -137,7 +137,7 @@ app.whenReady().then(async () => {
       });
     }
     const readable = fs.createReadStream(filePath);
-    console.log(file.isEncrypt);
+    console.log('>>>>???', file.isEncrypt);
     if (file.isEncrypt) {
       setSharedVar(`file:preview:secret:${fileId}`, '123');
       const secret = getSharedVar(`file:preview:secret:${fileId}`);

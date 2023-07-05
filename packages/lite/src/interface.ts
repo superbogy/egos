@@ -1,4 +1,5 @@
 import { Database } from 'sqlite';
+import { Schema } from './schema';
 
 export type Dict = Record<string, any>;
 
@@ -33,4 +34,6 @@ export interface ModelOpts {
   db?: Database;
   timestamp?: boolean;
   debug?: boolean;
+  schema?: Schema;
+  indices?: Schema;
 }

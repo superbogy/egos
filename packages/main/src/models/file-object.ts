@@ -1,4 +1,4 @@
-import { column, table } from '@egos/lite';
+import { column, schema, table } from '@egos/lite';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
 import { getDriverByBucket } from '../lib/bucket';
@@ -10,8 +10,7 @@ export interface BackupItem {
   status: string;
 }
 
-@table('file_objects')
-export class FileObjectModel extends Base {
+export class FileObjectSchema {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT })
@@ -47,7 +46,11 @@ export class FileObjectModel extends Base {
   backup: BackupItem[];
   @column({ type: FieldTypes.TEXT, default: '""' })
   checkpoint: string;
+}
 
+@table('file_objects')
+@schema(FileObjectSchema)
+export class FileObjectModel extends Base {
   async destroy(id: number) {
     const fileObj = await this.findById(id);
     if (!fileObj) {

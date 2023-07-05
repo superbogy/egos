@@ -4,8 +4,8 @@ export interface UploadPayload {
   name: string;
   taskId: number | string;
   bucket?: { name: string };
-  fileId?: number;
-  cryptType?: string;
+  fileId: number | string;
+  action?: string;
   password?: string;
 }
 
@@ -15,7 +15,7 @@ export interface WriteFileParams {
   bucket: string;
   taskId: number | string;
   password: string | undefined;
-  crypto?: string;
+  action?: string;
 }
 
 export interface CheckPoint {

@@ -2,6 +2,7 @@ import { ipcMain, IpcMainEvent } from 'electron';
 import { FILE_DOWNLOAD_CHANNEL, FILE_UPLOAD_CHANNEL } from './constants';
 import { FileUploadJob } from './file-upload';
 import { FileDownloadJob } from './file-download';
+import { FileCryptoJob } from './file-crypto';
 
 export const registerJob = () => {
   const fileUploadJob = new FileUploadJob({
@@ -14,4 +15,9 @@ export const registerJob = () => {
     action: 'download',
   });
   downloadJob.watch();
+  const cryptoJob = new FileCryptoJob({
+    channel: FILE_UPLOAD_CHANNEL,
+    action: 'crypto',
+  });
+  cryptoJob.watch();
 };

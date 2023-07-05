@@ -15,7 +15,7 @@ export default async (win: BrowserWindow) => {
     filename: setting.db as string,
   });
   // @todo
-  if (setting.setup) {
+  if (!setting.setup || 1) {
     const folder = path.join(path.dirname(__filename), 'migration');
     const migrate = new Migration(db, folder);
     await migrate.run();

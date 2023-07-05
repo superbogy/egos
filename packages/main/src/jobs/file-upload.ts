@@ -3,8 +3,8 @@ import fs, { promises as sfp } from 'fs';
 import path from 'path';
 import { promisify } from 'util';
 import { getAvailableBucket, getDriverByBucket } from '../lib/bucket';
-import { File, FileModel } from '../models/file';
-import { Task, TaskModel } from '../models/task';
+import { File } from '../models/file';
+import { Task } from '../models/task';
 import { SynchronizeJob } from './synchronize';
 import { IpcMainEvent } from 'electron';
 import { FileJob } from './file.job';
@@ -29,8 +29,10 @@ export class FileUploadJob extends FileJob {
       await this.locker.acquireAsync();
       // make sure only one task in running
       const tasks = await this.getTasks();
+      console.log(this.constructor.name, tasks);
       for (const task of tasks) {
         const payload = await this.buildPayload(task);
+        console.log('tasksss payload>>>', payload);
         if (!payload) {
           continue;
         }
@@ -86,110 +88,89 @@ export class FileUploadJob extends FileJob {
 
   async upload(event: IpcMainEvent, payload: UploadPayload) {
     const bucket = getAvailableBucket('file');
-    const { local, parentId, name, taskId, password } = payload;
+    const { local, name, taskId, password, fileId } = payload;
     if (!local) {
       throw new Error('local file not found');
     }
-    const filepath = ['/'];
-    if (parentId) {
-      const parent = (await File.findById(parentId)) as FileModel;
-      filepath.push(parent.path);
-    }
+    const file = await File.findByIdOrError(payload.fileId);
     const stat = await promisify(fs.stat)(local);
+    console.log('iiiiis folder', payload);
     if (stat.isDirectory()) {
-      const folderName = path.basename(local);
-      const folder = {
-        parentId: parentId || 0,
-        filename: folderName,
-        path: path.join(...filepath, folderName),
-        size: 0,
-        type: 'folder',
-        isFolder: 1,
-        objectId: 0,
-        description: '',
-        bucket: bucket.name,
-        password,
-      };
-      let current = await File.findOne({ path: folder.path });
-      if (!current) {
-        current = await File.create(folder);
-      }
       const files = await sfp.readdir(local);
       for (const item of files) {
+        const childPath = path.join(file.path, item);
+        const source = path.join(local, item);
+        const stat = await promisify(fs.stat)(source);
+        const isDir = stat.isDirectory();
+        const child = {
+          parentId: fileId,
+          filename: item,
+          path: childPath,
+          size: 0,
+          isFolder: isDir ? 1 : 0,
+          objectId: 0,
+          description: '',
+          type: isDir ? 'folder' : 'file',
+          password,
+          local: source,
+          status: 'uploading',
+        };
+        const current = await File.create(child);
         await this.upload(event, {
           ...payload,
           local: path.join(local, item),
-          parentId: current.id,
-          name,
+          fileId: current.id,
           taskId,
         });
       }
-      return current.toJSON();
-    } else {
-      const data = await this.addFile(event, {
-        ...payload,
-        local,
-        name,
-        taskId,
-        password,
-      });
-      if (!data) {
+      return file.toJSON();
+    }
+    const data = await this.addFile(event, {
+      ...payload,
+      local,
+      taskId,
+      password,
+    });
+    if (!data) {
+      return null;
+    }
+    const fileObj = await FileObject.create({ ...data });
+    if (file.status === 'done') {
+      const previosObj = await FileObject.findById(file?.objectId as number);
+      if (!previosObj) {
         return null;
       }
-      const fileObj = await FileObject.create({ ...data });
-      if (payload.fileId) {
-        const file = await File.findById(payload.fileId);
-        const previosObj = await FileObject.findById(file?.objectId as number);
-        if (!previosObj) {
-          return null;
-        }
-        const driver = getDriverByBucket(previosObj.bucket);
-        const originSource = driver.getPath(previosObj.remote as string);
-        fs.unlinkSync(originSource);
-      }
-      if (!fileObj) {
-        throw new Error('upload file failed');
-      }
-      const filename = fileObj.filename;
-      let res: FileModel;
-      if (payload.fileId) {
-        const file = (await File.findById(payload.fileId)) as FileModel;
-        file.objectId = fileObj.id;
-        file.password = password || '';
-        file.isEncrypt = payload.cryptType === 'encrypt' ? 1 : 0;
-        res = await file.save();
-      } else {
-        res = await File.create({
-          parentId: parentId || 0,
-          filename,
-          path: path.join(...filepath, fileObj.filename),
-          size: fileObj.size,
-          type: fileObj.type,
-          isFolder: 0,
-          objectId: fileObj.id,
-          description: '',
-          password,
-          isEncrypt: payload.cryptType === 'encrypt',
-        });
-      }
-
-      this.success(event, {
-        ...payload,
-        taskId: taskId,
-        targetId: res.id,
-      });
-      if (Array.isArray(fileObj.backup)) {
-        Object.entries(fileObj.backup).map(([toBucket]) => {
-          this.syncJob.add({
-            fromBucket: bucket.name,
-            toBucket,
-            objectId: fileObj.id,
-          });
-        });
-        this.syncJob.start();
-      }
-
-      return res.toJSON();
+      const driver = getDriverByBucket(previosObj.bucket);
+      const originSource = driver.getPath(previosObj.remote as string);
+      fs.unlinkSync(originSource);
+      await previosObj.destroy(previosObj.id);
     }
+
+    const current = await File.findByIdOrError(payload.fileId);
+    const res = await current.updateAttributes({
+      objectId: fileObj.id,
+      password,
+      isEncrypt: payload.action === 'encrypt' ? 1 : 0,
+      status: 'done',
+      size: fileObj.size,
+    });
+
+    this.success(event, {
+      ...payload,
+      taskId: taskId,
+      targetId: res.id,
+    });
+    if (Array.isArray(fileObj.backup)) {
+      Object.entries(fileObj.backup).map(([toBucket]) => {
+        this.syncJob.add({
+          fromBucket: bucket.name,
+          toBucket,
+          objectId: fileObj.id,
+        });
+      });
+      this.syncJob.start();
+    }
+
+    return res.toJSON();
   }
 }

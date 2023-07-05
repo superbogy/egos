@@ -10,7 +10,7 @@ import { Share } from '../models/share';
 export default class SetupJob extends Job {
   async up() {
     const albumSql = utils.genSql(Album.table, Album.schema);
-    console.log('>>>>>>3', albumSql);
+    console.log('>>>>>>--3', albumSql);
     await this.exec(albumSql);
     const fileSql = utils.genSql(File.table, File.schema);
     await this.exec(fileSql);

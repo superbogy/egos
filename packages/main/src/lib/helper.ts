@@ -7,6 +7,7 @@ import { FileMeta } from '../interface';
 import { getConfig } from '../config';
 import { app } from 'electron';
 import getAvailablePort from 'get-port';
+import { File } from '../models';
 
 export const getFileMeta = async (file: string) => {
   const stat = await fs.promises.stat(file);
@@ -111,4 +112,20 @@ export const getIPAddress = () => {
     }
   }
   return '127.0.0.1';
+};
+
+export const getAvailablePath = async (pathName: string): Promise<string> => {
+  const ext = path.extname(pathName);
+  const basename = path.basename(pathName);
+  const baseDir = path.dirname(pathName);
+  const name = basename.replace(ext, '');
+  let i = 0;
+  while (true) {
+    const file = path.join(baseDir, name + (!i ? '' : `(${i})`) + ext);
+    const check = await File.findOne({ path: file });
+    if (!check) {
+      return file;
+    }
+    i++;
+  }
 };

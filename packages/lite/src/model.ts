@@ -3,29 +3,44 @@ import { Builder } from './builder';
 import { Dict, FindOpts, InsertOpts, ModelOpts } from './interface';
 import { isEmpty, pick, has } from 'ramda';
 import { Database, ISqlite } from 'sqlite';
-import { TimestampSchema, ColumnSchema } from './schema';
+import { TimestampSchema, ColumnSchema, Schema } from './schema';
 
 const debug = Debug('lite-orm:model');
 export class Model {
   private _db: Database;
   public _table: string;
   private _pk: string[];
-  readonly _options: any;
+  readonly _options: Record<string, any>;
   private _attributes: Dict;
+  private _schema: Schema | undefined;
+  private _indices: Schema | undefined;
   [key: string]: any;
   constructor(options?: ModelOpts) {
     this._attributes = {};
     this._pk = [];
     this._options = options || {};
+    if (this.options.schema) {
+      this._schema = this.options.schema;
+    }
+    if (this.options.includes) {
+      this._indices = this.options.includes;
+    }
     this.initialize();
   }
 
-  get schema() {
-    return Reflect.getMetadata('model:schema', this);
+  get schema(): Schema {
+    if (!this._schema) {
+      this._schema = Reflect.getMetadata('model:schema', this);
+    }
+    return this._schema as Schema;
   }
 
   get indices() {
-    return Reflect.getMetadata('model:indices', this);
+    if (!this._indices) {
+      this._indices = Reflect.getMetadata('model:indices', this);
+    }
+
+    return this._indices;
   }
 
   get options() {
@@ -52,11 +67,7 @@ export class Model {
         return k;
       });
     if (this.options?.timestamp) {
-      Reflect.defineMetadata(
-        'model:schema',
-        { ...schema, ...TimestampSchema },
-        this,
-      );
+      this._schema = { ...schema, ...TimestampSchema };
     }
     if (this.options?.db) {
       this._db = this.options.db;
@@ -166,7 +177,9 @@ export class Model {
   }
 
   clone(): Model {
-    return new (this.constructor as new () => this)();
+    return new (this.constructor as new (options?: ModelOpts) => this)(
+      this.options,
+    );
   }
 
   instance(row: Dict): Model {
@@ -231,9 +244,9 @@ export class Model {
 
   async update(where: Dict, payload: Dict): Promise<ISqlite.RunResult> {
     const builder = new Builder({});
-    const data = this.purify(payload);
-    const witTimestamp = this.attachTimestamp(data);
-    const row = this.toRowData(witTimestamp);
+    const withTimestamp = this.attachTimestamp(payload);
+    const data = this.purify(withTimestamp);
+    const row = this.toRowData(data);
     const { sql, params } = builder
       .table(this.table)
       .where(where)
@@ -272,7 +285,6 @@ export class Model {
   async find(where: Dict = {}, options: FindOpts = {}): Promise<this[]> {
     const { limit, offset, order, fields, group } = options;
     const builder = new Builder({});
-    console.log('000000', this.toRowData(where));
     const { sql, params } = builder
       .table(this.table)
       .where(this.toRowData(where))

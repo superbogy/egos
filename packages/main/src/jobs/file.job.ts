@@ -80,13 +80,13 @@ export abstract class FileJob {
     });
   }
 
-  async getSourceInfo(payload: { local?: string; fileId?: number }) {
-    console.log('getSrouceInfo payload---->', payload);
-    if (payload.fileId) {
-      const file = await File.findById(payload.fileId);
-      if (!file) {
-        throw new Error('File not found');
-      }
+  async getSourceInfo(fileId: number) {
+    console.log('getSrouceInfo payload---->', fileId);
+    const file = await File.findById(fileId);
+    if (!file) {
+      throw new Error('File not found');
+    }
+    if (file.status === 'done') {
       const fileObj = await FileObject.findById(file.objectId);
       if (!fileObj) {
         throw new Error('File object not found');
@@ -106,53 +106,60 @@ export abstract class FileJob {
         },
       };
     }
-    if (payload.local) {
-      if (!fs.existsSync(payload.local)) {
-        throw new Error('file not exists');
-      }
-      const meta = await getFileMeta(payload.local);
-      return { source: payload.local, meta };
+    if (!file.local) {
+      throw new Error('file not exists');
     }
-    throw new ServiceError({
-      message: 'invalid upload payload',
-    });
+
+    if (!fs.existsSync(file.local)) {
+      throw new Error('file not exists');
+    }
+    const meta = await getFileMeta(file.local);
+    return { source: file.local, meta };
   }
 
   async buildPayload(task: TaskModel): Promise<UploadPayload | undefined> {
-    const payload = { ...task.payload } as UploadPayload;
+    const payload = {
+      password: '',
+      local: '',
+      fileId: task.sourceId,
+      taskId: '',
+      name: '',
+      action: task.action,
+    } as UploadPayload;
     payload.taskId = task.id;
     const password = getTaskPassword(task.id as number);
-    let passHash = '';
-    if (payload.cryptType) {
+    if (task.action === 'encrypt') {
       if (!password) {
         return;
       }
-      passHash = md5(password);
+      payload.password = md5(password);
     }
-    payload.password = passHash;
-    if (payload.fileId) {
-      const file = await File.findById(payload.fileId);
-      if (!file) {
-        throw new Error('File not found');
-      }
-      if (payload.cryptType === 'encrypt' && file.isEncrypt) {
-        return;
-      }
+    const fileId = task.sourceId;
+    const file = await File.findById(fileId);
+    if (!file) {
+      throw new Error('File not found');
+    }
+    if (task.action === 'encrypt' && file.isEncrypt) {
+      return;
+    }
+    if (file.status === 'done') {
       const fileObj = await FileObject.findById(file.objectId);
       if (!fileObj) {
         throw new Error('Fileobject not found');
       }
       const driver = getDriverByBucket(fileObj.bucket) as Driver;
-      const local = driver.getPath(fileObj.remote);
-      const ext = '.encrypt';
+      payload.local = driver.getPath(fileObj.remote);
+      const ext = '.egos';
       const name =
-        payload.cryptType === 'encrypt'
+        task.action === 'encrypt'
           ? fileObj.remote + ext
           : fileObj.remote.replace(ext, '');
-
-      return { ...payload, local, name } as UploadPayload;
+      payload.name = name;
+    } else {
+      payload.name = '';
+      payload.local = file.local;
     }
-    payload.name = path.basename(payload.local);
+
     return payload;
   }
 
@@ -183,10 +190,10 @@ export abstract class FileJob {
   }
 
   async write(event: IpcMainEvent, payload: WriteFileParams) {
-    const { bucket, source, dest, taskId, password, crypto } = payload;
+    const { bucket, source, dest, taskId, password, action } = payload;
     const driver = getDriverByBucket(bucket);
-    const isEncrypt = crypto === 'encrypt';
-    const isDecrypt = crypto === 'decrypt';
+    const isEncrypt = action === 'encrypt';
+    const isDecrypt = action === 'decrypt';
     const res = await driver.multipartUpload(source, dest, {
       ...payload,
       isEncrypt,
@@ -207,10 +214,10 @@ export abstract class FileJob {
   }
 
   async addFile(event: IpcMainEvent, payload: Omit<UploadPayload, 'parentId'>) {
-    const { name, taskId } = payload;
+    const { name } = payload;
     const bucket = getAvailableBucket('file');
     const driver = getDriver(bucket);
-    const { source, meta } = await this.getSourceInfo(payload);
+    const { source, meta } = await this.getSourceInfo(payload.fileId as number);
     const remote = name || uuid().toHexString() + '.' + meta.ext || 'unknow';
     const dest = driver.getPath(remote);
     const writeParams = {
@@ -219,7 +226,7 @@ export abstract class FileJob {
       taskId: payload.taskId,
       bucket: bucket.name,
       password: payload.password,
-      crypto: payload.cryptType,
+      action: payload.action,
     };
     const res = await this.write(event, writeParams);
     // const secret = payload.password;

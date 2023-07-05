@@ -1,4 +1,4 @@
-import { Model, connect, table, column, ORDER_TYPE } from '../src';
+import { Model, connect, table, column, ORDER_TYPE, schema } from '../src';
 import assert from 'assert';
 import { FieldTypes } from '../src/schema';
 import 'reflect-metadata';
@@ -16,9 +16,7 @@ class UserEntity {
   parentId: number;
 }
 
-@connect('default')
-@table('users')
-class User extends Model {
+export class UserSchema {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT, default: '""' })
@@ -34,6 +32,11 @@ class User extends Model {
   @column({ type: FieldTypes.INT, default: 0 })
   parentId: number;
 }
+
+@connect('default')
+@table('users')
+@schema(UserSchema)
+class User extends Model {}
 const dbFile = '';
 const main = async () => {
   await addConnection('default', { filename: dbFile });
@@ -49,6 +52,9 @@ const main = async () => {
     profile: { bar: 'foo', quiz: 'biz' },
     parentId: 0,
   });
+  current.age += 1;
+  await current.save();
+  return;
   // const cur = (await user.findById(current.id)) as User;
   // console.log(cur.toObject());
   // const users = await user.find({

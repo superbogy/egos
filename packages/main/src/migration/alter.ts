@@ -6,15 +6,22 @@ import { Share, Task } from '../models';
 
 export default class AlterJob extends Job {
   async up() {
-    console.log('????2 alter');
+    console.log('????22>>  alter');
     // await this.modifyColumn(File.table, {
     //   type:
     // })
-    await this.addColumn(File.table, {
-      name: 'status',
-      type: FieldTypes.TEXT,
-      default: 'uploading',
-    });
+    // await this.dropColumn(Task.table, 'sourceId');
+    // await this.addColumn(Task.table, {
+    //   name: 'source_id',
+    //   type: FieldTypes.TEXT,
+    //   default: '0',
+    // });
+    await this.dropColumn(Task.table, 'payload');
+    // await this.modifyColumn(File.table, {
+    //   name: 'sourceId',
+    //   type: FieldTypes.INT,
+    //   default: 0,
+    // });
     // await this.addColumn(Task.table, {
     //   type: FieldTypes.TEXT,
     //   name: 'updated_at',

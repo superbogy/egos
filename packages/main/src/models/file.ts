@@ -1,5 +1,5 @@
 import { getDriverByBucket } from '../lib/bucket';
-import { column, table, ORDER_TYPE, SelectOrder } from '@egos/lite';
+import { column, table, ORDER_TYPE, SelectOrder, schema } from '@egos/lite';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Driver from '@egos/storage/dist/abstract';
 import Base from './base';
@@ -32,23 +32,7 @@ export interface QueryPayload {
   order: SelectOrder;
 }
 
-export interface FileSchema {
-  id: number;
-  type: string;
-  objectId: number;
-  parentId: number;
-  isFolder: number;
-  path: string;
-  filename: string;
-  size: number;
-  description?: string;
-  starred?: boolean;
-  tags?: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-@table('files')
-export class FileModel extends Base {
+export class FileSchema {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT })
@@ -80,7 +64,13 @@ export class FileModel extends Base {
   isEncrypt: number;
   @column({ type: FieldTypes.TEXT, default: 'uploading' })
   status: string;
+  @column({ type: FieldTypes.TEXT, default: '""' })
+  local: string;
+}
 
+@table('files')
+@schema(FileSchema)
+export class FileModel extends Base {
   async buildDefaultFolders() {
     const isRoot = await this.findOne({ parentId: 0 });
     if (isRoot) {
@@ -237,22 +227,22 @@ export class FileModel extends Base {
     file.tags = tagList;
     await file.save();
   }
-  async crypto(fid: number, password: string, type: string) {
-    console.log('encrypt payload', fid, password);
-    const fileInfo = await this.findById(fid);
-    if (!fileInfo) {
+  async crypto(fid: number, password: string, action: string) {
+    const file = await this.findById(fid);
+    if (!file) {
       throw new ServiceError({
         message: 'file  not found',
       });
     }
+    file.status = 'uploading';
+    await file.save();
     const task = {
-      type: 'file',
-      action: 'upload',
-      payload: {
-        fileId: fileInfo.id,
-        cryptType: type,
-      },
+      type: 'crypto',
+      action,
       status: 'pending',
+      sourceId: fid,
+      maxRetry: 5,
+      err: '',
     };
     const res = await Task.create(task);
     setTaskSecret(res.id, password);

@@ -99,7 +99,7 @@ export default (props: CardProps) => {
     if (item.type) {
       return (
         <DragBox {...dragProps}>
-          {item.isEncrypt === 34 ? (
+          {item.isEncrypt === 1 ? (
             <div
               style={{
                 display: 'flex',

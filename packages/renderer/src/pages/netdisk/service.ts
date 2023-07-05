@@ -3,7 +3,7 @@ import path from 'path';
 
 import { ServiceError } from '@/lib/error';
 import Model from '@/services/base';
-import FileSystem from '@/services/file';
+import File from '@/services/file';
 import { Task } from '@/services/task';
 import Share from '@/services/share';
 import Trash from '@/services/trash';
@@ -20,11 +20,11 @@ export const quickEntrance = [
   { filename: 'Reference', path: '/Reference' },
 ];
 export const buildDefaultFolders = async () => {
-  return FileSystem.buildDefaultFolders();
+  return File.buildDefaultFolders();
 };
 
 export const getQuickEntrance = async () => {
-  return FileSystem.getQuickEntrance();
+  return File.getQuickEntrance();
 };
 
 export interface QueryInterface {
@@ -36,7 +36,7 @@ export interface QueryInterface {
 }
 
 export const query = async (payload: QueryInterface) => {
-  const res = await FileSystem.getFiles(payload || {});
+  const res = await File.getFiles(payload || {});
   Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
   Remote.Electron.ipcRenderer.send('file:download:start', { type: 'file' });
   console.log('get file sss', res);
@@ -71,7 +71,7 @@ export const openLocal = async ({ local }: { local: string }) => {
 };
 
 export const moveToTrash = async ({ ids }: { ids: number[] }) => {
-  const records = await FileSystem.findByIds(ids);
+  const records = await File.findByIds(ids);
   for (const record of records) {
     const trash = {
       type: 'file-systems',
@@ -79,7 +79,7 @@ export const moveToTrash = async ({ ids }: { ids: number[] }) => {
       expiredAt: Date.now() + 86400 * 30,
     };
     await Trash.create(trash);
-    await FileSystem.deleteById(record.id);
+    await File.deleteById(record.id);
   }
 
   return true;
@@ -94,7 +94,7 @@ export const createFolder = async ({
 }) => {
   const pathItem = ['/'];
   if (parentId) {
-    const parent = await FileSystem.findById(parentId);
+    const parent = await File.findById(parentId);
     if (!parent) {
       throw new ServiceError('parent not found', {
         code: 11404,
@@ -102,7 +102,7 @@ export const createFolder = async ({
     }
     pathItem.push(parent.path);
   } else {
-    const parent = await FileSystem.findOne({ parentId: 0 });
+    const parent = await File.findOne({ parentId: 0 });
     /* eslint-disable */
     parentId = parent.id;
   }
@@ -117,33 +117,33 @@ export const createFolder = async ({
     objectId: 0,
     description: '',
   };
-  return Promise.resolve(FileSystem.create(data));
+  return Promise.resolve(File.create(data));
 };
 
 export const getFolderByPath = async (payload: { path: string }) => {
   const where = {
     path: payload.path,
   };
-  const folder = await FileSystem.findOne(where);
+  const folder = await File.findOne(where);
   return folder || null;
 };
 
 const moveSingle = async (sourceId: number, targetId: number) => {
-  const source = await FileSystem.findById(sourceId);
+  const source = await File.findById(sourceId);
   if (!source) {
     return false;
   }
-  const target = await FileSystem.findById(targetId);
+  const target = await File.findById(targetId);
   if (!target || !target.isFolder) {
     message.error('Target folder not found');
     return false;
   }
-  const newTarget = await FileSystem.update(
+  const newTarget = await File.update(
     { id: sourceId },
     { parentId: targetId, path: path.join(target.path, source.filename) },
   );
   if (newTarget.isFolder) {
-    const files = await FileSystem.find({ parentId: source.id });
+    const files = await File.find({ parentId: source.id });
     files.map((item: { id: number }) => {
       return moveSingle(item.id, newTarget);
     });
@@ -176,7 +176,7 @@ export const move = async ({
 };
 
 export const searchFolders = async ({ name }: { name: string }) => {
-  return FileSystem.find(
+  return File.find(
     { path: { $like: `%${name}%` }, isFolder: 1 },
     { limit: 25, order: { path: 'asc' } },
   );
@@ -186,7 +186,7 @@ export const save = async (data: Record<string, any>) => {
   if (!data.id) {
     return message.error('invalid request');
   }
-  const current = await FileSystem.findById(data.id);
+  const current = await File.findById(data.id);
   if (!current) {
     return message.error('file not found');
   }
@@ -196,10 +196,10 @@ export const save = async (data: Record<string, any>) => {
       change[key] = value;
     }
   });
-  await FileSystem.update({ id: current.id }, change);
+  await File.update({ id: current.id }, change);
   const needUpdateChild = current.parentId !== data.parentId;
   if (current.isFolder && needUpdateChild) {
-    const children = await FileSystem.find({ parentId: current.id });
+    const children = await File.find({ parentId: current.id });
     children.map((child: any) => {
       return child.save();
     });
@@ -207,11 +207,11 @@ export const save = async (data: Record<string, any>) => {
 };
 
 export const rename = async ({ id, name }: { id: number; name: string }) => {
-  const current = await FileSystem.findById(id);
+  const current = await File.findById(id);
   if (!current) {
     return null;
   }
-  return await FileSystem.update({ id }, { filename: name });
+  return await File.update({ id }, { filename: name });
 };
 
 export const transmission = async ({
@@ -250,7 +250,7 @@ export const progressTaskNumber = async ({
 };
 
 export const star = async ({ id }: { id: number }) => {
-  const source = await FileSystem.findById(id);
+  const source = await File.findById(id);
   if (!source || source.starred) {
     return;
   }
@@ -260,7 +260,7 @@ export const star = async ({ id }: { id: number }) => {
     isFolder: source.isFolder,
     filename: source.filename,
   };
-  await FileSystem.update({ id: source.id }, { starred: 1 });
+  await File.update({ id: source.id }, { starred: 1 });
   await Favorite.create(data);
 };
 
@@ -292,11 +292,11 @@ export const genQrUpload = async ({
 
 export const updateFileTags = (payload: { id: number; tags: string[] }) => {
   const { id, tags } = payload;
-  return FileSystem.updateFileTags(id, tags);
+  return File.updateFileTags(id, tags);
 };
 
 export const verify = async (id: number, password: string) => {
-  await FileSystem.verify(id, password);
+  await File.verify(id, password);
 };
 
 export const crypto = async (payload: {
@@ -309,7 +309,7 @@ export const crypto = async (payload: {
     if (type === 'decrypt') {
       await verify(id, password);
     }
-    await FileSystem.crypto(id, password, type);
+    await File.crypto(id, password, type);
     Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
   } catch (err) {
     console.log(err);

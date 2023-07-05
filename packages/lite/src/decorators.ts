@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { Database } from 'sqlite3';
 import { open, ISqlite } from 'sqlite';
-import { ColumnSchema } from './schema';
+import { ColumnSchema, Schema } from './schema';
 import fs from 'fs';
 import path from 'path';
 
@@ -14,6 +14,13 @@ export function column(params: ColumnSchema): PropertyDecorator {
     Reflect.defineMetadata('model:schema', prop, target);
   };
 }
+
+// export function schema(schema: Schema): PropertyDecorator {
+//   return function(target, key) {
+//     const prop = Reflect.getMetadata('model:schema', schema);
+//     Reflect.defineMetadata('model:schema', prop, target);
+//   }
+// }
 
 export function index(params: any) {
   return function (target: any, key: string) {
@@ -32,6 +39,13 @@ export function index(params: any) {
 export function table(table: string) {
   return function (constructor: Function) {
     constructor.prototype._table = table;
+  };
+}
+
+export function schema<T extends { new (...args: any[]): {} }>(schema: T) {
+  return function (constructor: Function) {
+    const prop = Reflect.getMetadata('model:schema', new schema());
+    constructor.prototype._schema = prop;
   };
 }
 

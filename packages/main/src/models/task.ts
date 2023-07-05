@@ -1,13 +1,12 @@
 import { ServiceError } from '../error';
-import { column, table } from '@egos/lite';
+import { column, schema, table } from '@egos/lite';
 import crypto from 'crypto';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
-import { File, FileModel } from './file';
+import { File } from './file';
 import fs from 'fs';
-import { jsonParser, jsonStringify } from '../lib/helper';
-import { FileObject } from './file-object';
-import { getAvailableBucket } from '@/lib/bucket';
+import path from 'path';
+import { getAvailablePath, jsonParser, jsonStringify } from '../lib/helper';
 
 export enum QueueStatus {
   PENDING = 'pending',
@@ -17,8 +16,7 @@ export enum QueueStatus {
   DONE = 'done',
 }
 
-@table('tasks')
-export class TaskModel extends Base {
+export class TaskSchema {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
   @column({ type: FieldTypes.TEXT })
@@ -37,7 +35,13 @@ export class TaskModel extends Base {
   targetId: number;
   @column({ type: FieldTypes.TEXT, default: '""' })
   err: string;
+  @column({ type: FieldTypes.TEXT, default: '0' })
+  sourceId: string;
+}
 
+@table('tasks')
+@schema(TaskSchema)
+export class TaskModel extends Base {
   enqueue(data: any) {
     return this.insert({ ...data, status: QueueStatus.PENDING });
   }
@@ -71,28 +75,46 @@ export class TaskModel extends Base {
     type: string;
   }) {
     try {
-      const { local, fileId, parentId } = payload;
-      const parent = await File.findById(parentId);
-      if (!parent) {
+      if (!payload.fileId && !payload.local) {
         throw new ServiceError({
-          message: 'Upload folder not found1',
+          message: 'Invalid upload payload',
         });
       }
-      const file = local ? local : await File.getFilePath(fileId as number);
-      // const bucket = getAvailableBucket('file');
-      // const obj = await FileObject.create({
-      //   bucket: bucket.name,
-      //   remote: '',
-      // });
-      // await File.create({});
+      const parent = await File.findById(payload.parentId);
+      if (!parent) {
+        throw new ServiceError({
+          message: 'Upload folder not found',
+        });
+      }
+      let fileId = payload.fileId;
+      if (payload.local) {
+        const filename = path.basename(payload.local);
+        const stat = fs.statSync(payload.local);
+        const p = await getAvailablePath(path.join(parent.path, filename));
+        const newFile = await File.create({
+          parentId: payload.parentId || 0,
+          filename,
+          path: p,
+          size: 0,
+          type: stat.isDirectory() ? 'folder' : 'file',
+          isFolder: stat.isDirectory() ? 1 : 0,
+          local: payload.local,
+          objectId: 0,
+          description: '',
+          password: '',
+          status: 'uploading',
+        });
+        fileId = newFile.id;
+      }
       const task = {
         action: 'upload',
         type: 'file',
-        payload: { local: file, parentId },
+        payload: { fileId, parentId: payload.parentId },
         status: 'pending',
         retry: 0,
         maxRetry: 10,
         err: '',
+        sourceId: fileId,
       };
       const res = await this.insert(task);
       return res;
