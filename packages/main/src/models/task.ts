@@ -109,7 +109,6 @@ export class TaskModel extends Base {
       const task = {
         action: 'upload',
         type: 'file',
-        payload: { fileId, parentId: payload.parentId },
         status: 'pending',
         retry: 0,
         maxRetry: 10,
@@ -133,31 +132,28 @@ export class TaskModel extends Base {
       return false;
     }
     const task = {
-      action: 'upload',
+      action: 'encrypt',
       type: 'file',
-      payload: { fileId: file.fileId, password },
       status: 'pending',
       retry: 0,
       maxRetry: 10,
       err: '',
+      sourceId: file.id,
     };
     await Task.create(task);
     return true;
   }
-  async download({ ids, local }: { ids: number[]; local: string }) {
+  async download({ ids, type }: { ids: number[]; type: string }) {
     const files = await File.findByIds(ids);
     for (const file of files) {
       const task = {
         action: 'download',
-        type: 'file',
-        payload: {
-          fileId: file.id,
-          local,
-        },
+        type: type,
         retry: 0,
         status: 'pending',
         maxRetry: 10,
         err: '',
+        sourceId: file.id,
       };
       await Task.create(task);
     }

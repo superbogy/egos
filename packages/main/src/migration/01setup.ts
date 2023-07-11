@@ -6,11 +6,12 @@ import { FileObject } from '../models/file-object';
 import { Task } from '../models/task';
 import { Tag } from '../models/tag';
 import { Share } from '../models/share';
+import { TagMap } from '../models/tag-source';
 
 export default class SetupJob extends Job {
   async up() {
     const albumSql = utils.genSql(Album.table, Album.schema);
-    console.log('>>>>>>--3', albumSql);
+    console.log('>>>>>>--2', albumSql);
     await this.exec(albumSql);
     const fileSql = utils.genSql(File.table, File.schema);
     await this.exec(fileSql);
@@ -24,5 +25,7 @@ export default class SetupJob extends Job {
     await this.exec(favoriteSql);
     const shareSql = utils.genSql(Share.table, Share.schema);
     await this.exec(shareSql);
+    const tagMapSql = utils.genSql(TagMap.table, TagMap.schema);
+    await this.exec(tagMapSql);
   }
 }

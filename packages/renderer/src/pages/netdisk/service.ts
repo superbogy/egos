@@ -6,10 +6,11 @@ import Model from '@/services/base';
 import File from '@/services/file';
 import { Task } from '@/services/task';
 import Share from '@/services/share';
-import Trash from '@/services/trash';
+// import Trash from '@/services/trash';
 import { Remote } from '@/lib/remote';
+import { Tag } from '@/services/tag';
 
-const Favorite = new Model('favorite');
+const Favorite = new Model('favorites');
 
 export const quickEntrance = [
   { filename: 'Document', path: '/Document' },
@@ -43,6 +44,10 @@ export const query = async (payload: QueryInterface) => {
   return res;
 };
 
+export const getTags = async () => {
+  return Tag.find({}, { limit: 10 });
+};
+
 export const upload = async ({
   files,
   parentId,
@@ -54,15 +59,9 @@ export const upload = async ({
   Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
 };
 
-export const download = async ({
-  ids,
-  local,
-}: {
-  ids: number[];
-  local: string;
-}) => {
+export const download = async ({ ids }: { ids: number[] }) => {
   const { ipcRenderer } = Remote.Electron;
-  await Task.download({ ids, local, type: 'file' });
+  await Task.download({ ids, type: 'file' });
   return ipcRenderer.send('file:download:start', { type: 'file' });
 };
 
@@ -71,14 +70,15 @@ export const openLocal = async ({ local }: { local: string }) => {
 };
 
 export const moveToTrash = async ({ ids }: { ids: number[] }) => {
+  console.log('move to Trash,', ids);
   const records = await File.findByIds(ids);
   for (const record of records) {
-    const trash = {
-      type: 'file-systems',
-      payload: record,
-      expiredAt: Date.now() + 86400 * 30,
-    };
-    await Trash.create(trash);
+    // const trash = {
+    //   type: 'file',
+    //   payload: record,
+    //   expiredAt: Date.now() + 86400 * 30,
+    // };
+    // await Trash.create(trash);
     await File.deleteById(record.id);
   }
 
@@ -249,19 +249,18 @@ export const progressTaskNumber = async ({
   return total;
 };
 
-export const star = async ({ id }: { id: number }) => {
-  const source = await File.findById(id);
-  if (!source || source.starred) {
-    return;
+export const star = async ({ ids }: { ids: number[] }) => {
+  for (const id of ids) {
+    const source = await File.findById(id);
+    if (!source) {
+      return;
+    }
+    const data = {
+      sourceId: id,
+      type: 'file',
+    };
+    await Favorite.create(data);
   }
-  const data = {
-    sourceId: id,
-    type: 'type',
-    isFolder: source.isFolder,
-    filename: source.filename,
-  };
-  await File.update({ id: source.id }, { starred: 1 });
-  await Favorite.create(data);
 };
 
 export const share = async ({
@@ -315,4 +314,8 @@ export const crypto = async (payload: {
     console.log(err);
     message.error((err as Error).message);
   }
+};
+
+export const searchTags = (name: string) => {
+  return Tag.searchTags(name);
 };

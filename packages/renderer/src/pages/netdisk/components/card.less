@@ -10,6 +10,7 @@
 
 .card-box {
   padding: 4px;
+  min-height: 130px;
 
   .card-tag {
     position: absolute;
@@ -56,16 +57,18 @@
 
   .card-name,
   .card-date {
+    position: relative;
     font-size: 12px;
     text-align: center;
-    width: 75px;
     overflow: hidden;
-    text-overflow: ellipsis;
+    // text-overflow: ellipsis;
     white-space: nowrap;
+    user-select: text;
   }
 
   .card-date {
     color: #b2b2b2;
+    user-select: text;
   }
 
   .card-img {
@@ -78,11 +81,22 @@
     height: 12px;
     display: flex;
     justify-content: center;
-    color: #c5c2c258;
-    top: -60px;
+    color: rgba(167, 9, 9, 0.424);
 
     &:hover {
-      color: #666;
+      color: red;
+    }
+
+    .file-extra-tags {
+      width: 18px;
+      display: flex;
+      flex-direction: row-reverse;
+      // overflow: hidden;
+
+      .ant-badge-status-dot {
+        width: 10px;
+        height: 10px;
+      }
     }
   }
 }

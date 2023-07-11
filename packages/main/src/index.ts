@@ -99,22 +99,16 @@ app.whenReady().then(async () => {
     showSearchWithGoogle: false,
     showInspectElement: false,
   });
-  protocol.interceptFileProtocol('file', (request, callback) => {
-    const url = request.url.substring(8);
-    const file = decodeURI(url);
-    const publicFile = path.join(publicDir, url);
-    if (fs.existsSync(publicFile)) {
-      callback({ path: publicFile });
-    } else {
-      callback({ path: file });
-    }
-  });
   protocol.registerFileProtocol('app', (request, respond) => {
     let pathName = new URL(request.url).pathname;
     pathName = decodeURI(pathName); // Needed in case URL contains spaces
 
     const filePath = path.join(__dirname, pathName);
     respond({ path: filePath });
+  });
+  protocol.registerFileProtocol('egos', (request, callback) => {
+    const pathname = decodeURI(new URL(request.url).pathname);
+    callback({ path: pathname });
   });
   protocol.registerStreamProtocol('atom', async (request, callback) => {
     const filePath = url.fileURLToPath(
@@ -124,20 +118,32 @@ app.whenReady().then(async () => {
     console.log(request, parmas);
     const fileId = parmas.searchParams.get('fileId');
     const meta = await getFileMeta(filePath);
-    const fileObj = await FileObject.findById(fileId as string);
-    if (!fileObj) {
+    if (!fileId) {
       return callback({
         statusCode: 404,
       });
     }
-    const file = await File.findOne({ objectId: fileId });
+    const file = await File.findById(fileId);
     if (!file) {
       return callback({
         statusCode: 404,
       });
     }
+    const fileObj = await FileObject.findById(file.objectId);
+    if (!fileObj) {
+      return callback({
+        statusCode: 404,
+      });
+    }
     const readable = fs.createReadStream(filePath);
-    console.log('>>>>???', file.isEncrypt);
+    if (fileObj.mime.match('video')) {
+      return callback({
+        statusCode: 200,
+        data: readable,
+        method: 'GET',
+        mimeType: fileObj.mime,
+      });
+    }
     if (file.isEncrypt) {
       setSharedVar(`file:preview:secret:${fileId}`, '123');
       const secret = getSharedVar(`file:preview:secret:${fileId}`);
@@ -163,7 +169,6 @@ app.whenReady().then(async () => {
   session.defaultSession.webRequest.onBeforeRequest(
     { urls: [`${LOCAL_FILE_HOST}/*`] },
     (details, callback) => {
-      console.log('before request', details);
       callback({
         redirectURL: `atom://${details.url.replace(LOCAL_FILE_HOST, '')}`,
       });
@@ -172,7 +177,7 @@ app.whenReady().then(async () => {
   await prepare(mainWindow);
 });
 app.on('ready', () => {
-  createWindow();
+  // createWindow();
 });
 
 protocol.registerSchemesAsPrivileged([

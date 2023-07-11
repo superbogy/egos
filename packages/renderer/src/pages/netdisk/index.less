@@ -47,6 +47,19 @@
       width: 140px;
       border-right: 1px solid #f0f0f0;
       padding-top: 8px;
+      overflow: scroll;
+
+      ::-webkit-scrollbar {
+        display: none;
+      }
+
+      ::-moz-scrollbar {
+        display: none;
+      }
+
+      .ant-divider-horizontal {
+        margin: 8px 0;
+      }
 
       .ant-menu-vertical {
         border-right: none;
@@ -57,6 +70,24 @@
         margin: 0;
       }
 
+      .netdisk-tags {
+        display: flex;
+        padding: 0 12px;
+        flex-direction: column;
+        align-items: start;
+        font-size: 14px;
+
+        .file-tag-item {
+          width: 100%;
+          display: block;
+          cursor: pointer;
+          padding: 2px 4px;
+
+          &:hover {
+            background-color: #4f90f245;
+          }
+        }
+      }
     }
 
     .netdisk-right {
@@ -76,6 +107,7 @@
       padding: 8px 8px 24px 16px;
       cursor: pointer;
     }
+
   }
 }
 
@@ -105,4 +137,16 @@
   margin-left: 2px;
   padding: 2px;
   cursor: pointer;
+}
+
+.selection-area {
+  background: #4f90f22d;
+  border: 1px solid #4f90f2;
+}
+
+.select-container {
+  flex: 1;
+  user-select: none;
+  height: 100%;
+  width: 100%;
 }

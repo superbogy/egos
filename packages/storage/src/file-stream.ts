@@ -80,7 +80,7 @@ export class FileDriver extends Driver {
 
   async getUrl(remote: string) {
     const p = this.getPath(remote);
-    return `atom://local-egos${p}`;
+    return `atom://${p}`;
   }
 
   async getCacheFile(fileObj: FileObject) {

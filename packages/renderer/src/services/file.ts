@@ -19,6 +19,9 @@ export interface FileSchema {
   createdAt: string;
   updatedAt: string;
   shared: boolean;
+  local?: string;
+  url?: string;
+  status: string;
 }
 class File extends Model {
   async getFiles(payload: any): Promise<FileSchema[]> {

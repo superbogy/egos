@@ -4,22 +4,21 @@ import {
   getDriverByBucket,
 } from '../lib/bucket';
 import { getFileMeta } from '../lib/helper';
-import { File, FileObject, Task, TaskModel } from '../models';
+import { File, FileObject, Task, TaskModel, TaskSchema } from '../models';
 import { getDriver, md5 } from '@egos/storage';
 import fs from 'fs';
-import { ServiceError } from '../error';
-import { UploadPayload, WriteFileParams } from './interfaces';
+import { DownloadPayload, UploadPayload, WriteFileParams } from './interfaces';
 import { IpcMainEvent, ipcMain } from 'electron';
 import uuid from 'bson-objectid';
 import Driver from '@egos/storage/dist/abstract';
 import { getTaskPassword } from './helper';
 import path from 'path';
+import Locker from 'await-lock';
 
 export abstract class FileJob {
   protected channel: string;
   protected action: string;
-
-  async run(event: IpcMainEvent, options?: Record<string, any>) {}
+  protected locker: Locker;
 
   async getTasks(): Promise<TaskModel[]> {
     const where = {
@@ -28,8 +27,6 @@ export abstract class FileJob {
           type: 'file',
         },
         { action: this.action },
-      ],
-      $or: [
         { status: 'pending' },
         // {
         //   status: 'processing',
@@ -117,7 +114,9 @@ export abstract class FileJob {
     return { source: file.local, meta };
   }
 
-  async buildPayload(task: TaskModel): Promise<UploadPayload | undefined> {
+  async buildPayload(
+    task: TaskSchema,
+  ): Promise<UploadPayload | DownloadPayload | undefined> {
     const payload = {
       password: '',
       local: '',
@@ -331,6 +330,89 @@ export abstract class FileJob {
         payload,
         err,
       });
+    }
+  }
+
+  async onFailure(event: IpcMainEvent, taskId: number, err: Error) {
+    const task = await Task.findById(taskId);
+    if (!task) {
+      return;
+    }
+
+    if (task.retry <= task.maxRetry) {
+      await task.updateAttributes({
+        status: 'unresolved',
+        err: err.message,
+        retry: task.retry + 1,
+      });
+      this.failure(event, task.toJSON(), err.message);
+    } else {
+      throw err;
+    }
+  }
+
+  async process(
+    event: IpcMainEvent,
+    payload: Record<string, any>,
+  ): Promise<any> {}
+
+  async run(event: IpcMainEvent, options?: any): Promise<any> {
+    try {
+      await this.locker.acquireAsync();
+      // make sure only one task in running
+      const tasks = await this.getTasks();
+      for (const task of tasks) {
+        const payload = await this.buildPayload(task.toJSON() as TaskSchema);
+        if (!payload) {
+          continue;
+        }
+        await task.updateAttributes({ status: 'processing' });
+        event.reply(this.channel, {
+          taskId: task.id,
+          type: this.action,
+          status: 'processing',
+          retry: task.retry,
+        });
+        await this.process(event, { ...payload, taskId: task.id })
+          .then(async () => {
+            await Task.update({ id: task.id }, { status: 'done' });
+          })
+          .catch(async (err: Error) => {
+            console.log('err', err);
+            if (task.retry > task.maxRetry) {
+              task.status = 'unresolved';
+              task.err = err.message;
+              task.retry += 1;
+              await task.updateAttributes({
+                status: 'unresolved',
+                err: err.message,
+                retry: task.retry + 1,
+              });
+            } else {
+              this.failure(
+                event,
+                {
+                  type: 'task',
+                  payload,
+                },
+                err.message,
+              );
+              throw err;
+            }
+          });
+      }
+    } catch (err) {
+      console.log('upload error', err);
+      this.failure(
+        event,
+        {
+          type: 'job',
+          message: 'exception error',
+        },
+        err,
+      );
+    } finally {
+      this.locker.release();
     }
   }
 }

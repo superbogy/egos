@@ -16,7 +16,7 @@ export default class AlterJob extends Job {
     //   type: FieldTypes.TEXT,
     //   default: '0',
     // });
-    await this.dropColumn(Task.table, 'payload');
+    // await this.dropColumn(Task.table, 'payload');
     // await this.modifyColumn(File.table, {
     //   name: 'sourceId',
     //   type: FieldTypes.INT,

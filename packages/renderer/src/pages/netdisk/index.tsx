@@ -5,7 +5,16 @@ import {
   QrcodeOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Breadcrumb, Button, Empty, Menu, Popover, Space } from 'antd';
+import {
+  Badge,
+  Breadcrumb,
+  Button,
+  Divider,
+  Empty,
+  Input,
+  Menu,
+  Popconfirm,
+} from 'antd';
 import {
   useLayoutEffect,
   useRef,
@@ -23,12 +32,11 @@ import Card from './components/Card';
 import Edit from './components/Edit';
 import List from './components/List';
 import Modal from './components/Modal';
-import TagItem from './components/Tag';
 
 import { DropBox } from '@/components/DnD';
 import Provider from '@/components/DnD/Provider';
-import Selecto from 'react-selecto';
 import { Remote } from '@/lib/remote';
+import SelectionArea, { SelectionEvent } from '@viselect/react';
 
 import { useCallback } from 'react';
 import { DiskState } from './model';
@@ -59,40 +67,26 @@ interface NetDiskProps {
 
 const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const { dispatch, netdisk } = props;
-  const [liked, setLiked]: [number[], any] = useState([]);
+  const [starred, setStarred]: [number[], any] = useState([]);
   const disableDrop = netdisk.entrance.map((item) => item.id);
   const location = useLocation();
   const intl = useIntl();
-  const { meta, files, currentFolder, selected } = netdisk;
-  console.log('list files', files);
+  const { meta, tags, files, currentFolder, selected } = netdisk;
   const [editable, setEditable] = useState(false);
   const [currentItem, setCurrentItem] = useState<FileSchema | null>(null);
   const { display = 'card' }: { display?: string } = netdisk.query;
   const [modalVisible, setModalVisible] = useState(false);
   const [isDragging, setDragging] = useState(false);
   const ctxRef = useRef<any>(null);
-  const tagList = meta.tags.map((tag: any) => {
-    return {
-      key: tag.name,
-      label: (
-        <div key={tag.name}>
-          <span
-            className="netdisk-tag-color"
-            style={{ background: tag.name }}
-          ></span>
-          <span className="netdisk-tag-text">{tag.name}</span>
-        </div>
-      ),
-      value: tag.name,
-    };
-  });
   useEffect(() => {
     dispatch({
       type: 'netdisk/init',
       payload: { location },
     });
-    registerUploadEvent(dispatch);
   }, [location]);
+  useEffect(() => {
+    registerUploadEvent(dispatch);
+  }, []);
   const handleUpload = () => {
     Remote.Electron.dialog
       .showOpenDialog({
@@ -154,6 +148,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     },
   };
   const setSelect = (ids: number[]) => {
+    console.log('fffffuck ids', ids);
     const selectedIds = Array.isArray(ids) ? ids : [ids];
     dispatch({
       type: 'netdisk/updateState',
@@ -243,6 +238,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       cmdKeyActive: any,
       shiftKeyActive: any,
     ) {
+      console.log('00000onSelectChange---->>>');
       let selectedIds = [];
       const activeId = currentItem ? currentItem.id : null;
       if (cmdKeyActive) {
@@ -264,6 +260,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       setSelect(selectedIds);
     },
     onDrag(item: FileSchema) {
+      console.log('?????????on drag');
       if (!selected.includes(item.id)) {
         setSelect([item.id]);
       }
@@ -284,10 +281,10 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   const tableProps = {
     ...cardProps,
   };
-  const handleDel = (params: any) => {
+  const handleDel = (ids: number[]) => {
     dispatch({
       type: 'netdisk/moveToTrash',
-      payload: { ids: [params.props.id] },
+      payload: { ids },
     });
   };
 
@@ -365,6 +362,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   };
   const cancelSelected = (e: any) => {
     if (!e.defaultPrevented && !isDragging) {
+      console.log('ddddddd? cancel', e);
       setSelect([]);
     } else {
       setDragging(false);
@@ -388,13 +386,13 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       setShareItem({ ...shareItem, visible: !shareItem.visible });
     },
   };
-  const handleShare = async (params: any) => {
+  const handleShare = async (id: number) => {
     dispatch({
       type: 'netdisk/getShare',
-      payload: { id: params.props.id },
+      payload: { id },
     });
     shareItem.visible = true;
-    shareItem.file = params.props;
+    shareItem.file = currentItem as FileSchema;
     setShareItem(shareItem);
   };
   const [qrUpload, setQrUpload] = useState(false);
@@ -422,28 +420,35 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     detail() {
       setEditable(true);
     },
-    download({ props }: any) {
+    download(ids: number[]) {
       dispatch({
         type: 'netdisk/download',
-        payload: { ids: [props.id] },
+        payload: { ids },
       });
     },
-    rename({ props }: any) {
-      const elmId = 'file-item-id-' + props.id;
+    rename(id: number) {
+      console.log('rename id', id);
+      if (!id) {
+        return;
+      }
+      const elmId = 'file-item-id-' + id;
+      console.log('rename id>>', elmId);
       const elm = document.getElementById(elmId) as HTMLElement;
       console.log(elm);
       elm.focus();
     },
-    star({ props }: { props: FileSchema } | any) {
-      liked.push(props.id as any);
-      setLiked(liked);
+    star(ids: number[]) {
+      setStarred((prev: number[]) => {
+        ids.map((id) => prev.push(id));
+        return prev;
+      });
       dispatch({
         type: 'netdisk/star',
-        payload: { id: props.id },
+        payload: { ids },
       });
     },
-    delete: (params: any) => {
-      handleDel(params);
+    delete: (ids: number[]) => {
+      handleDel(ids);
     },
     onCrypto: async (params: { password: string; type: string }) => {
       return dispatch({
@@ -454,13 +459,19 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
         },
       });
     },
+    onSearchTags: async (name: string) => {
+      dispatch({
+        type: 'netdisk/searchTags',
+        payload: { name },
+      });
+    },
   };
 
   const ctxProps: CtxProps = {
-    currentItem,
-    starred: [],
+    currentItem: currentItem,
+    starred,
+    tags,
     selected,
-    tagList,
     onDetail: contextHandlers.detail,
     onRemove: contextHandlers.delete,
     onRename: contextHandlers.rename,
@@ -468,8 +479,14 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     onMove: () => contextHandlers.move,
     onNewFolder: onNewFolder,
     onStar: contextHandlers.star,
-    onSearchTag: console.log,
-    onTagChange: () => console.log,
+    onSearchTag: contextHandlers.onSearchTags,
+    onTagSelected: (params) => {
+      console.log('tag selectd', params);
+      dispatch({
+        type: 'netdisk/updateTags',
+        payload: params,
+      });
+    },
     onCrypto: contextHandlers.onCrypto,
     onShare: handleShare,
     onUpload: handleUpload,
@@ -477,6 +494,53 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     setCtx: ({ container, item }: any) => {
       console.log('?????? ', item, container);
     },
+  };
+
+  const onStart = ({ event, selection }: SelectionEvent) => {
+    console.log('onstart >????', event, isDragging);
+    const hasSelected = (event as any).path.find((p) => {
+      if (p.classList?.contains('selected')) {
+        console.log(p);
+        return true;
+      }
+      return false;
+    });
+    if (!event?.ctrlKey && !event?.metaKey && !hasSelected) {
+      selection.clearSelection();
+      setSelect([]);
+    }
+    setDragging(true);
+  };
+  const extractIds = (els: Element[]): number[] =>
+    els
+      .map((v) => {
+        return v.getAttribute('data-id');
+      })
+      .filter(Boolean)
+      .map(Number);
+
+  const onMove = ({
+    store: {
+      changed: { added, removed },
+    },
+    event,
+  }: SelectionEvent) => {
+    if (event && (added.length || removed.length)) {
+      const next = selected;
+      extractIds(added).forEach((id) => {
+        if (!next.includes(id)) {
+          next.push(id);
+        }
+      });
+      extractIds(removed).forEach((id) => {
+        const idx = next.indexOf(id);
+        if (idx === -1) {
+          return;
+        }
+        next.splice(idx, 1);
+      });
+      setSelect(next);
+    }
   };
 
   return (
@@ -489,13 +553,16 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
           <Button type="text" icon={<UploadOutlined />} onClick={handleUpload}>
             Upload
           </Button>
-          <Popover content="" placement="bottom">
-            <Button
-              type="text"
-              icon={<QrcodeOutlined />}
-              onClick={showQrUpload}
-            ></Button>
-          </Popover>
+          <Popconfirm
+            title="Allow upload by external url?"
+            onConfirm={showQrUpload}
+            onCancel={console.log}
+            okText="Yes"
+            cancelText="No"
+            icon={<FolderOpenOutlined />}
+          >
+            <Button type="text" icon={<QrcodeOutlined />}></Button>
+          </Popconfirm>
         </Header>
         <div className="crumb">
           <Breadcrumb>
@@ -511,6 +578,9 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
         <Provider>
           <div className="netdisk-layout">
             <div className="netdisk-sider">
+              <Divider orientation="left" plain>
+                Quick
+              </Divider>
               <Menu onClick={({ key }) => gotoFolder(key)}>
                 {netdisk.entrance.map((item) => {
                   const dropProps = {
@@ -531,17 +601,37 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
                   );
                 })}
               </Menu>
+              <div>
+                <Divider orientation="left" plain>
+                  Tags
+                </Divider>
+                <div className="netdisk-tags">
+                  <Input placeholder="search tag" bordered={false} />
+                  {tags.map((tag) => {
+                    return (
+                      <span key={tag.name} className="file-tag-item">
+                        <Badge color={tag.color} text={tag.name} />
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
             <div
               className="netdisk-main"
-              onContextMenu={() => ctxRef.current?.container.show}
+              onContextMenu={(ev) => {
+                if (ev.defaultPrevented) {
+                  return;
+                }
+                ev.preventDefault();
+                ctxRef.current?.container.show({ event: ev });
+              }}
               onDrop={(e) => {
                 const { target } = e as any;
                 const classList = [
                   ...target.classList,
                   ...target.parentElement.classList,
                 ];
-                console.log(classList);
                 if (!classList.includes('netdisk-main')) {
                   return;
                 }
@@ -551,61 +641,36 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
                 });
               }}
             >
-              {getDisplayContent()}
-            </div>
-            <div className="netdisk-right">
-              <Space direction="vertical">
-                {meta.tags?.map((tag: any) => {
-                  return (
-                    <TagItem
-                      tag={tag}
-                      key={tag.name}
-                      onSave={(id, data) =>
-                        dispatch({
-                          type: 'netdisk/updateFileTags',
-                          payload: { id, ...data },
-                        })
-                      }
-                    />
-                  );
-                })}
-              </Space>
+              <SelectionArea
+                className="select-container"
+                onStart={onStart}
+                onMove={onMove}
+                selectables=".drag-item"
+                onBeforeDrag={({ event }: SelectionEvent) => {
+                  const elm = event?.target as Element;
+                  if (
+                    elm.classList.contains('card-name') ||
+                    elm.classList.contains('card-date')
+                  ) {
+                    return false;
+                  }
+                }}
+              >
+                {getDisplayContent()}
+              </SelectionArea>
             </div>
           </div>
         </Provider>
         <CtxMenu {...ctxProps} ref={ctxRef} />
         <Modal {...modalProps} />
         <Edit {...editProps} />
-        <Selecto
-          container={document.getElementsByTagName('main')[0]}
-          dragContainer={'.netdisk-main'}
-          selectableTargets={['.drag-item']}
-          selectByClick={false}
-          selectFromInside={true}
-          continueSelect={true}
-          toggleContinueSelect={'shift'}
-          keyContainer={window}
-          hitRate={80}
-          ratio={0}
-          onSelect={(e) => {
-            setDragging(true);
-            const selectedIds: number[] = [];
-            e.selected.map((item) => {
-              const id = Number(item.dataset.id);
-              if (selected.indexOf(id) === -1) {
-                selectedIds.push(id);
-              }
-              return item;
-            });
-            if (selectedIds.length) {
-              console.log('?????', selectedIds);
-              setSelect([...selected, ...selectedIds]);
-            }
-          }}
-        />
       </div>
       <Share {...shareProps} />
-      <QRUploader visible={qrUpload} url={netdisk.uploadUrl} />
+      <QRUploader
+        visible={qrUpload}
+        url={netdisk.uploadUrl}
+        onCancel={() => setQrUpload(false)}
+      />
     </>
   );
 };

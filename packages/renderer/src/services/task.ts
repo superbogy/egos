@@ -10,7 +10,7 @@ const QueueStatus = {
 export interface NativeFile {
   path: string;
 }
-class TaskModel extends Base {
+class TaskService extends Base {
   _table = 'tasks';
 
   enqueue(data: any) {
@@ -50,7 +50,7 @@ class TaskModel extends Base {
     return this.exec('getResultUrl', ...args);
   }
 }
-export const Task = new TaskModel('tasks');
+export const Task = new TaskService('tasks');
 
 export const fetchPendingTask = async () => {
   // const job = new Job();

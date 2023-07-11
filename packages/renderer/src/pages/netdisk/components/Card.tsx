@@ -1,24 +1,19 @@
 import './card.less';
 
 import {
-  FileUnknownFilled,
   FolderFilled,
-  LockFilled,
   LockOutlined,
   ShareAltOutlined,
   StarFilled,
 } from '@ant-design/icons';
 import { Badge, Empty, Pagination, Space } from 'antd';
 import moment from 'moment';
-import path from 'path';
 import { useState } from 'react';
-import { defaultStyles, FileIcon } from 'react-file-icon';
 
 import { DragBox, DropBox } from '@/components/DnD';
 import Viewer from '@/components/Viewer';
 import Exhibit from '@/components/Viewer/exhibit';
 import { FileSchema } from '@/services/file';
-import { FileObjectSchema } from '@/services/file-object';
 import { TriggerEvent } from 'react-contexify';
 import classNames from 'classnames';
 
@@ -31,7 +26,8 @@ const dataIndex = [
   { key: ['file', 'remote'], alias: 'Remote' },
   { key: ['file', 'size'], alias: 'Size' },
   { key: ['description'], alias: 'Description' },
-  { key: ['createdAt'], alias: 'create' },
+  { key: ['createdAt'], alias: 'Create' },
+  { key: ['updatedAt'], alias: 'Update' },
 ];
 
 interface CardProps {
@@ -49,18 +45,18 @@ interface CardProps {
 }
 export default (props: CardProps) => {
   const { pagination, onMove, selected, disable = [] } = props;
-  console.log('card props selected', selected);
+  console.log('card props selected', props);
   const [preview, setPreview] = useState<FileSchema | null>(null);
   const handleImagePreview = (file: FileSchema) => {
     setPreview(file);
   };
   const getCard = (item: FileSchema) => {
-    const file = item.file as FileObjectSchema;
     const dragProps = {
       currentItem: item,
       onMove,
       selected,
       onDrag: props.onDrag,
+      style: { height: '100%' },
     };
     if (item.isFolder) {
       const dropProps = {
@@ -68,6 +64,7 @@ export default (props: CardProps) => {
         disable,
         currentItem: item,
         onUpload: props.onUpload,
+        style: { height: '100%' },
       };
       return (
         <DropBox {...dropProps}>
@@ -96,55 +93,15 @@ export default (props: CardProps) => {
         </DropBox>
       );
     }
-    if (item.type) {
-      return (
-        <DragBox {...dragProps}>
-          {item.isEncrypt === 1 ? (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'center',
-                alignContent: 'center',
-                height: 72,
-                background: 'gray',
-              }}
-            >
-              <span style={{ textAlign: 'center', fontSize: 16 }}>
-                <LockFilled />
-              </span>
-              <span style={{ textAlign: 'center' }}>文件已加密</span>
-            </div>
-          ) : (
-            <Exhibit
-              file={file}
-              boxClass="visible-file"
-              itemClass="card-img"
-              onDoubleClick={() => handleImagePreview(item)}
-            />
-          )}
-        </DragBox>
-      );
-    }
-    const ext = file.ext || path.extname(file.filename);
     return (
       <DragBox {...dragProps}>
-        <div
-          className="card-file-icon"
-          data-id={item.id}
+        <Exhibit
+          file={item}
+          boxClass="visible-file"
+          className="card-img"
           onDoubleClick={() => handleImagePreview(item)}
-        >
-          {ext in defaultStyles ? (
-            <FileIcon
-              extension={ext}
-              {...(defaultStyles as any)[ext]}
-              fold={Boolean(item.isFolder)}
-              style={{ fontSize: 75 }}
-            />
-          ) : (
-            <FileUnknownFilled style={{ fontSize: 75, color: 'teal' }} />
-          )}
-        </div>
+          controls={false}
+        />
       </DragBox>
     );
   };
@@ -165,22 +122,22 @@ export default (props: CardProps) => {
   };
   const handleClick = (item: FileSchema, e: any) => {
     e.preventDefault();
+    console.log('?????????---->>>', e);
     props.onSelectChange(item, e.metaKey, e.shiftKey);
   };
   const getCardItem = (item: FileSchema) => {
-    const tags = item.tags || [];
     return (
-      <div key={item.id} className={classNames('card-box')}>
+      <div key={item.id} className={classNames('card-box')} data-id={item.id}>
         <div
           className={classNames({
             selected: selected.includes(item.id),
             'drag-item': true,
             'card-icon': true,
           })}
-          data-id={item.id}
           onClick={(e) => handleClick(item, e)}
           onContextMenu={props.onContext(item)}
           onDoubleClick={directToDetail(item)}
+          data-id={item.id}
         >
           {getCard(item)}
         </div>
@@ -190,27 +147,38 @@ export default (props: CardProps) => {
           suppressContentEditableWarning={true}
           onBlur={handleRename(item)}
           id={'file-item-id-' + item.id}
+          style={{ width: item.file?.type === 'video' ? 125 : 75 }}
         >
-          {tags.length ? (
-            <Badge color={item.tags[0].color} text={item.filename} />
-          ) : (
-            item.filename
-          )}
+          {item.filename}
         </p>
         <div className="card-date">
           {moment(item.createdAt).format('YYYY-MM-DD')}
         </div>
         <div className="file-extra-info">
-          {item.starred || item.shared ? (
-            <Space size="middle" align="center">
+          <Space align="center" size={8}>
+            {item.starred && (
               <span>
                 <StarFilled />
               </span>
-              <span>
+            )}
+            {item.shared && (
+              <span onClick={console.log}>
                 <ShareAltOutlined />
               </span>
-            </Space>
-          ) : null}
+            )}
+            {item.tags?.length ? (
+              <span className="file-extra-tags">
+                {item.tags.slice(0, 3).map((tag, idx) => (
+                  <span key={tag.name} style={{ marginRight: idx ? -2 : 0 }}>
+                    <Badge
+                      color={tag.color}
+                      style={{ fontSize: 12, width: 8, height: 8 }}
+                    />
+                  </span>
+                ))}
+              </span>
+            ) : null}
+          </Space>
         </div>
       </div>
     );

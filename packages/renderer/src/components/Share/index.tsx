@@ -27,7 +27,6 @@ interface ShareProps {
 }
 export default (props: ShareProps) => {
   const file = props.file as FileSchema;
-  console.log('shuihuzhuang share props', props);
   const [formData, setFormData] = useState<any>({
     expiry: 1,
     isExternal: false,
@@ -80,7 +79,6 @@ export default (props: ShareProps) => {
   const ttl = props.detail
     ? new Date(props.detail.expiredAt).getTime() - Date.now()
     : 0;
-  console.log('ffffformData', formData.url);
   return (
     <>
       <Modal

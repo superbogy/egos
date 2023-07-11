@@ -23,7 +23,6 @@ export interface DiskState {
   meta: {
     total: number;
     pageSize?: number;
-    tags: Tag[];
   };
   files: FileSchema[];
   parentId: string;
@@ -35,6 +34,7 @@ export interface DiskState {
   inProgressNumber: number;
   shareDetail: null | ShareSchema;
   uploadUrl: string;
+  tags: any[];
 }
 const model = {
   namespace: 'netdisk',
@@ -44,7 +44,6 @@ const model = {
     display: 'card',
     meta: {
       total: 0,
-      tags: [],
     },
     files: [],
     parentId: '',
@@ -56,6 +55,7 @@ const model = {
     inProgressNumber: 0,
     shareDetail: null,
     uploadUrl: '',
+    tags: [],
   },
   effects: {
     *init(
@@ -68,13 +68,17 @@ const model = {
         ({ netdisk }: { netdisk: DiskState }): DiskState => netdisk,
       );
       const { entrance } = state as DiskState;
+      const newState: DiskState = { ...(state as DiskState) };
       if (!entrance.length) {
         const entrance = yield call(services.getQuickEntrance);
-        yield put({
-          type: 'updateState',
-          payload: { entrance },
-        });
+        newState.entrance = entrance as FileSchema[];
       }
+      const tags = yield call(services.getTags);
+      newState.tags = tags as any[];
+      yield put({
+        type: 'updateState',
+        payload: newState,
+      });
       Remote.Electron.ipcRenderer.send('file:upload:start', { type: 'file' });
       yield put({
         type: 'query',
@@ -119,7 +123,7 @@ const model = {
     *download({ payload }: AnyAction, { call }: EffectsCommandMap) {
       yield call(services.download, { ...payload });
     },
-    *likeIt({ payload }: AnyAction, { call }: EffectsCommandMap) {
+    *star({ payload }: AnyAction, { call }: EffectsCommandMap) {
       yield call(services.star, { ...payload });
     },
     *setUserAction({ payload }: AnyAction, { put, select }: EffectsCommandMap) {
@@ -221,7 +225,6 @@ const model = {
         services.getShare,
         payload,
       );
-      console.log('?????', payload, shareDetail);
       yield put({
         type: 'updateState',
         payload: { shareDetail },
@@ -235,6 +238,7 @@ const model = {
       });
     },
     *updateTags({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
+      console.log('updateTags payload', payload);
       yield call(services.updateFileTags, payload);
       yield put({
         type: 'query',
@@ -243,6 +247,14 @@ const model = {
     },
     *crypto({ payload }: AnyAction, { call }: EffectsCommandMap) {
       yield call(services.crypto, payload);
+    },
+    *searchTags({ payload }: AnyAction, { call }: EffectsCommandMap) {
+      const { name } = payload;
+      if (!name) {
+        return;
+      }
+      const tags: any[] = yield call(services.searchTags, name);
+      console.log('ttttags', tags);
     },
   },
   reducers: {

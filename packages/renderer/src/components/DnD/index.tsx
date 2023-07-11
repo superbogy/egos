@@ -1,4 +1,4 @@
-import { FC, ReactNode } from 'react';
+import { CSSProperties, FC, ReactNode } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { NativeTypes } from 'react-dnd-html5-backend';
 import './index.less';
@@ -99,6 +99,7 @@ export interface DragProps {
   dragType?: string;
   onMove?: ({ src, dest }: { src: any; dest: any }) => void;
   children: ReactNode | ReactNode[];
+  style?: CSSProperties;
 }
 export const DragBox: FC<DragProps> = (props) => {
   const { currentItem } = props;
@@ -126,7 +127,7 @@ export const DragBox: FC<DragProps> = (props) => {
   );
   const opacity = isDragging ? 0.4 : 1;
   return (
-    <div ref={drag} role="Box" style={{ opacity }}>
+    <div ref={drag} role="Box" style={{ ...props.style, opacity }}>
       {props.children}
     </div>
   );

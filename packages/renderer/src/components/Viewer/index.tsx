@@ -38,7 +38,6 @@ const Viewer: FC<ViewerProps> = (props: ViewerProps) => {
     }
     setActiveItem(list[index + 1]);
   };
-  const file = activeItem.file || {};
   return (
     <>
       <div
@@ -60,9 +59,9 @@ const Viewer: FC<ViewerProps> = (props: ViewerProps) => {
             onClick={(e) => !e.defaultPrevented && props.onClose()}
           >
             <Exhibit
-              file={file}
+              file={activeItem}
               boxClass="viewer-content"
-              itemClass="view-file-item"
+              className="view-file-item"
               avatarClass="viewer-file-cover"
               controls={props.controls}
             />
@@ -74,7 +73,7 @@ const Viewer: FC<ViewerProps> = (props: ViewerProps) => {
             {dataIndex.map((item) => {
               return (
                 <div className="item-body" key={item.alias}>
-                  <span className="item-label">{item.alias}</span>
+                  <span className="item-label">{item.alias}:</span>
                   <span className="item-value">
                     {path(item.key, activeItem)}
                   </span>

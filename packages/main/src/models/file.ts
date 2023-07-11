@@ -14,6 +14,7 @@ import { setTaskSecret } from '../jobs/helper';
 import { md5 } from '@egos/storage';
 import { Favorite } from './favorite';
 import { Share } from './share';
+import { TagMap } from './tag-source';
 
 export const quickEntrance = [
   { filename: 'Document', path: '/Document' },
@@ -128,19 +129,19 @@ export class FileModel extends Base {
     if (!file) {
       return;
     }
-    const sizeLimit = 1024 * 1024 * 50;
     const driver = getDriverByBucket(file.bucket) as Driver;
-    const url = file.remote;
-    if (
-      (file.type === 'image' || file.type === 'video') &&
-      file.size < sizeLimit
-    ) {
-      if (!fs.existsSync(file.local)) {
-        const cacheFile = await driver.getCacheFilePath(file);
-        file.local = cacheFile;
-        file = await file.save();
-      }
-    }
+    const url = await driver.getUrl(file.remote);
+    // const sizeLimit = 1024 * 1024 * 50;
+    // if (
+    //   (file.type === 'image' || file.type === 'video') &&
+    //   file.size < sizeLimit
+    // ) {
+    //   if (!fs.existsSync(file.local)) {
+    //     const cacheFile = await driver.getCacheFilePath(file);
+    //     file.local = cacheFile;
+    //     file = await file.save();
+    //   }
+    // }
     return { url, file: file.toJSON() };
   }
 
@@ -171,11 +172,7 @@ export class FileModel extends Base {
     const total = await this.count(where);
     const files = await this.find(where, options);
     const list = [];
-    const tagNames: string[] = R.flatten(R.pluck('tags', files)).filter(
-      (i) => i,
-    );
     const sourceIds = files.map((f) => f.id);
-    const tags = await Tag.find({ name: { $in: tagNames } });
     const starred = await Favorite.find({
       type: 'file',
       sourceId: { $in: sourceIds },
@@ -190,26 +187,20 @@ export class FileModel extends Base {
       .map((s) => Number(s.sourceId));
     for (const item of files) {
       const file = item.toJSON();
-      if (file.tags?.length) {
-        file.tags = file.tags
-          .map((t: string) => {
-            const tag = tags.find((tag) => tag.name === t);
-            return tag;
-          })
-          .filter((t: any) => t);
-      }
-      if (!item.isFolder) {
-        const newItem = await this.getFileInfo(item);
-        list.push({ ...file, ...newItem });
-        continue;
-      }
+      const tagmaps = await TagMap.find({ sourceId: file.id, type: 'file' });
+      const tags = await Tag.findByIds(tagmaps.map((item) => item.tagId));
+      file.tags = tags.map((t) => t.toJSON());
       file.starred = starredIds.includes(file.id);
       file.shared = shareIds.includes(file.id);
-      console.log('fuck', shareIds, file.id, file.shared);
+      if (!item.isFolder) {
+        const objectInfo = await this.getFileInfo(item);
+        list.push({ ...file, ...objectInfo });
+        continue;
+      }
       list.push(file);
     }
     return {
-      meta: { total, tags },
+      meta: { total },
       data: { files: list, parent: parent.toJSON() },
     };
   }
@@ -223,9 +214,8 @@ export class FileModel extends Base {
     if (!file) {
       return;
     }
-    await Promise.all(tagList.map((t) => Tag.findAndCreate(t)));
-    file.tags = tagList;
-    await file.save();
+
+    return Promise.all(tagList.map((t) => Tag.findAndCreate(t, file.id)));
   }
   async crypto(fid: number, password: string, action: string) {
     const file = await this.findById(fid);

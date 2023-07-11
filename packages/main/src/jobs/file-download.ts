@@ -7,16 +7,16 @@ import { getDriverByBucket } from '../lib/bucket';
 import { getDownloadPath } from '../lib/helper';
 import { File } from '../models/file';
 import { FileObject } from '../models/file-object';
-import { Task, TaskModel } from '../models/task';
+import { Task, TaskModel, TaskSchema } from '../models/task';
 import { IpcMainEvent } from 'electron';
 import { ServiceError } from '../error';
 import { FileJob } from './file.job';
-import { DownloadPayload, JobOptions } from './interfaces';
+import { DownloadPayload, JobOptions, UploadPayload } from './interfaces';
+import { getTaskPassword } from './helper';
 
 export class FileDownloadJob extends FileJob {
-  static locker = new Locker();
   private readonly options: JobOptions;
-  private locker: Locker;
+  protected locker: Locker;
   protected channel: string;
 
   constructor(options: JobOptions) {
@@ -27,67 +27,16 @@ export class FileDownloadJob extends FileJob {
     this.action = options.action;
   }
 
-  async run(event: IpcMainEvent, options?: any): Promise<any> {
-    try {
-      await this.locker.acquireAsync();
-      const tasks = await this.getTasks();
-      console.log('download tasks');
-      console.log(tasks);
-      for (const task of tasks) {
-        if (task.retry >= task.maxRetry) {
-          continue;
-        }
-        const payload = (await this.buildPayload(task)) as DownloadPayload;
-        if (!payload) {
-          continue;
-        }
-        await task.updateAttributes({ status: 'processing' });
-        event.reply(this.channel, {
-          taskId: task.id,
-          type: 'download',
-          status: 'processing',
-          retry: task.retry,
-        });
-        const savePath = fs.existsSync(payload.savePath)
-          ? payload.savePath
-          : getDownloadPath();
-        await this.process(event, {
-          ...payload,
-          savePath,
-          taskId: task.id,
-        })
-          .then(async () => {
-            await Task.update({ id: task.id }, { status: 'done' });
-          })
-          .catch(async (err) => {
-            if (task.retry <= task.maxRetry) {
-              task.status = 'unresolved';
-              task.err = err.message;
-              task.retry += 1;
-              await task.updateAttributes({
-                status: 'unresolved',
-                err: err.message,
-                retry: task.retry + 1,
-              });
-              this.failure(event, payload, err.message);
-            } else {
-              throw err;
-            }
-          });
-      }
-    } catch (err) {
-      console.log(err);
-      this.failure(
-        event,
-        {
-          type: 'job',
-          message: 'exception error',
-        },
-        err,
-      );
-    } finally {
-      this.locker.release();
-    }
+  async getTask() {
+    return Task.find({ type: 'file', action: 'download' });
+  }
+
+  async buildPayload(task: TaskSchema): Promise<any> {
+    const sourceId = task.sourceId;
+    const password = getTaskPassword(task.id);
+    const savePath = getDownloadPath();
+
+    return { fileId: sourceId, taskId: task.id, savePath, password };
   }
 
   async pause(event: IpcMainEvent, { taskIds }: { taskIds: number[] }) {}
@@ -130,13 +79,13 @@ export class FileDownloadJob extends FileJob {
         }
       }
     }
-    const file = await File.findById(fileId as number);
-    const fileObj = await FileObject.findById(file?.objectId as number);
-    if (!fileObj) {
-      return false;
-    }
+    const file = await File.findByIdOrError(fileId as number);
+    const fileObj = await FileObject.findByIdOrError(file?.objectId as number);
     const driver = getDriverByBucket(fileObj.bucket);
-    const dest = await getNoneExistedFilename(payload.name as string, savePath);
+    const dest = await getNoneExistedFilename(
+      file.filename as string,
+      savePath,
+    );
     const source = driver.getPath(fileObj.remote);
     const writeParams = {
       source,
@@ -144,7 +93,7 @@ export class FileDownloadJob extends FileJob {
       taskId: payload.taskId,
       bucket: fileObj.bucket,
       password: payload.password,
-      crypto: file?.isEncrypt ? 'decrypt' : '',
+      crypto: '',
     };
     await this.write(event, writeParams);
     return true;

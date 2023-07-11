@@ -12,43 +12,55 @@ import {
   UnlockFilled,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Select } from 'antd';
-import { Ref, forwardRef, useImperativeHandle, useState } from 'react';
+import { Select, Spin } from 'antd';
+import {
+  Ref,
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useState,
+} from 'react';
 import {
   Item,
   Menu as ContextMenu,
   Separator,
   useContextMenu,
+  ItemParams,
 } from 'react-contexify';
 import PasswordForm from './PasswordForm';
+import { TagSchema } from '@/services/schema';
+import { searchTags } from '../service';
+import { FileSchema } from '@/services/file';
 
 type CtxFn = (props: any) => void;
 
 export interface CtxProps {
-  currentItem: any;
-  starred: string[];
-  selected: any[];
-  onDetail?: CtxFn;
-  onRename?: CtxFn;
-  onMove?: CtxFn;
-  onRemove?: CtxFn;
-  onDownload?: CtxFn;
-  onTagChange?: CtxFn;
-  onSearchTag?: CtxFn;
-  onShare?: CtxFn;
-  onStar?: CtxFn;
+  currentItem: FileSchema | null;
+  starred: number[];
+  tags: TagSchema[];
+  selected: number[];
+  onDetail: CtxFn;
+  onRename: CtxFn;
+  onMove: CtxFn;
+  onRemove: CtxFn;
+  onDownload: CtxFn;
+  onTagSelected: CtxFn;
+  onSearchTag: CtxFn;
+  onShare: CtxFn;
+  onStar: CtxFn;
   onNewFolder?: CtxFn;
   onUpload?: CtxFn;
   onSort?: CtxFn;
-  onCrypto?: CtxFn;
+  onCrypto: CtxFn;
   setCtx: (ctxObj: any) => void;
-  tagList: any[];
 }
 
-export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
+export const CtxMenu = forwardRef((props: CtxProps, ref: Ref<any>) => {
   const currentItem = props.currentItem;
   const selected = props.selected || [];
   const [pwd, setPwd] = useState<boolean>(false);
+  const [tags, setTags] = useState<TagSchema[]>([]);
+  const [fetchingTag, setFetchingTag] = useState<string>('');
   const ctxItem = useContextMenu<any>({
     id: 'netdisk-item-ctx',
     props: currentItem,
@@ -61,49 +73,90 @@ export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
     item: ctxItem,
     container: ctxContainer,
   }));
-  const getHighlightStyle = (key: string) => {
+  useEffect(() => {
+    setTags(props.tags);
+  }, [props.tags]);
+  const getHighlightStyle = (key: any) => {
     const style: { color?: string } = {};
     if (!currentItem) {
       return style;
     }
-    if (currentItem[key] || props[key]?.includes(currentItem.id)) {
+    if (key in currentItem) {
       style.color = 'red';
+    }
+    const exists = props[key as keyof CtxProps] as number[];
+    if (Array.isArray(exists) && exists?.includes(currentItem.id)) {
+      style.color = 'green';
     }
     return style;
   };
+  let tagTimer: any;
+
+  const handleTagChange = (tags: string[]) => {
+    if (!tagTimer) {
+      clearTimeout(tagTimer);
+    }
+    tagTimer = setTimeout(() => {
+      props.onTagSelected({ tags, id: currentItem?.id });
+    }, 2500);
+  };
+  let tagSearchTimer: NodeJS.Timeout;
+  const handleTagSearch = (name: string) => {
+    console.log('ctx search tag', name, fetchingTag);
+    if (fetchingTag) {
+      return;
+    }
+    setFetchingTag(name);
+    if (tagSearchTimer) {
+      clearTimeout(tagSearchTimer);
+    }
+    tagSearchTimer = setTimeout(() => {
+      searchTags(name).then((res) => {
+        console.log('tags res', res);
+        setTags(res);
+        setFetchingTag('');
+      });
+    }, 400);
+  };
   const cryptType = currentItem?.isEncrypt ? 'decrypt' : 'encrypt';
   const isMultiSelected = selected.length > 1;
+  const onCtx =
+    (cb: CtxFn, includeSelected?: boolean) =>
+    (params: ItemParams<FileSchema, null>) => {
+      if (includeSelected) {
+        selected.push(params.props?.id as number);
+        return cb([...selected]);
+      }
+      cb(params.props?.id as number);
+    };
   return (
     <>
       <ContextMenu id="netdisk-item-ctx">
-        <Item
-          onClick={(ctx: any) => props.onDetail(ctx.props)}
-          disabled={isMultiSelected}
-        >
+        <Item onClick={onCtx(props.onDetail, false)} disabled={isMultiSelected}>
           <div className="netdisk-ctx-text">
-            <span>show</span>
+            <span>edit</span>
             <FundViewOutlined />
           </div>
         </Item>
-        <Item onClick={props.onRename} disabled={isMultiSelected}>
+        <Item onClick={onCtx(props.onRename, false)} disabled={isMultiSelected}>
           <div className="netdisk-ctx-text">
             <span>rename</span>
             <EditOutlined />
           </div>
         </Item>
-        <Item onClick={console.log}>
+        <Item onClick={onCtx(props.onMove, true)}>
           <div className="netdisk-ctx-text">
             <span>move</span>
             <ExportOutlined />
           </div>
         </Item>
-        <Item onClick={props.onRemove}>
+        <Item onClick={onCtx(props.onRemove, true)}>
           <div className="netdisk-ctx-text">
             <span>delete</span>
             <DeleteOutlined />
           </div>
         </Item>
-        <Item onClick={props.onDownload}>
+        <Item onClick={onCtx(props.onDownload, true)}>
           <div className="netdisk-ctx-text">
             <span>download</span>
             <DownloadOutlined />
@@ -124,18 +177,37 @@ export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
               bordered={false}
               placeholder="choose tags"
               defaultValue={
-                currentItem?.tags
-                  ? currentItem?.tags.map((t: any) => t.name)
+                currentItem && currentItem.tags
+                  ? currentItem.tags.map((t: any) => t.name)
                   : []
               }
-              options={props.tagList}
+              options={tags.map((tag) => {
+                return {
+                  key: tag.name,
+                  label: (
+                    <div key={tag.name}>
+                      <span
+                        className="netdisk-tag-color"
+                        style={{ background: tag.name }}
+                      ></span>
+                      <span className="netdisk-tag-text">{tag.name}</span>
+                    </div>
+                  ),
+                  value: tag.name,
+                };
+              })}
               style={{ width: '80%' }}
-              onSearch={(...args: any[]) => console.log('fffffuck', args)}
-              onChange={props.onTagChange}
+              onSearch={(tagName: string) => handleTagSearch(tagName)}
+              onChange={(tags: string[]) => {
+                console.log('on select tags', tags);
+                handleTagChange(tags);
+              }}
+              notFoundContent={fetchingTag ? <Spin size="small" /> : null}
+              loading={!!fetchingTag}
             />
           </div>
         </Item>
-        <Item onClick={props.onStar}>
+        <Item onClick={onCtx(props.onStar, true)}>
           <div className="netdisk-ctx-text">
             <span>star</span>
             <StarFilled style={getHighlightStyle('starred')} />
@@ -156,7 +228,7 @@ export const CtxMenu = forwardRef((props: any, ref: Ref<any>) => {
             )}
           </div>
         </Item>
-        <Item onClick={props.onShare} disabled={isMultiSelected}>
+        <Item onClick={onCtx(props.onShare, false)} disabled={isMultiSelected}>
           <div className="netdisk-ctx-text">
             <span>share</span>
             <ShareAltOutlined style={getHighlightStyle('shared')} />
