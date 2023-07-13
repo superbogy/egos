@@ -1,11 +1,5 @@
 import { setSharedVar } from '../global';
-import {
-  ipcMain,
-  dialog,
-  IpcMainEvent,
-  IpcMainInvokeEvent,
-  BrowserWindow,
-} from 'electron';
+import { ipcMain, dialog, IpcMainInvokeEvent, BrowserWindow } from 'electron';
 import { FILE_ENCRYPT_PWD, SHOW_DIALOG } from './constant';
 
 export const registerEvent = (win: BrowserWindow) => {

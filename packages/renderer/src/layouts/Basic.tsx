@@ -8,6 +8,7 @@ import Icon, {
   NodeIndexOutlined,
   RestOutlined,
   SwapOutlined,
+  CameraFilled,
 } from '@ant-design/icons';
 import { Layout, Menu, Popover } from 'antd';
 import { useEffect } from 'react';
@@ -25,6 +26,7 @@ const routeIcons: Record<string, any> = {
   NodeIndexOutlined,
   RestOutlined,
   SwapOutlined,
+  CameraFilled,
 };
 
 /**

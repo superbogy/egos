@@ -15,18 +15,6 @@ import { DownloadPayload, JobOptions, UploadPayload } from './interfaces';
 import { getTaskPassword } from './helper';
 
 export class FileDownloadJob extends FileJob {
-  private readonly options: JobOptions;
-  protected locker: Locker;
-  protected channel: string;
-
-  constructor(options: JobOptions) {
-    super();
-    this.options = options;
-    this.locker = new Locker();
-    this.channel = options.channel;
-    this.action = options.action;
-  }
-
   async getTask() {
     return Task.find({ type: 'file', action: 'download' });
   }

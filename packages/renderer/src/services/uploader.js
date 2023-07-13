@@ -1,9 +1,13 @@
 import OSS from 'ali-oss';
 import * as fs from 'fs';
-import Photo from '@/services/photo';
+import { Photo } from '@/services/photo';
 import Bucket from '@/services/bucket';
 
-const ossBucket = Bucket.findOne({ userId: 1, platform: 'ALIYUN-OSS', status: `active` });
+const ossBucket = Bucket.findOne({
+  userId: 1,
+  platform: 'ALIYUN-OSS',
+  status: `active`,
+});
 const conOpts = ossBucket.config;
 const oss = new OSS(conOpts);
 export const upload = async (photo) => {

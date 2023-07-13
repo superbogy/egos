@@ -66,7 +66,7 @@ export class FileSchema {
   @column({ type: FieldTypes.TEXT, default: 'uploading' })
   status: string;
   @column({ type: FieldTypes.TEXT, default: '""' })
-  local: string;
+  url: string;
 }
 
 @table('files')

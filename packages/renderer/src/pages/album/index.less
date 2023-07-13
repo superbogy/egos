@@ -1,0 +1,119 @@
+.column {
+  margin-bottom: 12px;
+}
+
+.album-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border: 1px solid #767e81;
+}
+
+.album-main {
+  padding: 8px;
+  flex: 1;
+  border: 1px solid rosybrown;
+}
+
+.album-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 122px;
+  height: 156px;
+  margin: 8px;
+  padding: 2px;
+  border: 1px solid #f0f0f0;
+  contain: content;
+
+  .album-cover {
+    width: 100%;
+    height: 100%;
+    padding: 2px;
+    border: 1px solid #f0f0f0;
+    cursor: pointer;
+
+    .album-cover-img {
+      height: 106px;
+    }
+
+    .album-bar {
+      display: none;
+
+      .icon {
+        margin-left: 12px;
+      }
+    }
+  }
+
+  .meta {
+    padding: 0 8px;
+    color: rgba(8, 7, 6, 0.65);
+    font-weight: 400;
+    text-align: left;
+    background-color: #fefefe;
+
+    .ant-card-meta-title {
+      font-weight: 400;
+      font-size: 12px;
+    }
+
+    .filename {
+      width: 100%;
+      overflow: hidden;
+      font-size: 12px;
+    }
+
+    .created {
+      color: #b2b2b2;
+      font-size: 10px;
+      letter-spacing: 0.4;
+    }
+  }
+}
+
+
+
+
+.album-cover:hover .album-bar {
+  position: absolute;
+  top: 8px;
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  width: 100%;
+  height: 20px;
+}
+
+.album-selected {
+  border: 1px solid rgba(76, 174, 125, 0.545);
+}
+
+.album-cover-img {
+  width: 100%;
+  height: 100%;
+  margin-top: 0;
+  margin-left: 0;
+  object-fit: cover;
+  -webkit-transform: none;
+  -ms-transform: none;
+  transform: none;
+}
+
+.album-counter {
+  margin-top: -20px;
+  padding-right: 12px;
+  color: #767e81;
+  text-align: right;
+}
+
+.editable-album-name {
+  width: 100%;
+  padding: 0 4px;
+  font-size: 12px;
+}
+
+.editable-album-name:focus {
+  font-size: 14px;
+  border-bottom: 1px dashed teal;
+  caret-color: teal;
+}

@@ -4,21 +4,44 @@ import {
   getDriverByBucket,
 } from '../lib/bucket';
 import { getFileMeta } from '../lib/helper';
-import { File, FileObject, Task, TaskModel, TaskSchema } from '../models';
+import {
+  File,
+  FileObject,
+  FileObjectSchema,
+  Photo,
+  Task,
+  TaskModel,
+  TaskSchema,
+} from '../models';
 import { getDriver, md5 } from '@egos/storage';
 import fs from 'fs';
-import { DownloadPayload, UploadPayload, WriteFileParams } from './interfaces';
+import {
+  DownloadPayload,
+  JobOptions,
+  UploadPayload,
+  WriteFileParams,
+} from './interfaces';
 import { IpcMainEvent, ipcMain } from 'electron';
 import uuid from 'bson-objectid';
 import Driver from '@egos/storage/dist/abstract';
 import { getTaskPassword } from './helper';
-import path from 'path';
 import Locker from 'await-lock';
+import { BucketItem } from '@/config';
 
 export abstract class FileJob {
   protected channel: string;
   protected action: string;
   protected locker: Locker;
+  protected type = 'file';
+  protected syncJob: any;
+  protected options: JobOptions;
+
+  constructor(options: JobOptions) {
+    this.options = options;
+    this.channel = options.channel;
+    this.action = options.action;
+    this.locker = new Locker();
+  }
 
   async getTasks(): Promise<TaskModel[]> {
     const where = {
@@ -43,7 +66,6 @@ export abstract class FileJob {
   watch() {
     console.log(`${this.channel}:start`);
     ipcMain.on(`${this.channel}:start`, (event: IpcMainEvent) => {
-      console.log(`${this.channel}:start`);
       event.reply(this.channel, { message: `${this.action} job started` });
       this.run(event)
         .then(() => {
@@ -78,8 +100,9 @@ export abstract class FileJob {
   }
 
   async getSourceInfo(fileId: number) {
-    console.log('getSrouceInfo payload---->', fileId);
-    const file = await File.findById(fileId);
+    console.log('getSrouceInfo payload---->', fileId, this.type);
+    const model = this.type === 'file' ? File : Photo;
+    const file = await model.findById(fileId);
     if (!file) {
       throw new Error('File not found');
     }
@@ -103,15 +126,12 @@ export abstract class FileJob {
         },
       };
     }
-    if (!file.local) {
+    console.log(file);
+    if (!fs.existsSync(file.url)) {
       throw new Error('file not exists');
     }
-
-    if (!fs.existsSync(file.local)) {
-      throw new Error('file not exists');
-    }
-    const meta = await getFileMeta(file.local);
-    return { source: file.local, meta };
+    const meta = await getFileMeta(file.url);
+    return { source: file.url, meta };
   }
 
   async buildPayload(
@@ -121,11 +141,10 @@ export abstract class FileJob {
       password: '',
       local: '',
       fileId: task.sourceId,
-      taskId: '',
+      taskId: task.id,
       name: '',
       action: task.action,
     } as UploadPayload;
-    payload.taskId = task.id;
     const password = getTaskPassword(task.id as number);
     if (task.action === 'encrypt') {
       if (!password) {
@@ -134,7 +153,8 @@ export abstract class FileJob {
       payload.password = md5(password);
     }
     const fileId = task.sourceId;
-    const file = await File.findById(fileId);
+    const model = this.type === 'file' ? File : Photo;
+    const file = await model.findById(fileId);
     if (!file) {
       throw new Error('File not found');
     }
@@ -156,7 +176,7 @@ export abstract class FileJob {
       payload.name = name;
     } else {
       payload.name = '';
-      payload.local = file.local;
+      payload.local = file.url;
     }
 
     return payload;
@@ -214,7 +234,7 @@ export abstract class FileJob {
 
   async addFile(event: IpcMainEvent, payload: Omit<UploadPayload, 'parentId'>) {
     const { name } = payload;
-    const bucket = getAvailableBucket('file');
+    const bucket = getAvailableBucket(this.type);
     const driver = getDriver(bucket);
     const { source, meta } = await this.getSourceInfo(payload.fileId as number);
     const remote = name || uuid().toHexString() + '.' + meta.ext || 'unknow';
@@ -247,12 +267,12 @@ export abstract class FileJob {
     // });
     const data: Record<string, any> = {
       ...meta,
-      local: '',
       remote,
       md5: res,
       bucket: bucket.name,
     };
-    return data;
+
+    return FileObject.create(data);
   }
 
   async pause(event: IpcMainEvent, { taskIds }: { taskIds: number[] }) {
@@ -264,7 +284,7 @@ export abstract class FileJob {
       const payload = task.payload;
       const bucket = payload.bucket
         ? getBucketByName(payload.bucket)
-        : getAvailableBucket(payload.bucketType);
+        : getAvailableBucket(this.type);
       const driver = getDriver(bucket);
       driver.cancel(task.id, async () => {
         await Task.update({ id: task.id }, { status: 'pause' });
@@ -291,7 +311,7 @@ export abstract class FileJob {
       const payload = task.payload;
       const bucket = payload.bucket
         ? getBucketByName(payload.bucket)
-        : getAvailableBucket(payload.bucketType);
+        : getAvailableBucket(this.type);
       const driver = getDriver(bucket);
       driver.cancel(task.id, async () => {
         await driver.clearFragment(payload.remote, type);
@@ -307,7 +327,7 @@ export abstract class FileJob {
       });
     }
   }
-  success(event: IpcMainEvent, payload: any, result?: any) {
+  async success(event: IpcMainEvent, payload: any, result?: any) {
     if (this.channel) {
       event.reply(this.channel, {
         status: 'success',
@@ -317,6 +337,18 @@ export abstract class FileJob {
         payload,
         result,
       });
+    }
+    const fileObj = await FileObject.findByIdOrError(payload.objectId);
+    const bucket = getBucketByName(fileObj.bucket) as BucketItem;
+    if (Array.isArray(fileObj.backup)) {
+      Object.entries(fileObj.backup).map(([toBucket]) => {
+        this.syncJob.add({
+          fromBucket: bucket.name,
+          toBucket,
+          objectId: fileObj.id,
+        });
+      });
+      this.syncJob.start();
     }
   }
 
@@ -369,13 +401,22 @@ export abstract class FileJob {
         await task.updateAttributes({ status: 'processing' });
         event.reply(this.channel, {
           taskId: task.id,
-          type: this.action,
+          type: this.type,
+          action: this.action,
           status: 'processing',
           retry: task.retry,
         });
-        await this.process(event, { ...payload, taskId: task.id })
-          .then(async () => {
+        await this.process(event, { ...payload })
+          .then(async (fileObj: FileObjectSchema) => {
             await Task.update({ id: task.id }, { status: 'done' });
+            this.success(event, {
+              ...payload,
+              type: this.type,
+              action: this.action,
+              taskId: task.id,
+              targetId: task.sourceId,
+              objectId: fileObj.id,
+            });
           })
           .catch(async (err: Error) => {
             console.log('err', err);

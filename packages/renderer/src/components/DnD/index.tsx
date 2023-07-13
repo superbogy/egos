@@ -137,9 +137,9 @@ export interface SortableProps {
   currentItem: any;
   selected: number[];
   disable: number[];
-  style: Record<string, string>;
-  hoverStyle: Record<string, string>;
-  dropStyle: Record<string, string>;
+  style?: Record<string, string>;
+  hoverStyle?: Record<string, string>;
+  dropStyle?: Record<string, string>;
   onMove: (src: any, dest: any) => void;
   dropType?: string;
   onUpload?: ({
@@ -151,7 +151,7 @@ export interface SortableProps {
     parentId?: number;
     currentItem: any;
   }) => void;
-  children: ReactNode | ReactNode[];
+  children?: ReactNode | ReactNode[];
 }
 
 export const Sortable: FC<SortableProps> = (props) => {

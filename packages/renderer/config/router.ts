@@ -12,7 +12,12 @@ export default {
       icon: 'FolderOutlined',
       component: '@/pages/netdisk',
     },
-
+    {
+      path: '/album',
+      name: 'album',
+      icon: 'CameraFilled',
+      component: '@/pages/album',
+    },
     {
       path: '/account/setting',
       name: 'setting',

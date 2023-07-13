@@ -13,80 +13,17 @@ import { JobOptions, UploadPayload } from './interfaces';
 
 export class FileUploadJob extends FileJob {
   protected locker = new Locker();
-  private readonly options: JobOptions;
-  private syncJob: any;
+  protected options: JobOptions;
+  protected syncJob: any;
   protected channel: string;
   constructor(options: JobOptions) {
-    super();
-    this.options = options;
+    super(options);
     this.syncJob = new SynchronizeJob();
-    this.channel = options.channel;
-    this.action = options.action;
   }
-
-  // async run(event: IpcMainEvent, options?: any): Promise<any> {
-  //   try {
-  //     await this.locker.acquireAsync();
-  //     // make sure only one task in running
-  //     const tasks = await this.getTasks();
-  //     for (const task of tasks) {
-  //       const payload = await this.buildPayload(task.toJSON() as TaskSchema);
-  //       if (!payload) {
-  //         continue;
-  //       }
-  //       await task.updateAttributes({ status: 'processing' });
-  //       event.reply(this.channel, {
-  //         taskId: task.id,
-  //         type: this.action,
-  //         status: 'processing',
-  //         retry: task.retry,
-  //       });
-  //       await this.upload(event, { ...payload, taskId: task.id })
-  //         .then(async () => {
-  //           await Task.update({ id: task.id }, { status: 'done' });
-  //         })
-  //         .catch(async (err) => {
-  //           console.log('err', err);
-  //           if (task.retry > task.maxRetry) {
-  //             task.status = 'unresolved';
-  //             task.err = err.message;
-  //             task.retry += 1;
-  //             await task.updateAttributes({
-  //               status: 'unresolved',
-  //               err: err.message,
-  //               retry: task.retry + 1,
-  //             });
-  //           } else {
-  //             this.failure(
-  //               event,
-  //               {
-  //                 type: 'task',
-  //                 payload,
-  //               },
-  //               err.message,
-  //             );
-  //             throw err;
-  //           }
-  //         });
-  //     }
-  //   } catch (err) {
-  //     console.log('upload error', err);
-  //     this.failure(
-  //       event,
-  //       {
-  //         type: 'job',
-  //         message: 'exception error',
-  //       },
-  //       err,
-  //     );
-  //   } finally {
-  //     this.locker.release();
-  //   }
-  // }
 
   async process(event: IpcMainEvent, payload: UploadPayload) {
     const bucket = getAvailableBucket('file');
-    const { local, name, taskId, password, fileId } = payload;
+    const { local, taskId, password, fileId } = payload;
     if (!local) {
       throw new Error('local file not found');
     }
@@ -122,16 +59,16 @@ export class FileUploadJob extends FileJob {
       }
       return file.toJSON();
     }
-    const data = await this.addFile(event, {
+    const fileObj = await this.addFile(event, {
       ...payload,
       local,
       taskId,
       password,
     });
-    if (!data) {
+    if (!fileObj) {
       return null;
     }
-    const fileObj = await FileObject.create({ ...data });
+    // @fixme should update the logic
     if (file.status === 'done') {
       const previosObj = await FileObject.findById(file?.objectId as number);
       if (!previosObj) {
@@ -151,22 +88,6 @@ export class FileUploadJob extends FileJob {
       status: 'done',
       size: fileObj.size,
     });
-
-    this.success(event, {
-      ...payload,
-      taskId: taskId,
-      targetId: res.id,
-    });
-    if (Array.isArray(fileObj.backup)) {
-      Object.entries(fileObj.backup).map(([toBucket]) => {
-        this.syncJob.add({
-          fromBucket: bucket.name,
-          toBucket,
-          objectId: fileObj.id,
-        });
-      });
-      this.syncJob.start();
-    }
 
     return res.toJSON();
   }

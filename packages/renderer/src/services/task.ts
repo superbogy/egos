@@ -49,6 +49,16 @@ class TaskService extends Base {
   async getTaskResultUrl(...args: any[]) {
     return this.exec('getResultUrl', ...args);
   }
+
+  async buildImageUploadTasks({
+    files,
+    albumId,
+  }: {
+    files: string[];
+    albumId: number;
+  }) {
+    return this.exec('buildImageUploadTasks', { files, albumId });
+  }
 }
 export const Task = new TaskService('tasks');
 

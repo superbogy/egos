@@ -24,8 +24,8 @@ export default class AlterJob extends Job {
     // });
     // await this.addColumn(Task.table, {
     //   type: FieldTypes.TEXT,
-    //   name: 'updated_at',
-    //   default: '""',
+    //   name: 'payload',
+    //   default: '{}',
     // });
     // await this.addColumn(File.table, {
     //   type: FieldTypes.TEXT,

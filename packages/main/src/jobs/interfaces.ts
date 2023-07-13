@@ -1,5 +1,6 @@
 export interface UploadPayload {
   local: string;
+  type: string;
   parentId?: number;
   name: string;
   taskId: number | string;

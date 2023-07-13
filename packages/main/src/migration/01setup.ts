@@ -1,4 +1,4 @@
-import { Album, Favorite } from '../models';
+import { Album, Favorite, Photo } from '../models';
 import { Job } from '@egos/lite';
 import { utils } from '@egos/lite';
 import { File } from '../models/file';
@@ -10,9 +10,7 @@ import { TagMap } from '../models/tag-source';
 
 export default class SetupJob extends Job {
   async up() {
-    const albumSql = utils.genSql(Album.table, Album.schema);
-    console.log('>>>>>>--2', albumSql);
-    await this.exec(albumSql);
+    console.log('>>>>>>12');
     const fileSql = utils.genSql(File.table, File.schema);
     await this.exec(fileSql);
     const fileObjSql = utils.genSql(FileObject.table, FileObject.schema);
@@ -27,5 +25,10 @@ export default class SetupJob extends Job {
     await this.exec(shareSql);
     const tagMapSql = utils.genSql(TagMap.table, TagMap.schema);
     await this.exec(tagMapSql);
+    const albumSql = utils.genSql(Album.table, Album.schema);
+    await this.exec(albumSql);
+    const photoSql = utils.genSql(Photo.table, Photo.schema);
+    console.log(photoSql);
+    await this.exec(photoSql);
   }
 }

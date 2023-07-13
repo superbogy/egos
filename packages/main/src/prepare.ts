@@ -16,6 +16,7 @@ export default async (win: BrowserWindow) => {
   });
   // @todo
   if (!setting.setup || 1) {
+    console.log(123);
     const folder = path.join(path.dirname(__filename), 'migration');
     const migrate = new Migration(db, folder);
     await migrate.run();
@@ -23,5 +24,5 @@ export default async (win: BrowserWindow) => {
   registerChannel();
   registerJob();
   registerEvent(win);
-  getServer;
+  getServer();
 };

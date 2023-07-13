@@ -1,5 +1,5 @@
 import { ServiceError } from '../error';
-import { column, schema, table } from '@egos/lite';
+import { ORDER_TYPE, column, schema, table } from '@egos/lite';
 import crypto from 'crypto';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
@@ -7,6 +7,7 @@ import { File } from './file';
 import fs from 'fs';
 import path from 'path';
 import { getAvailablePath, jsonParser, jsonStringify } from '../lib/helper';
+import { Photo } from './photo';
 
 export enum QueueStatus {
   PENDING = 'pending',
@@ -156,6 +157,40 @@ export class TaskModel extends Base {
         sourceId: file.id,
       };
       await Task.create(task);
+    }
+  }
+  async buildImageUploadTasks(payload: any) {
+    const { albumId, files } = payload;
+    console.log('buildImageUploadTasks', payload);
+    for (const file of files) {
+      const last = await Photo.findOne(
+        {},
+        { order: { rank: ORDER_TYPE.DESC } },
+      );
+      const rank = last ? last.rank : 1;
+      const photo = {
+        albumId: file.albumId,
+        rank,
+        name: path.basename(file.path),
+        objectId: 0,
+        status: 'uploading',
+        description: '',
+        location: '',
+        password: '',
+        isEncrypt: 0,
+        url: file.path,
+      };
+      const item = await Photo.create(photo);
+      await Task.create({
+        action: 'download',
+        type: 'photo',
+        retry: 0,
+        status: 'pending',
+        payload: { uid: file.uid },
+        maxRetry: 10,
+        err: '',
+        sourceId: item.id,
+      });
     }
   }
 }
