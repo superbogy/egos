@@ -5,7 +5,7 @@ import Driver from '@egos/storage/dist/abstract';
 import Base from './base';
 import fs from 'fs';
 import { FileObject } from './file-object';
-import { jsonParser, jsonStringify } from '../lib/helper';
+import { utils } from '@egos/lite';
 import { Tag } from './tag';
 import R from 'ramda';
 import { ServiceError } from '../error';
@@ -38,34 +38,34 @@ export class FileSchema {
   id: number;
   @column({ type: FieldTypes.TEXT })
   type: string;
-  @column({ type: FieldTypes.INT, default: '""' })
+  @column({ type: FieldTypes.INT, default: '' })
   objectId: number;
-  @column({ type: FieldTypes.INT, default: '""' })
+  @column({ type: FieldTypes.INT, default: '' })
   parentId: number;
-  @column({ type: FieldTypes.INT, default: '""' })
+  @column({ type: FieldTypes.INT, default: '' })
   isFolder: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   path: string;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   filename: string;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   size: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   description: string;
   @column({
     type: FieldTypes.TEXT,
     default: '[]',
-    encode: jsonStringify,
-    decode: jsonParser,
+    encode: utils.jsonStringify,
+    decode: utils.jsonParser,
   })
   tags: string[];
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   password: string;
   @column({ type: FieldTypes.INT, default: 0 })
   isEncrypt: number;
   @column({ type: FieldTypes.TEXT, default: 'uploading' })
   status: string;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   url: string;
 }
 
@@ -246,7 +246,6 @@ export class FileModel extends Base {
         code: 10404,
       });
     }
-    console.log('vvvvverify', file.password, md5(password));
     if (file.isEncrypt && file.password !== md5(password)) {
       throw new ServiceError({
         message: 'Password incorrect',

@@ -223,6 +223,7 @@ export class Model {
   async insert(payload: Dict, options?: InsertOpts): Promise<this | number> {
     const builder = new Builder({});
     const data = this.toRowData(this.purify({ ...payload }));
+    console.log('??? insert data==>', data);
     const defaultData = this.toRowData(this.defaultData());
     const { sql, params } = builder
       .table(this.table)

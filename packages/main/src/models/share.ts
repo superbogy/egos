@@ -16,13 +16,15 @@ class ShareModel extends Base {
   id: number;
   @column({ type: FieldTypes.TEXT })
   sourceId: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   type: string;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
+  action: string;
+  @column({ type: FieldTypes.TEXT, default: '' })
   token: string;
   @column({ name: 'is_external', type: FieldTypes.INT, default: 0 })
   isExternal: string;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   expiredAt: string;
 
   async getShareBaseUrl() {
@@ -67,7 +69,7 @@ class ShareModel extends Base {
     });
     if (shared) {
       shared.expiredAt = new Date(Date.now() + expiry).toISOString();
-      await shared.save();
+      shared = await shared.save();
     } else {
       const token = uuid();
       const data = {
@@ -81,7 +83,8 @@ class ShareModel extends Base {
       shared = await this.create(data);
     }
     const baseUrl = await this.getShareBaseUrl();
-    return `${baseUrl}/web#/uploader?token=${shared.token}&id=${shared.id}&type=${type}`;
+    const url = `${baseUrl}/web#/uploader?token=${shared.token}&id=${shared.id}&type=${type}`;
+    return { ...shared.toJSON(), url };
   }
 
   async shareFile({
@@ -153,7 +156,6 @@ class ShareModel extends Base {
     };
     const share = await this.create(data);
     const url = await this.getUrl(share);
-    console.log('share eurl', url);
     return { ...share.toJSON(), url };
   }
 
@@ -175,11 +177,7 @@ class ShareModel extends Base {
       if (!source) {
         return defValue;
       }
-      const file = await File.findById(source.fileId);
-      if (!file) {
-        return defValue;
-      }
-      const fileObj = await FileObject.findByIdOrError(file?.objectId);
+      const fileObj = await FileObject.findByIdOrError(source?.objectId);
       const backup = fileObj.backup;
       for (const item of backup) {
         const driver = getDriverByBucket(item.bucket);
@@ -221,6 +219,21 @@ class ShareModel extends Base {
       return null;
     }
     const url = await this.getUrl(shared);
+    return { ...shared.toJSON(), url: url };
+  }
+
+  async getAlbumUploadShareById(albumId: number) {
+    const shared = await this.findOne({
+      sourceId: albumId,
+      type: 'album',
+      action: 'upload',
+    });
+    if (!shared) {
+      return null;
+    }
+    // const url = await this.getUrl(shared);
+    const baseUrl = await this.getShareBaseUrl();
+    const url = `${baseUrl}/web#/uploader?token=${shared.token}&id=${shared.id}&type=${shared.type}`;
     return { ...shared.toJSON(), url: url };
   }
 

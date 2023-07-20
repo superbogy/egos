@@ -11,7 +11,6 @@ const getShareChildren = async (
   const lastId = parentIds[parentIds.length - 1];
   const result: { data: any[]; total: number } = { data: [], total: 0 };
   const current = await File.findById(lastId);
-  console.log(parentIds, current);
   if (!current || !current.isFolder) {
     return result;
   }

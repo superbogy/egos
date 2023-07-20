@@ -1,3 +1,4 @@
+import { RcFile } from 'antd/lib/upload';
 import Base from './base';
 
 const QueueStatus = {
@@ -54,7 +55,7 @@ class TaskService extends Base {
     files,
     albumId,
   }: {
-    files: string[];
+    files: RcFile[];
     albumId: number;
   }) {
     return this.exec('buildImageUploadTasks', { files, albumId });

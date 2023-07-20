@@ -50,7 +50,6 @@ export default memo((props: BoxProps) => {
     });
   };
   const fileHost = Remote.Electron.vars.localFileHost;
-  console.log('fffuck', fileHost);
   return (
     <>
       <Sortable
@@ -81,7 +80,7 @@ export default memo((props: BoxProps) => {
               alt={currentItem.name}
               src={
                 currentItem.coverId
-                  ? `${fileHost}${currentItem.coverId}`
+                  ? `${fileHost}?fileId=${currentItem.coverId}&type=image`
                   : DefaultImg
               }
               style={{ width: '100%' }}

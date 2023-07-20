@@ -4,26 +4,25 @@ import { CheckOutlined, PlusOutlined } from '@ant-design/icons';
 import { Col, DatePicker, Form, Modal, Row, Select, Upload } from 'antd';
 import moment from 'moment';
 import { ReactNode, useEffect, useRef, useState } from 'react';
-import { RcFile } from 'antd/lib/upload';
 
 import { ipcEvent } from '@/lib/event';
 import { getBase64 } from '@/lib/helper';
 import { AlbumSchema } from '@/services/album';
+import type { RcFile, UploadProps } from 'antd/lib/upload';
 
-interface UploadProps {
+export interface UploaderProps {
   visible: boolean;
   onCancel: () => void;
   searchAlbums: AlbumSchema[];
-  buckets: any[];
   pending: any[];
   showSearch?: boolean;
-  onSearch: ({ keyword }: { keyword: string }) => void;
+  onSearch: (params: { keyword: string }) => void;
   onFinish: () => void;
-  onUpload: ({ files }: { files: any }) => void;
+  onUpload: (params: { files: any; albumId?: number }) => void;
 }
 let processing = 0;
-export default (props: UploadProps) => {
-  const { visible, onCancel, searchAlbums = [], buckets = [] } = props;
+export default (props: UploaderProps) => {
+  const { visible, onCancel, searchAlbums = [] } = props;
   const [selectedAlbumId, setSelectedAlbumId] = useState<number | null>(null);
   const [fileList, setFileList] = useState<any[]>([]);
   const fileRef = useRef<any[]>([]);
@@ -59,11 +58,16 @@ export default (props: UploadProps) => {
     }, 1000);
   };
 
-  const options = searchAlbums.map((item) => (
-    <Select.Option key={item.id} value={item.id}>
-      {item.name}
-    </Select.Option>
-  ));
+  const options = searchAlbums.map((item) => {
+    if (!Object.keys(item).length) {
+      return null;
+    }
+    return (
+      <Select.Option key={item.id} value={item.id}>
+        {item.name}
+      </Select.Option>
+    );
+  });
   const handleChange = (value: number) => {
     setSelectedAlbumId(value);
   };
@@ -86,13 +90,11 @@ export default (props: UploadProps) => {
     </div>
   );
   const beforeUpload = async (file: RcFile, list: any[]) => {
-    const { albumId, bucket, shootAt } = await form.validateFields();
-    console.log('??? before upload', albumId, bucket, list);
+    const { albumId, shootedAt } = await form.validateFields();
     setFileList(
       list.map((file: any) => {
         file.albumId = albumId;
-        file.bucket = bucket;
-        file.shootAt = shootAt.toISOString();
+        file.shootAt = shootedAt?.toISOString();
         return file;
       }),
     );
@@ -100,7 +102,7 @@ export default (props: UploadProps) => {
   };
 
   useEffect(() => {
-    ipcEvent.register('photo-result', eventHandler);
+    ipcEvent.register('image:upload', eventHandler);
   }, []);
 
   const uploadChange = ({ fileList: photoList }: any) => {
@@ -152,49 +154,74 @@ export default (props: UploadProps) => {
       });
     props.onUpload({ files });
   };
-  const eventHandler = (_: any, { message: msg, payload }: any) => {
-    console.log('eventHandler success', msg, payload, fileRef.current);
-    let files = fileRef.current;
-    const index = files.findIndex((item: any) => item.uid === payload.uid);
-    if (index === -1) {
-      processing = 0;
-      if (!files.length) {
-        props.onFinish();
-      }
+  const eventHandler = (_: any, params: any) => {
+    console.log('eventHandler success', params, fileRef.current);
+    // action: 'upload';
+    // file: '/Users/tomwei/Pictures/90f33047fe2c1beda220e615e1df2d20cb1275b8d6394-ludeX9_fw1200webp.webp';
+    // message: 'progress';
+    // percent: 0.9233413641038646;
+    // size: 141954;
+    // speed: 131.072;
+    // status: 'uploading';
+    // taskId: 24;
+    // type: 'image';
+    const { action, status, message, level, percent, speed, payload } = params;
+    if (level === 'job') {
       return;
     }
-    const current = files[index];
-    if (msg === 'success') {
-      current.status = 'done';
-      processing = 0;
-      current.percent = 100;
-    } else if (msg === 'failed') {
-      current.error = msg;
-      processing = 0;
-      current.status = 'error';
-    } else {
-      current.percent = 50;
-      current.status = 'uploading';
-      processing = 1;
+    let files = fileRef.current;
+    console.log('ref files', files);
+    if (!files.length) {
+      props.onFinish();
     }
-    console.log('fucking files', files);
-    setFileList([...files]);
+    const current = files.find((item: any) => item.uid === payload.uid);
+    console.log('find result-----> fuck', current);
+    if (!current) {
+      processing = 0;
+      return;
+    }
+    setFileList((prev) =>
+      prev.map((item) => {
+        if (item.uid !== current.uid) {
+          return item;
+        }
+        if (status === 'success') {
+          current.status = 'done';
+          processing = 0;
+          current.percent = 100;
+        } else if (status === 'error') {
+          current.error = message;
+          processing = 0;
+          current.status = 'error';
+        } else {
+          current.percent = Math.floor(percent * 100);
+          current.status = 'uploading';
+          processing = 1;
+        }
+        console.log('ccccurent', current);
+        return current;
+      }),
+    );
     setTimeout(() => {
       setFileList(fileList.filter((item) => item.status !== 'done'));
     }, 1000);
-    startUpload();
+    if (processing == 0) {
+      setTimeout(() => {
+        startUpload();
+      }, 1000);
+    }
   };
   const handleOk = async () => {
     startUpload();
   };
   const modalProps = {
     title: 'media upload',
-    visible,
+    open: visible,
     onSave: console.log,
     onCancel,
     wrapClassName: 'upload-box',
   };
-  const uploadProps = {
+  const uploadProps: UploadProps = {
     action: '#',
     fileList: [...props.pending, ...fileList],
     multiple: true,
@@ -216,6 +243,7 @@ export default (props: UploadProps) => {
         height: '100%',
         width: '100%',
       };
+      // console.log('item render', file);
       if (file.status === 'done') {
         style.border = '1px solid cyan';
       }
@@ -252,8 +280,7 @@ export default (props: UploadProps) => {
           form={form}
           initialValues={{
             albumId: searchAlbums.length ? searchAlbums[0].id : null,
-            bucket: buckets.length ? buckets[0].name : '',
-            shootAt: moment(new Date().toISOString(), 'YYYY-MM-DD'),
+            shootedAt: moment(new Date().toISOString(), 'YYYY-MM-DD'),
           }}
         >
           <Form.Item
@@ -262,21 +289,6 @@ export default (props: UploadProps) => {
             rules={[{ required: true, message: 'choose album!' }]}
           >
             <Select {...selectProps}>{options}</Select>
-          </Form.Item>
-          <Form.Item
-            label="bucket"
-            name="bucket"
-            rules={[{ required: false, message: 'choose bucket!' }]}
-          >
-            <Select>
-              {buckets.map((bucket) => {
-                return (
-                  <Select.Option value={bucket.name} key={bucket.name}>
-                    {bucket.name}
-                  </Select.Option>
-                );
-              })}
-            </Select>
           </Form.Item>
           <Form.Item
             label="shoot Date"

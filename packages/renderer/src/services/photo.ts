@@ -1,13 +1,18 @@
 import Base from './base';
 
-export interface PhotoShema {
+export interface PhotoSchema {
   id: number;
   albumId: number;
-  fileId: number;
+  objectId: number;
   status: string;
   type: string;
   size: number;
-  serialNo: number;
+  rank: number;
+  isEncrypt: number;
+  password?: string;
+  location?: string;
+  description: string;
+  shootedAt: string;
   createdAt: string;
   updatedAt: string;
 }

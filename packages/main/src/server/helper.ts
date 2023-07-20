@@ -15,11 +15,9 @@ export const getShareFileObj = async ({
   token: string;
 }) => {
   const share = await Share.findById(shareId);
-  console.log('sssshare view', share, shareId);
   if (!share || share.token !== token) {
     throw new ServiceError({ message: 'share not found' });
   }
-  console.log('>>>>>>>', share.expiredAt);
   if (new Date(share.expiredAt).getTime() < Date.now()) {
     throw new ServiceError({ message: 'share expired' });
   }
@@ -67,12 +65,6 @@ export const checkDelegate = async ({
   if (!current) {
     return false;
   }
-  console.log(
-    'ppppppcccccc',
-    current.parentId === targetId,
-    typeof current.parentId,
-    typeof targetId,
-  );
   if (current.parentId === Number(targetId)) {
     return true;
   }

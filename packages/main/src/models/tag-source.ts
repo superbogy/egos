@@ -10,7 +10,7 @@ class TagSource extends Base {
   tagId: number;
   @column({ type: FieldTypes.INT })
   sourceId: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   type: string;
 }
 

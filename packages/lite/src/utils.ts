@@ -14,11 +14,15 @@ export const objToKVPairs = (obj: any): any[] => {
 };
 
 export const columnToSql = (column: ColumnSchema) => {
-  let def: any = '';
-  if (column.default !== undefined) {
-    def = typeof column.default === 'function' ? '""' : column.default;
-    def = `DEFAULT ${String(def).toString()}`;
+  let def: any = `''`;
+  if (
+    column.default !== undefined &&
+    column.default !== '' &&
+    typeof column.default !== 'function'
+  ) {
+    def = column.default;
   }
+  def = `DEFAULT ${String(def).toString()}`;
   const colSql = [
     `\`${column.name}\``,
     column.type,
@@ -39,4 +43,28 @@ export const genSql = (table: string, schema: Record<string, ColumnSchema>) => {
     `  ${sql.join(',\n  ')}`,
     ')',
   ].join('\n');
+};
+
+export const jsonParser = (value: string) => {
+  try {
+    if (value && typeof value === 'string') {
+      return JSON.parse(value);
+    }
+    return value;
+  } catch (err) {
+    // console.log('code json error', err, value);
+    return value;
+  }
+};
+
+export const jsonStringify = (obj: object) => {
+  try {
+    if (obj && typeof obj === 'object') {
+      return JSON.stringify(obj);
+    }
+    return obj;
+  } catch (err) {
+    // console.log('encode josn error', err);
+    return obj;
+  }
 };

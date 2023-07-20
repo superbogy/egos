@@ -11,8 +11,7 @@ import {
   StarFilled,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Badge, Button, Pagination, Radio, Row, Space } from 'antd';
-import { routerRedux } from 'dva/router';
+import { Button, Pagination, Radio, Row, Space } from 'antd';
 import { max } from 'ramda';
 import { useEffect, useState } from 'react';
 import {
@@ -21,7 +20,7 @@ import {
   Separator,
   useContextMenu,
 } from 'react-contexify';
-import { connect, useLocation } from 'umi';
+import { connect, useLocation, history } from 'umi';
 
 import Provider from '@/components/DnD/Provider';
 import Header from '@/components/Header/Common';
@@ -29,7 +28,7 @@ import Share from '@/components/Share';
 
 import AlbumBox from './components/AlbumBox';
 import NewForm from './components/NewAlbum';
-import UploadForm from './components/Upload';
+import UploadForm, { UploaderProps } from './components/Upload';
 import { AlbumSchema } from '@/services/album';
 import { AlbumState } from './model';
 
@@ -71,12 +70,8 @@ const Index = (props: any) => {
   };
 
   const gotoDetail = (albumId: number) => {
-    dispatch(
-      routerRedux.push({
-        pathname: `/album/${albumId}`,
-        search: ``,
-      }),
-    );
+    console.log('goto detail', albumId);
+    history.push(`/album/${albumId}`);
   };
   const onSelectChange = (
     { metaKey, shiftKey }: { metaKey?: any; shiftKey: any },
@@ -171,6 +166,7 @@ const Index = (props: any) => {
     });
   };
   const handleUpload = ({ files }: { files: any[] }) => {
+    console.log('handle upload', files);
     dispatch({
       type: 'album/upload',
       payload: { files },
@@ -199,8 +195,7 @@ const Index = (props: any) => {
       toggleUpload();
     },
   };
-  const uploadProps = {
-    buckets,
+  const uploadProps: UploaderProps = {
     pending: album.pending,
     showSearch: true,
     visible: uploadVisible,

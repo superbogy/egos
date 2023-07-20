@@ -1,12 +1,13 @@
 import { ServiceError } from '../error';
 import { ORDER_TYPE, column, schema, table } from '@egos/lite';
+import { utils } from '@egos/lite';
 import crypto from 'crypto';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
 import { File } from './file';
 import fs from 'fs';
 import path from 'path';
-import { getAvailablePath, jsonParser, jsonStringify } from '../lib/helper';
+import { getAvailablePath } from '../lib/helper';
 import { Photo } from './photo';
 
 export enum QueueStatus {
@@ -26,15 +27,19 @@ export class TaskSchema {
   type: string;
   @column({ type: FieldTypes.TEXT })
   status: string;
-  @column({ type: FieldTypes.TEXT, decode: jsonParser, encode: jsonStringify })
+  @column({
+    type: FieldTypes.TEXT,
+    decode: utils.jsonParser,
+    encode: utils.jsonStringify,
+  })
   payload: Record<string, any>;
   @column({ type: FieldTypes.INT, default: 0 })
   retry: number;
   @column({ type: FieldTypes.INT, default: 3 })
   maxRetry: number;
-  @column({ type: FieldTypes.INT, default: '""' })
+  @column({ type: FieldTypes.INT, default: '' })
   targetId: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   err: string;
   @column({ type: FieldTypes.TEXT, default: '0' })
   sourceId: string;
@@ -161,7 +166,6 @@ export class TaskModel extends Base {
   }
   async buildImageUploadTasks(payload: any) {
     const { albumId, files } = payload;
-    console.log('buildImageUploadTasks', payload);
     for (const file of files) {
       const last = await Photo.findOne(
         {},
@@ -169,7 +173,7 @@ export class TaskModel extends Base {
       );
       const rank = last ? last.rank : 1;
       const photo = {
-        albumId: file.albumId,
+        albumId: albumId || file.albumId,
         rank,
         name: path.basename(file.path),
         objectId: 0,
@@ -182,7 +186,7 @@ export class TaskModel extends Base {
       };
       const item = await Photo.create(photo);
       await Task.create({
-        action: 'download',
+        action: 'upload',
         type: 'photo',
         retry: 0,
         status: 'pending',

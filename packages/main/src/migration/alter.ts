@@ -1,7 +1,7 @@
 import { Job } from '@egos/lite';
 import { File } from '../models/file';
 import { FieldTypes } from '@egos/lite/dist/schema';
-import { jsonParser, jsonStringify } from '../lib/helper';
+import { utils } from '@egos/lite';
 import { Share, Task } from '../models';
 
 export default class AlterJob extends Job {

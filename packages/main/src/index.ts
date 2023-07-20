@@ -8,16 +8,14 @@ import contextMenu from 'electron-context-menu';
 import { LOCAL_FILE_HOST } from './constants';
 import prepare from './prepare';
 import fs from 'fs';
-import url from 'url';
-import { getFileMeta } from './lib/helper';
-import { getDriverByBucket } from './lib/bucket';
+import { getFileObjectBySourceId, parseFileRequest } from './lib/helper';
 import './global';
 import { getServer } from './server';
 import { getSharedVar, setSharedVar } from './global';
-import { File, FileObject } from './models';
+import { File, Photo } from './models';
 import { createDecryptStream } from '@egos/storage/dist/security';
 import { md5 } from '@egos/storage';
-import { PassThrough } from 'stream';
+
 let mainWindow: any;
 const publicDir = path.join(__dirname, './public');
 const fileURL = path.join('file:', publicDir, 'index.html');
@@ -106,71 +104,53 @@ app.whenReady().then(async () => {
     const filePath = path.join(__dirname, pathName);
     respond({ path: filePath });
   });
-  protocol.registerFileProtocol('egos', (request, callback) => {
-    const pathname = decodeURI(new URL(request.url).pathname);
-    callback({ path: pathname });
+  protocol.registerFileProtocol('egos', async (request, callback) => {
+    const stream = await parseFileRequest(request);
+    console.log('sssss', stream);
+    if (!stream) {
+      return callback({ statusCode: 404 });
+    }
+    callback({ data: stream, statusCode: 200 });
   });
   protocol.registerStreamProtocol('atom', async (request, callback) => {
-    const filePath = url.fileURLToPath(
-      'file://' + request.url.slice('atom://'.length),
-    );
-    const parmas = new URL(request.url);
-    console.log(request, parmas);
-    const fileId = parmas.searchParams.get('fileId');
-    const meta = await getFileMeta(filePath);
-    if (!fileId) {
-      return callback({
-        statusCode: 404,
-      });
-    }
-    const file = await File.findById(fileId);
-    if (!file) {
-      return callback({
-        statusCode: 404,
-      });
-    }
-    const fileObj = await FileObject.findById(file.objectId);
-    if (!fileObj) {
-      return callback({
-        statusCode: 404,
-      });
-    }
-    const readable = fs.createReadStream(filePath);
-    if (fileObj.mime.match('video')) {
-      return callback({
-        statusCode: 200,
-        data: readable,
-        method: 'GET',
-        mimeType: fileObj.mime,
-      });
-    }
-    if (file.isEncrypt) {
-      setSharedVar(`file:preview:secret:${fileId}`, '123');
-      const secret = getSharedVar(`file:preview:secret:${fileId}`);
-      const driver = getDriverByBucket(fileObj.bucket);
-      const source = driver.getPath(fileObj.remote);
-      const stream = await createDecryptStream(source, md5(secret));
-      return callback({
-        statusCode: 200,
-        data: stream,
-        method: 'GET',
-        mimeType: fileObj.mime,
-      });
-    }
+    // const params = new URL(request.url);
+    // const fileId = params.searchParams.get('fileId');
+    // const type = params.searchParams.get('type');
+    // const fileObj = await getFileObjectBySourceId(fileId);
+    // if (!fileObj) {
+    //   return callback({ statusCode: 404 });
+    // }
+    // const readable = fs.createReadStream(fileObj.path);
+    // const model = type === 'image' ? Photo : File;
+    // const file = await model.findOne({ objectId: fileObj.id });
+    // if (!file) {
+    //   return callback({ statusCode: 404 });
+    // }
+    // if (file.isEncrypt) {
+    //   setSharedVar(`file:preview:secret:${fileId}`, '123');
+    //   const secret = getSharedVar(`file:preview:secret:${fileId}`);
+    //   const stream = await createDecryptStream(fileObj.path, md5(secret));
+    //   return callback({
+    //     statusCode: 200,
+    //     data: stream,
+    //     method: 'GET',
+    //     mimeType: fileObj.mime,
+    //   });
+    // }
     // const readable = fs.createReadStream(filePath);
-    callback({
-      statusCode: 200,
-      data: readable,
-      method: 'GET',
-      mimeType: meta.mime,
-    });
+    const res = await parseFileRequest(request);
+    if (!res) {
+      return callback({ statusCode: 404 });
+    }
+
+    callback(res);
   });
 
   session.defaultSession.webRequest.onBeforeRequest(
     { urls: [`${LOCAL_FILE_HOST}/*`] },
     (details, callback) => {
       callback({
-        redirectURL: `atom://${details.url.replace(LOCAL_FILE_HOST, '')}`,
+        redirectURL: details.url.replace('http', 'atom'),
       });
     },
   );

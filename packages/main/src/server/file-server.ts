@@ -79,7 +79,6 @@ export default (app: Application) => {
           // return stream.pipe(res);
         } else {
           if (req.query.download) {
-            console.log('fffffname', file.filename);
             res.setHeader(
               'Content-disposition',
               'attachment; filename=' + encodeURI(file.filename),

@@ -7,7 +7,11 @@ import { FileMeta } from '../interface';
 import { getConfig } from '../config';
 import { app } from 'electron';
 import getAvailablePort from 'get-port';
-import { File } from '../models';
+import { File, FileObject, FileObjectSchema, Photo } from '../models';
+import { getDriverByBucket } from './bucket';
+import { getSharedVar } from '../global';
+import { createDecryptStream } from '@egos/storage/dist/security';
+import { md5 } from '@egos/storage';
 
 export const getFileMeta = async (file: string) => {
   const stat = await fs.promises.stat(file);
@@ -31,30 +35,6 @@ export const getFileMeta = async (file: string) => {
     size: stat.size,
     mtime: new Date(stat.mtime).toISOString(),
   };
-};
-
-export const jsonParser = (value: string) => {
-  try {
-    if (value && typeof value === 'string') {
-      return JSON.parse(value);
-    }
-    return value;
-  } catch (err) {
-    console.log('code json error', err, value);
-    return value;
-  }
-};
-
-export const jsonStringify = (obj: object) => {
-  try {
-    if (obj && typeof obj === 'object') {
-      return JSON.stringify(obj);
-    }
-    return obj;
-  } catch (err) {
-    console.log('encode josn error', err);
-    return obj;
-  }
 };
 
 export const getDownloadPath = () => {
@@ -128,4 +108,68 @@ export const getAvailablePath = async (pathName: string): Promise<string> => {
     }
     i++;
   }
+};
+
+export const getFileObjectBySourceId = async (sourceId: string | null) => {
+  if (!sourceId) {
+    return null;
+  }
+  const fileObj = await FileObject.findById(sourceId);
+  if (!fileObj) {
+    return null;
+  }
+  const driver = getDriverByBucket(fileObj.bucket);
+  const p = driver.getPath(fileObj.remote);
+  return { ...fileObj.toJSON(), path: p } as FileObjectSchema & {
+    path: string;
+  };
+};
+
+export const parseFileRequest = async (request: any) => {
+  const params = new URL(request.url);
+  const fileId = params.searchParams.get('fileId');
+  const type = params.searchParams.get('type');
+  if (!fileId) {
+    return null;
+  }
+  const fileObj = await FileObject.findById(fileId);
+  if (!fileObj) {
+    return null;
+  }
+  const driver = getDriverByBucket(fileObj.bucket);
+  const p = driver.getPath(fileObj.remote);
+  const model = type === 'image' ? Photo : File;
+  const file = await model.findOne({ objectId: fileObj.id });
+  if (!file) {
+    return null;
+  }
+  if (file.isEncrypt) {
+    // @todo specific handle for video range
+    const secret = getSharedVar(`file:preview:secret:${fileId}`);
+    const stream = await createDecryptStream(p, md5(secret));
+    return { data: stream, mimeType: fileObj.mime, statusCode: 200 };
+  }
+  const range = request.headers.Range;
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileObj.size - 1;
+    // const end = res.size - 1;
+    const chunksize = end - start + 1;
+    const headers = {
+      'Content-Range': `bytes ${start}-${end}/${fileObj.size}`,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': String(chunksize),
+      'Content-Type': 'video/mp4',
+    };
+    const stream = fs.createReadStream(p, { start, end });
+    return {
+      statusCode: 206,
+      data: stream,
+      mimeType: fileObj.mime,
+      headers,
+    };
+  }
+  const stream = fs.createReadStream(p);
+  return { data: stream, mimeType: fileObj.mime, statusCode: 200 };
 };

@@ -2,12 +2,12 @@ import { PreviewProps } from './interface';
 import classNames from 'classnames';
 
 export default (props: PreviewProps) => {
-  const { file } = props;
+  const { file, type } = props;
   return (
     <>
       <img
         className={classNames('exhibit-file-item', props.className)}
-        src={`${file.url}?fileId=${file.id}`}
+        src={`atom://egos-local?fileId=${file.objectId}&type=${type}`}
         onClick={(e) => e.preventDefault()}
       />
     </>

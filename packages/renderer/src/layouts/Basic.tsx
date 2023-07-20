@@ -102,7 +102,7 @@ export default connect(({ global, dispatch }: LayoutProps) => ({
     <Layout style={{ height: '100%' }}>
       <Sider
         theme="dark"
-        width={58}
+        width={64}
         style={{
           overflow: 'auto',
           height: '100vh',
@@ -128,7 +128,7 @@ export default connect(({ global, dispatch }: LayoutProps) => ({
           overflowedIndicator={<span />}
         />
       </Sider>
-      <Layout style={{ marginLeft: 58 }}>
+      <Layout style={{ marginLeft: 64 }}>
         <Layout.Header style={{ background: '#fefefe', height: 45 }}>
           <RightContent menu={true} theme="light" />
         </Layout.Header>

@@ -122,7 +122,6 @@ export default (props: CardProps) => {
   };
   const handleClick = (item: FileSchema, e: any) => {
     e.preventDefault();
-    console.log('?????????---->>>', e);
     props.onSelectChange(item, e.metaKey, e.shiftKey);
   };
   const getCardItem = (item: FileSchema) => {

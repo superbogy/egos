@@ -27,7 +27,7 @@ class Share extends Model {
   }
 
   getShareByAlbumId(...args: any[]) {
-    return this.exec('getShareByAlbumId', ...args);
+    return this.exec('getAlbumUploadShareById', ...args);
   }
 
   shareFile(...args: any[]) {

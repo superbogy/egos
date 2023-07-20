@@ -2,54 +2,50 @@ import { Album } from '@/services/album';
 import { Photo } from '@/services/photo';
 import Share from '@/services/share';
 import { message } from 'antd';
+import { RcFile } from 'antd/lib/upload';
+import * as albumService from '../service';
 
-export const fetchPhoto = async ({ albumId }) => {
+export const fetchPhoto = async ({ albumId }: { albumId: number }) => {
   const album = await Album.findById(albumId);
   const list = await Photo.find({ albumId }, { order: { rank: 'asc' } });
-  const photos = [];
-  for (const media of list) {
-    if (media.type === 'image') {
-      media.local = await Photo.getLocalCache(media);
-    }
-    media.url = await Photo.getMediaUrl(media);
-    photos.push(media);
-  }
   return {
     meta: {
       total: 1024,
       album,
     },
-    data: photos,
+    data: list,
   };
 };
 
-export const photoUpload = async (params) => {
-  const { files, albumId } = params;
-  for (const file of files) {
-    await Photo.task({ file, albumId });
-  }
-  window.ElectronApi.send('upload', { type: 'photo' });
+export const photoUpload = async (params: {
+  files: RcFile[];
+  albumId: number;
+}) => {
+  console.log('in album upload', params);
+  albumService.upload(params);
 };
-
-export const setCover = async ({ id }) => {
+export const getShare = async ({ albumId }: { albumId: number }) => {
+  return Share.getShareByAlbumId(albumId);
+};
+export const setCover = async ({ id }: { id: number }) => {
   const media = await Photo.findById(id);
   const album = await Album.findById(media.albumId);
   await Album.update({ id: album.id }, { cover: id });
 };
 
-export const removePhotos = async ({ ids, albumId = 1 }) => {
+export const removePhotos = async ({ ids, albumId = 1 }: any) => {
   const photos = await Photo.findByIds(ids);
   const album = await Album.findById(albumId);
   if (ids.includes(album.cover)) {
     await Album.update({ id: albumId }, { cover: '' });
   }
-  photos.map((media) => {
+  photos.map((media: any) => {
     return media.remove();
   });
   return true;
 };
 
-export const move = async ({ sourceId, targetId }) => {
+export const move = async ({ sourceId, targetId }: any) => {
   const source = await Photo.findById(sourceId);
   const target = await Photo.findById(targetId);
   if (!source || !target) {
@@ -62,7 +58,7 @@ export const move = async ({ sourceId, targetId }) => {
   return true;
 };
 
-export const moveToDay = async ({ sourceId, day }) => {
+export const moveToDay = async ({ sourceId, day }: any) => {
   if (!day) {
     return false;
   }
@@ -80,11 +76,11 @@ export const moveToDay = async ({ sourceId, day }) => {
   return true;
 };
 
-export const searchPhoto = async (payload) => {
+export const searchPhoto = async (payload: any) => {
   const res = await Photo.searchPhoto(payload);
   return res;
 };
 
-export const genQrUpload = async ({ id, expiry }) => {
+export const genQrUpload = async ({ id, expiry }: any) => {
   return await Share.genAlbumUploadUrl({ id, expiry });
 };

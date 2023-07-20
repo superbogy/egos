@@ -3,8 +3,7 @@ import { Fragment } from 'react';
 import { PreviewProps } from './interface';
 
 export default (props: PreviewProps) => {
-  const { file } = props;
-  console.log('vvvvideo controls', props);
+  const { file, type } = props;
   return (
     <Fragment>
       <video
@@ -12,7 +11,7 @@ export default (props: PreviewProps) => {
         controls={props.controls}
       >
         <source
-          src={`${file.url?.replace('atom', 'egos')}?fileId=${file.id}#0.5`}
+          src={`atom://egos-local?fileId=${file.objectId}&type=${type}#0.5`}
           type="video/mp4"
         />
       </video>

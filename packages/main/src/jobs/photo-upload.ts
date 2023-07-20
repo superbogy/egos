@@ -5,6 +5,7 @@ import { Album, FileObject, Photo, Task, TaskModel } from '../models';
 import { IpcMainEvent } from 'electron';
 import { FileJob } from './file.job';
 import { UploadPayload } from './interfaces';
+import { getDriverByBucket } from '../lib/bucket';
 
 export interface PhotoUploadPayload extends UploadPayload {
   uid: string;
@@ -24,7 +25,6 @@ export class PhotoUploadJob extends FileJob {
   }
 
   async process(event: IpcMainEvent, payload: PhotoUploadPayload) {
-    console.log('image upload payload   =====????', payload);
     const { local, taskId, password, fileId } = payload;
     if (!local) {
       throw new ServiceError({
@@ -52,13 +52,20 @@ export class PhotoUploadJob extends FileJob {
       });
     }
     const current = await Photo.findByIdOrError(payload.fileId);
+    const driver = getDriverByBucket(fileObj.bucket);
+    const url = await driver.getUrl(fileObj.remote);
     await current.updateAttributes({
       objectId: fileObj.id,
       password,
       isEncrypt: payload.action === 'encrypt' ? 1 : 0,
       status: 'done',
       size: fileObj.size,
+      url,
     });
+    if (!album.coverId) {
+      await album.updateAttributes({ coverId: current.id });
+    }
+
     return fileObj;
   }
 }

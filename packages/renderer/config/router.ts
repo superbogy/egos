@@ -19,6 +19,11 @@ export default {
       component: '@/pages/album',
     },
     {
+      path: '/album/:id',
+      name: 'album-info',
+      component: '@/pages/album/id$',
+    },
+    {
       path: '/account/setting',
       name: 'setting',
       component: '@/pages/account',

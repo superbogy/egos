@@ -13,6 +13,7 @@ interface ExhibitProps {
   controls?: any;
   style?: Record<string, string | number>;
   onDoubleClick?: () => void;
+  type: string;
 }
 export default (props: ExhibitProps) => {
   const file = props.file || {};

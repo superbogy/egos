@@ -5,4 +5,5 @@ export interface PreviewProps {
   className?: string | string[];
   controls?: boolean;
   style?: Record<string, number | string>;
+  type: string;
 }

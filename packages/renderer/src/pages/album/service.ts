@@ -48,6 +48,7 @@ export const fetchAlbums = async (
       return data;
     }),
   );
+  Remote.Electron.ipcRenderer.send('image:upload:start', { type: 'image' });
   return res;
 };
 

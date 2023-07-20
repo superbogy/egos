@@ -10,7 +10,6 @@ import { TagMap } from '../models/tag-source';
 
 export default class SetupJob extends Job {
   async up() {
-    console.log('>>>>>>12');
     const fileSql = utils.genSql(File.table, File.schema);
     await this.exec(fileSql);
     const fileObjSql = utils.genSql(FileObject.table, FileObject.schema);
@@ -23,12 +22,12 @@ export default class SetupJob extends Job {
     await this.exec(favoriteSql);
     const shareSql = utils.genSql(Share.table, Share.schema);
     await this.exec(shareSql);
+    // console.log('sssss', shareSql);
     const tagMapSql = utils.genSql(TagMap.table, TagMap.schema);
     await this.exec(tagMapSql);
     const albumSql = utils.genSql(Album.table, Album.schema);
     await this.exec(albumSql);
     const photoSql = utils.genSql(Photo.table, Photo.schema);
-    console.log(photoSql);
     await this.exec(photoSql);
   }
 }

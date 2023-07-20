@@ -16,10 +16,12 @@ interface ViewerProps {
   visible: boolean;
   onClose: () => void;
   controls: any;
+  type?: string;
 }
 const Viewer: FC<ViewerProps> = (props: ViewerProps) => {
   const { currentItem, dataIndex, list, visible } = props;
   const [activeItem, setActiveItem] = useState<any>({});
+  const type = props.type || 'file';
   useEffect(() => {
     setActiveItem(currentItem);
   }, [currentItem]);
@@ -64,6 +66,7 @@ const Viewer: FC<ViewerProps> = (props: ViewerProps) => {
               className="view-file-item"
               avatarClass="viewer-file-cover"
               controls={props.controls}
+              type={type}
             />
           </div>
           <div className="viewer-arrow">

@@ -64,22 +64,23 @@ export abstract class FileJob {
   }
 
   watch() {
-    console.log(`${this.channel}:start`);
     ipcMain.on(`${this.channel}:start`, (event: IpcMainEvent) => {
-      event.reply(this.channel, { message: `${this.action} job started` });
       this.run(event)
         .then(() => {
           event.reply(this.channel, {
             status: 'done',
-            type: 'job',
+            type: this.type,
+            action: this.action,
+            level: 'job',
             message: 'upload job done',
           });
         })
         .catch((err: Error) => {
           event.reply(this.channel, {
             status: 'error',
-            type: 'job',
-            message: err.message,
+            level: 'job',
+            type: this.type,
+            action: this.action,
           });
         });
     });
@@ -87,8 +88,10 @@ export abstract class FileJob {
       this.run(event, { id: { $in: taskIds }, status: 'pause' }).catch(
         (err: Error) => {
           event.reply(this.channel, {
-            status: 'failure',
-            type: 'job',
+            status: 'error',
+            level: 'job',
+            type: this.type,
+            action: this.action,
             message: err.message,
           });
         },
@@ -100,7 +103,6 @@ export abstract class FileJob {
   }
 
   async getSourceInfo(fileId: number) {
-    console.log('getSrouceInfo payload---->', fileId, this.type);
     const model = this.type === 'file' ? File : Photo;
     const file = await model.findById(fileId);
     if (!file) {
@@ -126,7 +128,6 @@ export abstract class FileJob {
         },
       };
     }
-    console.log(file);
     if (!fs.existsSync(file.url)) {
       throw new Error('file not exists');
     }
@@ -196,14 +197,14 @@ export abstract class FileJob {
       }
       event.reply(this.channel, {
         message: 'progress',
-        type: 'task',
+        type: this.type,
         action: this.action,
         status: 'uploading',
+        payload: task.payload,
         taskId,
         size,
         percent: cursor / size,
         speed: (cursor - lastPoint) / interval,
-        file: file,
       });
     };
   }
@@ -221,11 +222,14 @@ export abstract class FileJob {
       secret: password,
       onProgress: this.progress(event, source, taskId as string),
       onFinish: async () => {
+        const task = await Task.findById(taskId);
         event.reply(this.channel, {
           taskId,
           status: 'finish',
           action: this.action,
-          type: 'task',
+          type: this.type,
+          level: 'task',
+          payload: task?.payload,
         });
       },
     });
@@ -248,23 +252,6 @@ export abstract class FileJob {
       action: payload.action,
     };
     const res = await this.write(event, writeParams);
-    // const secret = payload.password;
-    // const res = await driver.multipartUpload(source, dest, {
-    //   ...payload,
-    //   isEncrypt: payload.cryptType === 'encrypt',
-    //   isDecrypt: payload.cryptType === 'decrypt',
-    //   taskId,
-    //   secret,
-    //   onProgress: this.progress(event, source, taskId as string),
-    //   onFinish: async () => {
-    //     event.reply(this.channel, {
-    //       taskId,
-    //       status: 'finish',
-    //       action: this.action,
-    //       type: 'task',
-    //     });
-    //   },
-    // });
     const data: Record<string, any> = {
       ...meta,
       remote,
@@ -332,9 +319,9 @@ export abstract class FileJob {
       event.reply(this.channel, {
         status: 'success',
         message: 'success',
-        type: 'task',
+        type: this.type,
         action: this.action,
-        payload,
+        ...payload,
         result,
       });
     }
@@ -405,21 +392,21 @@ export abstract class FileJob {
           action: this.action,
           status: 'processing',
           retry: task.retry,
+          payload: task.payload,
+          level: 'task',
         });
         await this.process(event, { ...payload })
           .then(async (fileObj: FileObjectSchema) => {
             await Task.update({ id: task.id }, { status: 'done' });
             this.success(event, {
               ...payload,
-              type: this.type,
-              action: this.action,
+              payload: task.payload,
               taskId: task.id,
               targetId: task.sourceId,
               objectId: fileObj.id,
             });
           })
           .catch(async (err: Error) => {
-            console.log('err', err);
             if (task.retry > task.maxRetry) {
               task.status = 'unresolved';
               task.err = err.message;

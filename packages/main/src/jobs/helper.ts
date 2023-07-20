@@ -27,7 +27,6 @@ export const getTaskSecret = (taskId: number) => {
 
 export const setTaskSecret = (taskId: number, pass: string) => {
   const key = getTaskSecretKey(taskId);
-  console.log(key);
   setSharedVar(key, pass);
 };
 
@@ -35,7 +34,6 @@ export const getSourceInfo = async (payload: {
   local?: string;
   fileId?: number;
 }) => {
-  console.log('getSrouceInfo payload---->', payload);
   if (payload.fileId) {
     const file = await File.findById(payload.fileId);
     if (!file) {

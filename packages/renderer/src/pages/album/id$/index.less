@@ -35,14 +35,20 @@
 
   .img-box {
     width: 120px;
-    height: 120px;
+    height: 18 0px;
     padding-bottom: 8px;
     border: 1px rgba(0, 0, 0, 0.85);
     contain: content;
 
+    .selected {
+      border: 2px solid skyblue;
+      border-radius: 2px;
+    }
+
     .img-wrapper {
       width: 100%;
-      height: 100%;
+      height: 120px;
+      padding: 2px;
 
       .pic {
         width: 100%;
@@ -75,6 +81,29 @@
           margin-left: 12px;
         }
       }
+
+
+    }
+
+    .photo-info {
+      width: 100%;
+      background: #282e2e91;
+      display: flex;
+      flex-direction: column;
+
+      .photo-name {
+        background-color: #fefefe;
+        border-bottom: 1px dashed #282e2e91;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding: 0 2px;
+        overflow: hidden;
+      }
+    }
+
+    .photo-extra {
+      display: flex;
+      justify-content: center;
     }
 
     .img-wrapper:hover .img-opts {
@@ -86,11 +115,7 @@
       width: 100%;
       height: 20px;
     }
-  }
 
-  .selected {
-    padding: 2px;
-    border: 2px solid teal;
   }
 
   .timeline {
@@ -139,33 +164,33 @@
     }
   }
 
-  .photo-info {
-    min-width: 280px;
-    max-width: 28%;
-    height: 100%;
-    padding-top: 0px;
-    padding-left: 12px;
-    background-color: #fefefe;
-    overflow: hidden;
+  // .photo-info {
+  //   min-width: 280px;
+  //   max-width: 28%;
+  //   height: 100%;
+  //   padding-top: 0px;
+  //   padding-left: 12px;
+  //   background-color: #fefefe;
+  //   overflow: hidden;
 
-    .ant-list-item {
-      display: flex;
-      justify-content: flex-start;
-      align-self: start;
-    }
+  //   .ant-list-item {
+  //     display: flex;
+  //     justify-content: flex-start;
+  //     align-self: start;
+  //   }
 
-    .item-label {
-      color: #615f5f;
-      width: 52px;
-      padding: 4px 2px;
-      text-align: left;
-      display: inline-block;
-    }
+  //   .item-label {
+  //     color: #615f5f;
+  //     width: 52px;
+  //     padding: 4px 2px;
+  //     text-align: left;
+  //     display: inline-block;
+  //   }
 
-    .item-value {
-      padding-left: 8px;
-      overflow-wrap: anywhere;
-    }
-  }
+  //   .item-value {
+  //     padding-left: 8px;
+  //     overflow-wrap: anywhere;
+  //   }
+  // }
 
 }

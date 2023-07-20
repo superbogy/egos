@@ -8,7 +8,7 @@ class FavoriteModel extends Base {
   id: number;
   @column({ type: FieldTypes.TEXT })
   sourceId: string;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   type: string;
 }
 

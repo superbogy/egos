@@ -1,4 +1,4 @@
-import { jsonParser, jsonStringify } from '../lib/helper';
+import { utils } from '@egos/lite';
 import Model from './base';
 import { column, table } from '@egos/lite';
 import { FieldTypes } from '@egos/lite/dist/schema';
@@ -21,7 +21,11 @@ export class SyncModel extends Model {
   status: number;
   @column({ type: FieldTypes.TEXT })
   local: string;
-  @column({ type: FieldTypes.BLOB, encode: jsonStringify, decode: jsonParser })
+  @column({
+    type: FieldTypes.BLOB,
+    encode: utils.jsonStringify,
+    decode: utils.jsonParser,
+  })
   failed: number;
 }
 

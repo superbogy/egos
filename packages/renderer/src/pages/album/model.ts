@@ -90,7 +90,7 @@ export default {
       });
     },
     *upload({ payload }: AnyAction, { call }: EffectsCommandMap) {
-      console.log('model upload', payload);
+      console.log('model upload>>>', payload);
       yield call(service.upload, payload);
     },
     // *getPending({ payload }: AnyAction, { call, put }: EffectsCommandMap) {

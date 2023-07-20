@@ -44,6 +44,7 @@ import { FileSchema } from '@/services/file';
 import './index.less';
 import { registerUploadEvent } from './events';
 import { CtxMenu, CtxProps } from './components/CtxMenu';
+import { Selection, SelectionProps } from '@/components/Selection';
 
 const sortMenus = [
   {
@@ -496,21 +497,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
     },
   };
 
-  const onStart = ({ event, selection }: SelectionEvent) => {
-    console.log('onstart >????', event, isDragging);
-    const hasSelected = (event as any).path.find((p) => {
-      if (p.classList?.contains('selected')) {
-        console.log(p);
-        return true;
-      }
-      return false;
-    });
-    if (!event?.ctrlKey && !event?.metaKey && !hasSelected) {
-      selection.clearSelection();
-      setSelect([]);
-    }
-    setDragging(true);
-  };
   const extractIds = (els: Element[]): number[] =>
     els
       .map((v) => {
@@ -519,28 +505,54 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       .filter(Boolean)
       .map(Number);
 
-  const onMove = ({
-    store: {
-      changed: { added, removed },
+  const selectProps: SelectionProps = {
+    selectables: '.drag-item',
+    onBeforeDrag: ({ event }: SelectionEvent) => {
+      const elm = event?.target as Element;
+      if (
+        elm.classList.contains('card-name') ||
+        elm.classList.contains('card-date')
+      ) {
+        return false;
+      }
+      return true;
     },
-    event,
-  }: SelectionEvent) => {
-    if (event && (added.length || removed.length)) {
-      const next = selected;
-      extractIds(added).forEach((id) => {
-        if (!next.includes(id)) {
-          next.push(id);
+    onStart: ({ event, selection }: SelectionEvent) => {
+      const hasSelected = (event as any).path.find((p: any) => {
+        if (p.classList?.contains('selected')) {
+          return true;
         }
+        return false;
       });
-      extractIds(removed).forEach((id) => {
-        const idx = next.indexOf(id);
-        if (idx === -1) {
-          return;
-        }
-        next.splice(idx, 1);
-      });
-      setSelect(next);
-    }
+      if (!event?.ctrlKey && !event?.metaKey && !hasSelected) {
+        selection.clearSelection();
+        setSelect([]);
+      }
+      setDragging(true);
+    },
+    onMove: ({
+      store: {
+        changed: { added, removed },
+      },
+      event,
+    }: SelectionEvent) => {
+      if (event && (added.length || removed.length)) {
+        const next = selected;
+        extractIds(added).forEach((id) => {
+          if (!next.includes(id)) {
+            next.push(id);
+          }
+        });
+        extractIds(removed).forEach((id) => {
+          const idx = next.indexOf(id);
+          if (idx === -1) {
+            return;
+          }
+          next.splice(idx, 1);
+        });
+        setSelect(next);
+      }
+    },
   };
 
   return (
@@ -641,23 +653,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
                 });
               }}
             >
-              <SelectionArea
-                className="select-container"
-                onStart={onStart}
-                onMove={onMove}
-                selectables=".drag-item"
-                onBeforeDrag={({ event }: SelectionEvent) => {
-                  const elm = event?.target as Element;
-                  if (
-                    elm.classList.contains('card-name') ||
-                    elm.classList.contains('card-date')
-                  ) {
-                    return false;
-                  }
-                }}
-              >
-                {getDisplayContent()}
-              </SelectionArea>
+              <Selection {...selectProps}>{getDisplayContent()}</Selection>
             </div>
           </div>
         </Provider>

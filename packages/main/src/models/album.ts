@@ -8,13 +8,13 @@ export class AlbumSchema {
   id: number;
   @column({ type: FieldTypes.TEXT })
   name: string;
-  @column({ type: FieldTypes.INT, default: '""' })
+  @column({ type: FieldTypes.INT, default: '' })
   rank: number;
-  @column({ type: FieldTypes.INT, default: '""' })
+  @column({ type: FieldTypes.INT, default: 0 })
   coverId: number;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: 0 })
   sortBy: string;
-  @column({ type: FieldTypes.TEXT, default: '""' })
+  @column({ type: FieldTypes.TEXT, default: '' })
   description: number;
 }
 
@@ -30,6 +30,7 @@ class AlbumModel extends Base {
       name: data.name,
       description: data.description || '',
       rank: last ? last.rank + 1 : 1,
+      coverId: 0,
     };
     const res = await Album.insert(album);
     return res;

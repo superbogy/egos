@@ -46,7 +46,9 @@ export default ({ handleOk, handleCancel, onSave, ...props }: FormProps) => {
           </Form.Item>
           <Form.Item name="tags" label="标签">
             <Select mode="multiple">
-              <Select.Option value="demo">Demo</Select.Option>
+              <Select.Option value="demo" key="demo">
+                Demo
+              </Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="description" label="描述">

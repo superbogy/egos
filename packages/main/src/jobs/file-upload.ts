@@ -47,7 +47,7 @@ export class FileUploadJob extends FileJob {
           type: isDir ? 'folder' : 'file',
           password,
           local: source,
-          status: 'done',
+          status: 'pending',
         };
         const current = await File.create(child);
         await this.process(event, {
@@ -57,7 +57,8 @@ export class FileUploadJob extends FileJob {
           taskId,
         });
       }
-      return file.toJSON();
+
+      return file.updateAttributes({ status: 'done' });
     }
     const fileObj = await this.addFile(event, {
       ...payload,
@@ -69,7 +70,7 @@ export class FileUploadJob extends FileJob {
       return null;
     }
     // @fixme should update the logic
-    if (file.status === 'done') {
+    if (file.objectId) {
       const previosObj = await FileObject.findById(file?.objectId as number);
       if (!previosObj) {
         return null;
@@ -81,12 +82,15 @@ export class FileUploadJob extends FileJob {
     }
 
     const current = await File.findByIdOrError(payload.fileId);
+    const driver = getDriverByBucket(fileObj.bucket);
+    const url = await driver.getUrl(fileObj.remote);
     const res = await current.updateAttributes({
       objectId: fileObj.id,
       password,
       isEncrypt: payload.action === 'encrypt' ? 1 : 0,
       status: 'done',
       size: fileObj.size,
+      url,
     });
 
     return res.toJSON();
