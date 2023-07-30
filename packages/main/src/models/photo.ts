@@ -1,4 +1,11 @@
-import { FindOpts, ORDER_TYPE, column, schema, table } from '@egos/lite';
+import {
+  Builder,
+  FindOpts,
+  ORDER_TYPE,
+  column,
+  schema,
+  table,
+} from '@egos/lite';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
 import { Album } from './album';
@@ -29,6 +36,8 @@ export class PhotoSchema {
   password: string;
   @column({ type: FieldTypes.TEXT })
   url: string;
+  @column({ type: FieldTypes.TEXT })
+  photoDate: string;
 }
 
 interface PhotoSearchCondition {
@@ -55,6 +64,11 @@ class PhotoModel extends Base {
     }
     if (order) {
       options.order = order;
+    } else {
+      options.order = {
+        photoDate: ORDER_TYPE.DESC,
+        rank: ORDER_TYPE.DESC,
+      };
     }
     if (start) {
       where.updatedAt = { $gte: start };
@@ -66,6 +80,15 @@ class PhotoModel extends Base {
         where.updatedAt = { $lte: end };
       }
     }
+    // const builder = new Builder(this.table);
+    // const r = builder
+    //   .LeftJoin(FileObject.table, { object_id: 'id' })
+    //   .fields(['*'], Photo.table)
+    //   .fields(['*'], FileObject.table)
+    //   .where(Photo.toRowData(where))
+    //   .select();
+    // const rr = await Photo.query(r.sql, r.params);
+    // console.log('rr------->', rr);
     const album = await Album.findByIdOrError(albumId);
     const photos = await this.find(where, options);
     const total = await this.count(where);

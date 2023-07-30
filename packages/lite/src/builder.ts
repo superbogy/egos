@@ -7,13 +7,11 @@ export class Builder {
   _fields: string[];
   tableName: string;
   values: Dict;
-  private parser: Parser;
-  options: Dict;
+  options: Dict | undefined;
 
-  constructor(options: Dict) {
+  constructor(table: string, options?: Dict) {
     this.options = options;
-    this.parser = new Parser();
-    this.tableName = '';
+    this.tableName = table;
     this._fields = [];
     this.values = [];
     this.sql = {};
@@ -21,6 +19,24 @@ export class Builder {
 
   table(table: string): Builder {
     this.tableName = table;
+    return this;
+  }
+
+  LeftJoin(table: string, fields: Dict) {
+    const condition = Object.entries(fields).reduce(
+      (pre: string, cur: string[]) => {
+        const [k, v] = cur;
+        const con = `${this.tableName}.${k}=${table}.${v}`;
+        if (pre) {
+          return pre + ' AND ' + con;
+        }
+        return con;
+      },
+      '',
+    );
+    console.log('fuck condition', condition);
+    const sql = `LEFT JOIN ${table} ON ${condition}`;
+    this.sql.join = { sql, params: [] };
     return this;
   }
 
@@ -34,19 +50,22 @@ export class Builder {
     return !Boolean(Object.keys(data).length);
   }
 
-  fields(fields?: string[]): Builder {
+  fields(fields?: string[], table?: string): Builder {
     if (!fields || this.isEmpty(fields)) {
       return this;
     }
-    this._fields = fields;
+    fields.map((item) =>
+      this._fields.push(table ? [table, item].join('.') : item),
+    );
     return this;
   }
 
-  where(condition: Dict): Builder {
+  where(condition: Dict, table?: string): Builder {
     if (this.isEmpty(condition)) {
       return this;
     }
-    const { sql, params } = this.parser.parse(condition);
+    const parser = new Parser(table === undefined ? this.tableName : table);
+    const { sql, params } = parser.parse(condition);
     this.sql.where = { sql: `WHERE ${sql}`, params };
     return this;
   }
@@ -86,7 +105,7 @@ export class Builder {
       return this;
     }
     this.sql.group = {
-      sql: `GROUP BY ${(field as string).toString()}`,
+      sql: `GROUP BY ${this.tableName}.${(field as string).toString()}`,
       params: [],
     };
     return this;
@@ -94,7 +113,7 @@ export class Builder {
 
   select(options: Dict | null = null): { sql: string; params: any[] } {
     const select = 'SELECT %s FROM `%s` %s';
-    const fields = this.isEmpty(this._fields) ? '*' : this._fields.join(',');
+    const fields = this.isEmpty(this._fields) ? '*' : this._fields;
     const { sql, params } = this.toSql();
     const sqlStr = sprintf(select, fields, this.tableName, sql);
     this.free();
@@ -146,7 +165,7 @@ export class Builder {
   toSql(): { sql: string; params: any[] } {
     const sqlObj: string[] = [];
     const values: any[] = [];
-    const sequence = ['where', 'group', 'order', 'offset', 'limit'];
+    const sequence = ['join', 'where', 'group', 'order', 'offset', 'limit'];
     sequence.forEach((item) => {
       if (!this.sql[item]) {
         return;

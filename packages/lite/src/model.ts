@@ -207,11 +207,7 @@ export class Model {
     return this.db?.exec(sql);
   }
 
-  async call(
-    method: string,
-    sql: string,
-    params: Record<string, any>,
-  ): Promise<any> {
+  async call(method: string, sql: string, params: any[]): Promise<any> {
     await this.connect();
     if (this.options?.debug) {
       console.info('[sql]: %s, [params]: %j', sql, params);
@@ -221,9 +217,8 @@ export class Model {
   }
 
   async insert(payload: Dict, options?: InsertOpts): Promise<this | number> {
-    const builder = new Builder({});
+    const builder = new Builder(this.table);
     const data = this.toRowData(this.purify({ ...payload }));
-    console.log('??? insert data==>', data);
     const defaultData = this.toRowData(this.defaultData());
     const { sql, params } = builder
       .table(this.table)
@@ -244,7 +239,7 @@ export class Model {
   }
 
   async update(where: Dict, payload: Dict): Promise<ISqlite.RunResult> {
-    const builder = new Builder({});
+    const builder = new Builder(this.table);
     const withTimestamp = this.attachTimestamp(payload);
     const data = this.purify(withTimestamp);
     const row = this.toRowData(data);
@@ -284,8 +279,11 @@ export class Model {
   }
 
   async find(where: Dict = {}, options: FindOpts = {}): Promise<this[]> {
-    const { limit, offset, order, fields, group } = options;
-    const builder = new Builder({});
+    const { limit, offset, fields, group } = options;
+    const order = options.order
+      ? this.toRowData(options.order as Dict)
+      : undefined;
+    const builder = new Builder(this.table);
     const { sql, params } = builder
       .table(this.table)
       .where(this.toRowData(where))
@@ -304,6 +302,11 @@ export class Model {
     });
   }
 
+  async query(sql: string, params: any[]) {
+    const res = await this.call('all', sql, params);
+    return res;
+  }
+
   async count(where: Dict): Promise<number> {
     const res = (await this.findOne(where, {
       fields: ['count(*) as count'],
@@ -311,6 +314,8 @@ export class Model {
     })) as any;
     return Number(res.count);
   }
+
+  leftJoin(model: Model) {}
 
   async findOne(where: Dict, options: FindOpts = {}): Promise<this | null> {
     const res = await this.find(where, { ...options, limit: 1 });
@@ -363,14 +368,14 @@ export class Model {
     if (!record) {
       return false;
     }
-    const builder = new Builder({});
+    const builder = new Builder(this.table);
     const { sql, params } = builder.table(this.table).where({ id }).delete();
     await this.call('run', sql, params);
     return true;
   }
 
   async delete(where: Dict): Promise<ISqlite.RunResult> {
-    const builder = new Builder({});
+    const builder = new Builder(this.table);
     const { sql, params } = builder.table(this.table).where(where).delete();
     return await this.call('run', sql, params);
   }

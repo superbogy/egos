@@ -26,7 +26,7 @@ import Provider from '@/components/DnD/Provider';
 import Header from '@/components/Header/Common';
 import QRUploader from '@/components/Uploader/qrUpload';
 import Viewer from '@/components/Viewer';
-import ContentEditable from '@/components/Editable/Content';
+import ContentEditable from '@/components/Editable/Text';
 
 import Uploader from '../components/Upload';
 import { PhotoSchema } from '@/services/photo';
@@ -284,12 +284,18 @@ const Index = (props: PhotoProps) => {
       border: '1px dashed cyan',
       background: '#e2e1e194',
     },
-    onUpload: (payload: any) => {
-      console.log('on upload payload', payload);
+    onMove: (dayCol: any, photo: PhotoSchema) => {
+      console.log('onDropOnmOve>>>?', dayCol, photo);
+      dispatch({
+        type: 'photo/moveToDay',
+        payload: {
+          sourceId: photo.id,
+          day: Number(dayCol.day),
+        },
+      });
+    },
+    onDrop: (payload: any) => {
       const { files, currentItem } = payload;
-      if (!currentItem.day) {
-        return;
-      }
       dispatch({
         type: 'album/upload',
         payload: {
@@ -309,17 +315,18 @@ const Index = (props: PhotoProps) => {
     history.go(-1);
   };
   const handleMove = (source: any, target: any) => {
-    if (target.crossDay) {
-      console.log('cross day onmove', source, target);
-      dispatch({
-        type: 'photo/moveToDay',
-        payload: {
-          sourceId: source.id,
-          day: Number(target.day),
-        },
-      });
-      return;
-    }
+    console.log('????onMove--->', source, '++++', target, '?<');
+    // if (target.crossDay) {
+    //   console.log('cross day onmove', source, target);
+    //   dispatch({
+    //     type: 'photo/moveToDay',
+    //     payload: {
+    //       sourceId: source.id,
+    //       day: Number(target.day),
+    //     },
+    //   });
+    //   return;
+    // }
     if (!source.id || !target.id) {
       return;
     }
@@ -501,6 +508,12 @@ const Index = (props: PhotoProps) => {
                                 <ContentEditable
                                   text={p.name}
                                   className="photo-name"
+                                  onChange={(name: string) => {
+                                    return dispatch({
+                                      type: 'photo/update',
+                                      payload: { id: p.id, name: name },
+                                    });
+                                  }}
                                 />
                               </div>
                               <div className="photo-extra">

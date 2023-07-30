@@ -9,6 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { getAvailablePath } from '../lib/helper';
 import { Photo } from './photo';
+import dayjs from 'dayjs';
 
 export enum QueueStatus {
   PENDING = 'pending',
@@ -168,10 +169,10 @@ export class TaskModel extends Base {
     const { albumId, files } = payload;
     for (const file of files) {
       const last = await Photo.findOne(
-        {},
+        { albumId },
         { order: { rank: ORDER_TYPE.DESC } },
       );
-      const rank = last ? last.rank : 1;
+      const rank = last ? last.rank + 1 : 1;
       const photo = {
         albumId: albumId || file.albumId,
         rank,
@@ -183,6 +184,9 @@ export class TaskModel extends Base {
         password: '',
         isEncrypt: 0,
         url: file.path,
+        photoDate: new Date(
+          dayjs(file.photoDate).format('YYYY-MM-DD'),
+        ).toISOString(),
       };
       const item = await Photo.create(photo);
       await Task.create({

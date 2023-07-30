@@ -52,9 +52,8 @@ const main = async () => {
     profile: { bar: 'foo', quiz: 'biz' },
     parentId: 0,
   });
-  current.age += 1;
-  await current.save();
-  return;
+  // current.age += 1;
+  // await current.save();
   // const cur = (await user.findById(current.id)) as User;
   // console.log(cur.toObject());
   // const users = await user.find({
@@ -74,7 +73,9 @@ const main = async () => {
   // };
   // console.log('%j', con);
   // const c = { age: 1, name: 2, gender: 3 };
-  const orQuery = await user.findOne(con);
+  const orQuery = await user.findOne(con, {
+    order: { createdAt: ORDER_TYPE.ASC },
+  });
   // console.log(orQuery);
   const user1 = (await user.findOne(
     { id: { $gte: 1, $lte: 200 } },

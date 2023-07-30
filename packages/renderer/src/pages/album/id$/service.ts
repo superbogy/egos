@@ -1,5 +1,5 @@
 import { Album } from '@/services/album';
-import { Photo } from '@/services/photo';
+import { Photo, PhotoSchema } from '@/services/photo';
 import Share from '@/services/share';
 import { message } from 'antd';
 import { RcFile } from 'antd/lib/upload';
@@ -23,6 +23,13 @@ export const photoUpload = async (params: {
 }) => {
   console.log('in album upload', params);
   albumService.upload(params);
+};
+
+export const photoUpdate = async ({
+  id,
+  ...params
+}: { id: string } & Partial<PhotoSchema>) => {
+  return Photo.update({ id }, params);
 };
 export const getShare = async ({ albumId }: { albumId: number }) => {
   return Share.getShareByAlbumId(albumId);
@@ -53,7 +60,10 @@ export const move = async ({ sourceId, targetId }: any) => {
     return false;
   }
   console.log('move rank', source.rank, target.rank);
-  await Photo.update({ id: sourceId }, { rank: target.rank });
+  await Photo.update(
+    { id: sourceId },
+    { rank: target.rank, photoDate: source.photoDate },
+  );
   await Photo.update({ id: targetId }, { rank: source.rank });
   return true;
 };
@@ -67,12 +77,14 @@ export const moveToDay = async ({ sourceId, day }: any) => {
     return false;
   }
   const dayStr = new Date(day).toISOString();
-  const last = await Photo.findOne({
-    albumId: source.albumId,
-    shootAt: dayStr,
-  });
-  const rank = last ? last.rank + 1 : source.rank;
-  await Photo.update({ id: sourceId }, { shootAt: dayStr, rank });
+  if (dayStr === source.photoDate) {
+    return false;
+  }
+  // const last = await Photo.findOne({
+  //   albumId: source.albumId,
+  //   photoDate: dayStr,
+  // });
+  await Photo.update({ id: sourceId }, { photoDate: dayStr });
   return true;
 };
 

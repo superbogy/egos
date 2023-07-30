@@ -21,6 +21,10 @@ export const LOGICAL: Dict = {
 };
 
 export class Parser {
+  private table: string;
+  constructor(table: string) {
+    this.table = table;
+  }
   build(query: Dict | Dict[], op = '$and'): any {
     const data: Record<string, any> = { [op]: [] };
     // [{a: 1}, {b: 1}]
@@ -119,14 +123,15 @@ export class Parser {
   }
 
   joinKV(op: string, key: string, value?: any): [s: string, v: any] {
+    const field = this.table ? `${this.table}.${key}` : key;
     if (op === '$inc') {
-      return [this.increment(key, value), []];
+      return [this.increment(field, value), []];
     }
     if (op in OPERATOR) {
       const opStr = OPERATOR[op] as string;
-      return [`${key} ${opStr} ?`, [value]];
+      return [`${field} ${opStr} ?`, [value]];
     }
-    const func = this.sqlFunction(op, key);
+    const func = this.sqlFunction(op, field);
     const placeholder = Array.isArray(value)
       ? Array(value.length).fill('?').join(',')
       : '?';

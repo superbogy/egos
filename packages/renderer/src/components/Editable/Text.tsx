@@ -1,5 +1,12 @@
 import { useRef, useState } from 'react';
-import './content.less';
+import classNames from 'classnames';
+import './text.less';
+
+export interface EditableTextProps {
+  text: string;
+  onChange: (text: string) => void;
+  className?: string;
+}
 
 export default (props: any) => {
   const [isEdit, setIsEdit] = useState<boolean>(false);
@@ -14,9 +21,20 @@ export default (props: any) => {
       }
     }, 100);
   };
-  const handleChange = () => {
-    setIsEdit(!isEdit);
+  const onBlur = () => {
+    const value = inputRef.current?.value;
+    if (!value) {
+      return;
+    }
+    if (value === props.text) {
+      setIsEdit(!isEdit);
+      return;
+    }
+    Promise.resolve(props.onChange(value)).then(() => {
+      setIsEdit(!isEdit);
+    });
   };
+
   return (
     <>
       {!isEdit ? (
@@ -25,11 +43,10 @@ export default (props: any) => {
         </span>
       ) : (
         <input
-          className="content-input"
-          value={props.text}
+          className={classNames('content-input', props.className)}
+          defaultValue={props.text}
           ref={inputRef}
-          onChange={handleChange}
-          onBlur={handleChange}
+          onBlur={onBlur}
         />
       )}
     </>

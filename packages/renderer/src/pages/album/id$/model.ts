@@ -50,6 +50,7 @@ export default {
         service.searchPhoto,
         {
           order: {
+            photo_date: 'desc',
             rank: 'desc',
           },
           ...payload,
@@ -60,7 +61,10 @@ export default {
       const group: Record<string, any> = {};
       const ds = 86400 * 1000;
       res.data.map((item: PhotoSchema) => {
-        const key = Math.floor(new Date(item.createdAt).getTime() / ds) * ds;
+        const key =
+          Math.floor(
+            new Date(item.photoDate || item.createdAt).getTime() / ds,
+          ) * ds;
         if (group[key]) {
           group[key].push(item);
         } else {
@@ -78,7 +82,6 @@ export default {
     },
     *getShare({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
       const share: ShareSchema = yield call(service.getShare, payload);
-      console.log('fuck share', share);
       yield put({
         type: 'updateState',
         payload: { share },
@@ -86,6 +89,13 @@ export default {
     },
     *upload({ payload }: AnyAction, { call }: EffectsCommandMap) {
       yield call(service.photoUpload, payload);
+    },
+    *update({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
+      yield call(service.photoUpdate, payload);
+      yield put({
+        type: 'query',
+        payload: {},
+      });
     },
     *move({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
       const { sourceId, targetId } = payload;
@@ -98,7 +108,7 @@ export default {
     *moveToDay({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
       const { sourceId, day } = payload;
       const res: boolean = yield call(service.moveToDay, { sourceId, day });
-      console.log('move to day result', res);
+      console.log('move to day result', payload);
       if (res) {
         yield put({
           type: 'query',

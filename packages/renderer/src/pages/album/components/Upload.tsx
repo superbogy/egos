@@ -90,11 +90,11 @@ export default (props: UploaderProps) => {
     </div>
   );
   const beforeUpload = async (file: RcFile, list: any[]) => {
-    const { albumId, shootedAt } = await form.validateFields();
+    const { albumId, photoDate } = await form.validateFields();
     setFileList(
       list.map((file: any) => {
         file.albumId = albumId;
-        file.shootAt = shootedAt?.toISOString();
+        file.photoDate = photoDate?.toISOString();
         return file;
       }),
     );
@@ -148,8 +148,7 @@ export default (props: UploaderProps) => {
           uid: item.uid,
           path: item.path || item.originFileObj.path,
           albumId: item.albumId,
-          bucket: item.bucket,
-          shootAt: item.shootAt,
+          photoDate: item.photoDate,
         };
       });
     props.onUpload({ files });
@@ -175,7 +174,6 @@ export default (props: UploaderProps) => {
       props.onFinish();
     }
     const current = files.find((item: any) => item.uid === payload.uid);
-    console.log('find result-----> fuck', current);
     if (!current) {
       processing = 0;
       return;
@@ -198,7 +196,6 @@ export default (props: UploaderProps) => {
           current.status = 'uploading';
           processing = 1;
         }
-        console.log('ccccurent', current);
         return current;
       }),
     );
@@ -280,20 +277,16 @@ export default (props: UploaderProps) => {
           form={form}
           initialValues={{
             albumId: searchAlbums.length ? searchAlbums[0].id : null,
-            shootedAt: moment(new Date().toISOString(), 'YYYY-MM-DD'),
+            photoDate: moment(new Date().toISOString(), 'YYYY-MM-DD'),
           }}
         >
-          <Form.Item
-            label="相册"
-            name="albumId"
-            rules={[{ required: true, message: 'choose album!' }]}
-          >
+          <Form.Item label="相册" name="albumId" rules={[{ required: true }]}>
             <Select {...selectProps}>{options}</Select>
           </Form.Item>
           <Form.Item
-            label="shoot Date"
-            name="shootAt"
-            rules={[{ required: false, message: 'choose shootAt!' }]}
+            label="photo Date"
+            name="photo Date"
+            rules={[{ required: false }]}
           >
             <DatePicker onChange={console.log} />
           </Form.Item>
@@ -307,7 +300,7 @@ export default (props: UploaderProps) => {
           </Row>
         </Form>
         <Modal
-          visible={preview.visible}
+          open={preview.visible}
           title={preview.title}
           footer={null}
           onCancel={() => setPreview({ ...preview, visible: false })}

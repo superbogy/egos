@@ -12,7 +12,7 @@ export interface PhotoSchema {
   password?: string;
   location?: string;
   description: string;
-  shootedAt: string;
+  photoDate: string;
   createdAt: string;
   updatedAt: string;
 }

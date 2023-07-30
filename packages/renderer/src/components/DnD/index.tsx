@@ -16,7 +16,7 @@ export interface DropProps {
   hoverStyle?: Record<string, string | number>;
   dropStyle?: Record<string, string | number>;
   dropType?: string;
-  onUpload: ({
+  onDrop: ({
     files,
     parentId,
     currentItem,
@@ -25,6 +25,7 @@ export interface DropProps {
     parentId?: number;
     currentItem?: any;
   }) => void;
+  onMove?: (source: any, target: any) => void;
   children: ReactNode | ReactNode[];
 }
 export const DropBox: FC<DropProps> = (props: DropProps) => {
@@ -44,11 +45,13 @@ export const DropBox: FC<DropProps> = (props: DropProps) => {
       accept,
       drop: (item: any, monitor) => {
         if (monitor.getItemType() === NativeTypes.FILE) {
-          return props.onUpload({
+          return props.onDrop({
             files: item.files,
             parentId: currentItem.id,
             currentItem,
           });
+        } else if (props.onMove) {
+          props.onMove(currentItem, item);
         }
         return currentItem;
       },
@@ -142,7 +145,7 @@ export interface SortableProps {
   dropStyle?: Record<string, string>;
   onMove: (src: any, dest: any) => void;
   dropType?: string;
-  onUpload?: ({
+  onDrop?: ({
     files,
     parentId,
     currentItem,
@@ -166,14 +169,9 @@ export const Sortable: FC<SortableProps> = (props) => {
           itemType: monitor.getItemType(),
         };
       },
-      end: (item, monitor) => {
-        const target = monitor.getDropResult();
-        if (props.onMove && target) {
-          props.onMove(currentItem, target);
-        }
-      },
+      end: () => console.log,
     },
-    [props.onMove, selected],
+    [selected],
   );
   const accept = [ItemTypes.CARD];
   if (props.dropType) {
@@ -191,14 +189,16 @@ export const Sortable: FC<SortableProps> = (props) => {
       },
       drop(item: any, monitor) {
         if (monitor.getItemType() === NativeTypes.FILE) {
-          if (props.onUpload) {
-            props.onUpload({
+          if (props.onDrop) {
+            props.onDrop({
               files: item.files,
               parentId: currentItem.id,
               currentItem,
             });
           }
           return item;
+        } else {
+          props.onMove(currentItem, item);
         }
         return currentItem;
       },

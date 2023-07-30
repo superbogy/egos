@@ -14,7 +14,7 @@ export interface FindOpts {
   rows?: boolean;
   limit?: number;
   offset?: number;
-  order?: SelectOrder | SelectOrder[];
+  order?: SelectOrder;
   fields?: string[];
   group?: string | string[];
 }
