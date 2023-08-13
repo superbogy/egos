@@ -12,6 +12,9 @@ import { Album } from './album';
 import { FileObject } from './file-object';
 import { getDriverByBucket } from '../lib/bucket';
 import humanFormat from 'human-format';
+import { ServiceError } from '../error';
+import { TagMap } from './tag-source';
+import { Tag } from './tag';
 
 export class PhotoSchema {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
@@ -93,7 +96,9 @@ class PhotoModel extends Base {
     const photos = await this.find(where, options);
     const total = await this.count(where);
     const data = [];
+    const ids: number[] = [];
     for (const item of photos) {
+      ids.push(item.id);
       const media = item.toJSON();
       const file = await FileObject.findById(item.objectId);
       if (!file) {
@@ -111,13 +116,68 @@ class PhotoModel extends Base {
       media.file = { ...file.toObject(), url, size: humanFormat(file.size) };
       data.push(media);
     }
+    const tags = await Tag.getTagsWithSourceId(ids, 'photo');
     return {
       meta: {
         total,
+        tags,
         album: album.toJSON(),
       },
       data,
     };
+  }
+
+  async setCover({ id }: { id: number }) {
+    const photo = await Photo.findByIdOrError(id);
+    const album = await Album.findByIdOrError(photo.albumId);
+    await Album.update({ id: album.id }, { coverId: photo.objectId });
+  }
+
+  async removePhotos({ ids, albumId = 1 }: any) {
+    const photos = await Photo.findByIds(ids);
+    const album = await Album.findById(albumId);
+    if (!album) {
+      throw new ServiceError({ mesage: 'album not found' });
+    }
+    if (ids.includes(album.coverId)) {
+      await Album.update({ id: albumId }, { cover: '' });
+    }
+    Promise.all(
+      photos.map((media: any) => {
+        return media.remove();
+      }),
+    );
+    return true;
+  }
+
+  async move({ sourceId, targetId }: any) {
+    const source = await Photo.findById(sourceId);
+    const target = await Photo.findById(targetId);
+    if (!source || !target) {
+      return false;
+    }
+    await Photo.update(
+      { id: sourceId },
+      { rank: target.rank, photoDate: target.photoDate },
+    );
+    await Photo.update({ id: targetId }, { rank: source.rank });
+    return true;
+  }
+
+  async moveToDay({ sourceId, day }: any) {
+    if (!day) {
+      return false;
+    }
+    const source = await Photo.findById(sourceId);
+    if (!source) {
+      return false;
+    }
+    const dayStr = new Date(day).toISOString();
+    if (dayStr === source.photoDate) {
+      return false;
+    }
+    await Photo.update({ id: sourceId }, { photoDate: dayStr });
+    return true;
   }
 }
 

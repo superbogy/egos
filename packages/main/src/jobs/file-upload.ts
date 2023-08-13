@@ -22,7 +22,6 @@ export class FileUploadJob extends FileJob {
   }
 
   async process(event: IpcMainEvent, payload: UploadPayload) {
-    const bucket = getAvailableBucket('file');
     const { local, taskId, password, fileId } = payload;
     if (!local) {
       throw new Error('local file not found');

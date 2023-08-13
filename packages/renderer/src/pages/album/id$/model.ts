@@ -5,10 +5,12 @@ import { AlbumSchema } from '@/services/album';
 import { AnyAction } from 'umi';
 import { EffectsCommandMap } from 'dva';
 import { ShareSchema } from '@/services/share';
+import { TagSchema } from '@/services/schema';
 
 export type PhotoMeta = {
   total: number;
   album: AlbumSchema;
+  tags: TagSchema[];
 };
 
 export type PhotoState = {
@@ -21,6 +23,7 @@ export type PhotoState = {
   meta: PhotoMeta;
   uploadUrl: string;
   share: ShareSchema | null;
+  pendingTags: any[];
 };
 
 export default {
@@ -35,6 +38,7 @@ export default {
     meta: {
       total: 0,
       album: {},
+      tags: [],
     },
     uploadUrl: '',
     share: null,
@@ -89,6 +93,9 @@ export default {
     },
     *upload({ payload }: AnyAction, { call }: EffectsCommandMap) {
       yield call(service.photoUpload, payload);
+    },
+    *download({ payload }: AnyAction, { call }: EffectsCommandMap) {
+      yield call(service.download, payload);
     },
     *update({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
       yield call(service.photoUpdate, payload);

@@ -91,6 +91,7 @@ export default (props: UploaderProps) => {
   );
   const beforeUpload = async (file: RcFile, list: any[]) => {
     const { albumId, photoDate } = await form.validateFields();
+    console.log(photoDate);
     setFileList(
       list.map((file: any) => {
         file.albumId = albumId;
@@ -285,10 +286,10 @@ export default (props: UploaderProps) => {
           </Form.Item>
           <Form.Item
             label="photo Date"
-            name="photo Date"
+            name="photoDate"
             rules={[{ required: false }]}
           >
-            <DatePicker onChange={console.log} />
+            <DatePicker />
           </Form.Item>
           <Row>
             <Col span={4}></Col>

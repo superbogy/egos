@@ -27,6 +27,7 @@ export interface DropProps {
   }) => void;
   onMove?: (source: any, target: any) => void;
   children: ReactNode | ReactNode[];
+  canDrop?: (source: any, target: any) => boolean;
 }
 export const DropBox: FC<DropProps> = (props: DropProps) => {
   const {
@@ -60,6 +61,9 @@ export const DropBox: FC<DropProps> = (props: DropProps) => {
         canDrop: monitor.canDrop(),
       }),
       canDrop(item) {
+        if (props.canDrop && !props.canDrop(item, currentItem)) {
+          return false;
+        }
         if (selected.includes(currentItem.id)) {
           return false;
         }
@@ -155,6 +159,7 @@ export interface SortableProps {
     currentItem: any;
   }) => void;
   children?: ReactNode | ReactNode[];
+  canDrop?: (source: any, target: any) => boolean;
 }
 
 export const Sortable: FC<SortableProps> = (props) => {
@@ -203,6 +208,9 @@ export const Sortable: FC<SortableProps> = (props) => {
         return currentItem;
       },
       canDrop(item: any) {
+        if (props.canDrop && !props.canDrop(item, currentItem)) {
+          return false;
+        }
         if (selected.includes(currentItem.id)) {
           return false;
         }

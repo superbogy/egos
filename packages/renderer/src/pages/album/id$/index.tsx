@@ -7,7 +7,7 @@ import {
   StarFilled,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Button, DatePicker, Radio, Space } from 'antd';
+import { Button, DatePicker, Radio, Select, Space, Spin } from 'antd';
 import classNames from 'classnames';
 import moment from 'moment';
 import { useEffect, useState } from 'react';
@@ -34,6 +34,8 @@ import { PhotoState } from './model';
 import qs from 'query-string';
 import { Selection, SelectionProps } from '@/components/Selection';
 import { SelectionEvent } from '@viselect/react';
+import { searchTags } from '@/pages/netdisk/service';
+import { Tag } from '@/services/tag';
 
 const { RangePicker } = DatePicker;
 
@@ -52,7 +54,8 @@ const dataIndex = [
 const Index = (props: PhotoProps) => {
   const { dispatch, photo } = props;
   const { photos, meta, share } = photo;
-  const { album } = meta;
+  const { album, tags } = meta;
+  console.log('photo tags', tags);
   const location = useLocation();
   const params = useParams();
   const MENU_ID = 'album-photos';
@@ -60,12 +63,13 @@ const Index = (props: PhotoProps) => {
     id: MENU_ID,
   });
 
-  const [clickId, setClickId] = useState<number | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [currentItem, setCurrentItem] = useState<PhotoSchema | null>(null);
   const [isDragging, setDragging] = useState<boolean>(false);
   const [uploadVisible, setUploadVisible] = useState<boolean>(false);
   const toggleUpload = () => setUploadVisible(!uploadVisible);
+  const [pendingTags, setPendingTags] = useState<any[]>([]);
+  const [tagFetching, setTagFetching] = useState<boolean>();
   useEffect(() => {
     const query = qs.parse(location.search);
     console.log(location, params);
@@ -82,22 +86,30 @@ const Index = (props: PhotoProps) => {
       });
     }
   }, [album.id]);
+  const setActiveItem = (item: PhotoSchema) => {
+    if (!selected.includes(item.id)) {
+      setSelected((pre) => {
+        if (pre.includes(item.id)) {
+          return pre;
+        }
+        pre.push(item.id);
+        return pre;
+      });
+    }
+    setCurrentItem(item);
+  };
   const handleContextMenu = (p: PhotoSchema) => (event: any) => {
-    setClickId(p.id);
     event.preventDefault();
+    setActiveItem(p);
     show({
       event,
-      props: {
-        key: 'value',
-      },
+      props: p,
     });
   };
   const setAlbumCover = () => {
     dispatch({
       type: 'photo/setCover',
-      payload: {
-        id: clickId,
-      },
+      payload: currentItem,
     });
   };
 
@@ -111,19 +123,6 @@ const Index = (props: PhotoProps) => {
   };
 
   const handleItemClick = ({ event, prop }: any) => console.log(event, prop);
-  // const handleUpload = () => {
-  //   remote.dialog
-  //     .showOpenDialog({ properties: ['openFile', 'openDirectory', 'multiSelections'] })
-  //     .then((res) => {
-  //       if (res.canceled) {
-  //         return;
-  //       }
-  //       dispatch({
-  //         type: 'photo/upload',
-  //         payload: { files: res.filePaths, albumId: meta.album.id },
-  //       });
-  //     });
-  // };
   const showModal = () => {
     dispatch({
       type: 'photo/toggleModal',
@@ -153,35 +152,41 @@ const Index = (props: PhotoProps) => {
   };
 
   const onSelectChange = (activeItem: PhotoSchema, e: React.MouseEvent) => {
-    e.preventDefault();
-    const { metaKey, shiftKey } = e;
-    let selectedIds: number[] = [];
-    const allPhotos = Object.values(photos).reduce(
-      (pre, acc) => pre.concat(acc),
-      [],
-    );
-    const activeId = currentItem ? currentItem.id : null;
-    if (metaKey) {
-      if (selected.includes(activeItem.id) && activeItem.id !== activeId) {
-        selectedIds = selected.filter((i) => i !== activeItem.id);
-      } else {
-        selectedIds = [...selected, activeItem.id];
-      }
-    } else if (shiftKey && activeItem.id !== activeId) {
-      const current = allPhotos.findIndex(
-        (item: PhotoSchema) => item.id === activeItem.id,
-      );
-      const prev = allPhotos.findIndex(
-        (item: PhotoSchema) => item.id === activeId,
-      );
-      selectedIds = allPhotos
-        .slice(current, prev)
-        .map((item: PhotoSchema) => item.id);
-    } else if (!selected.includes(activeItem.id)) {
-      selectedIds = [activeItem.id];
-    }
+    e.stopPropagation();
     setCurrentItem(activeItem);
-    setSelected(selectedIds);
+    if (selected.includes(activeItem.id)) {
+      return;
+    }
+    selected.push(activeItem.id);
+    setSelected(selected);
+
+    // const { metaKey, shiftKey } = e;
+    // let selectedIds: number[] = [];
+    // const allPhotos = Object.values(photos).reduce(
+    //   (pre, acc) => pre.concat(acc),
+    //   [],
+    // );
+    // const activeId = currentItem ? currentItem.id : null;
+    // if (metaKey) {
+    //   if (selected.includes(activeItem.id) && activeItem.id !== activeId) {
+    //     selectedIds = selected.filter((i) => i !== activeItem.id);
+    //   } else {
+    //     selectedIds = [...selected, activeItem.id];
+    //   }
+    // } else if (shiftKey && activeItem.id !== activeId) {
+    //   const current = allPhotos.findIndex(
+    //     (item: PhotoSchema) => item.id === activeItem.id,
+    //   );
+    //   const prev = allPhotos.findIndex(
+    //     (item: PhotoSchema) => item.id === activeId,
+    //   );
+    //   selectedIds = allPhotos
+    //     .slice(current, prev)
+    //     .map((item: PhotoSchema) => item.id);
+    // } else if (!selected.includes(activeItem.id)) {
+    //   selectedIds = [activeItem.id];
+    // }
+    // setSelected(selectedIds);
   };
 
   const handleFilter = (payload: any) => {
@@ -227,7 +232,7 @@ const Index = (props: PhotoProps) => {
     //   size = humanFormat(p.file.size);
     // }
 
-    setCurrentItem(p);
+    setActiveItem(p);
   };
   const cancelSelected = (e: React.MouseEvent) => {
     if (!e.defaultPrevented && !isDragging) {
@@ -236,19 +241,6 @@ const Index = (props: PhotoProps) => {
       setDragging(false);
     }
   };
-
-  // const handleSelect = (e: any) => {
-  //   setDragging(true);
-  //   const selectedIds: number[] = [];
-  //   e.selected.map((item: any) => {
-  //     const id = Number(item.dataset.id);
-  //     if (selected.indexOf(id) === -1) {
-  //       selectedIds.push(id);
-  //     }
-  //     return item;
-  //   });
-  //   setSelected([...selected, ...selectedIds]);
-  // };
 
   const uploadProps = {
     pending: [],
@@ -304,29 +296,22 @@ const Index = (props: PhotoProps) => {
               uid: Date.now(),
               path: file.path || file.originFileObj.path,
               albumId: album.id,
-              shootedAt: currentItem.day,
+              photoDate: new Date(Number(currentItem.day)).toISOString(),
             };
           }),
         },
       });
+    },
+    canDrop: (source: PhotoSchema, target: any) => {
+      const d1 = new Date(source.photoDate).getTime();
+      const d2 = new Date(Number(target.day)).getTime();
+      return d1 !== d2;
     },
   };
   const goBack = () => {
     history.go(-1);
   };
   const handleMove = (source: any, target: any) => {
-    console.log('????onMove--->', source, '++++', target, '?<');
-    // if (target.crossDay) {
-    //   console.log('cross day onmove', source, target);
-    //   dispatch({
-    //     type: 'photo/moveToDay',
-    //     payload: {
-    //       sourceId: source.id,
-    //       day: Number(target.day),
-    //     },
-    //   });
-    //   return;
-    // }
     if (!source.id || !target.id) {
       return;
     }
@@ -342,13 +327,18 @@ const Index = (props: PhotoProps) => {
     });
   };
   const showQrUpload = () => {
-    console.log(album);
     return dispatch<AnyAction>({
       type: 'photo/genUploadUrl',
       payload: {
         id: album.id,
         expiry: 86400 * 1000,
       },
+    });
+  };
+  const download = () => {
+    dispatch({
+      type: 'photo/download',
+      payload: { ids: selected },
     });
   };
 
@@ -376,6 +366,7 @@ const Index = (props: PhotoProps) => {
         }
         return false;
       });
+      console.log('0000 start?', event);
       if (!event?.ctrlKey && !event?.metaKey && !hasSelected) {
         selection.clearSelection();
         setSelected([]);
@@ -408,6 +399,35 @@ const Index = (props: PhotoProps) => {
         });
       }
     },
+  };
+  let tagSearchTimer: NodeJS.Timeout;
+  const handleTagSearch = (name: string) => {
+    console.log('ctx search tag', name, pendingTags);
+    setTagFetching(true);
+    if (tagSearchTimer) {
+      clearTimeout(tagSearchTimer);
+    }
+    tagSearchTimer = setTimeout(() => {
+      searchTags(name).then((res) => {
+        console.log('tags res--->', res);
+        setPendingTags(res);
+        setTagFetching(false);
+      });
+    }, 800);
+  };
+  let tagTimer: NodeJS.Timeout;
+  const handleTagChange = (tags: string[]) => {
+    if (!tagTimer) {
+      clearTimeout(tagTimer);
+    }
+    tagTimer = setTimeout(() => {
+      Tag.setTags({ ids: selected, tags, type: 'photo' }).then(() => {
+        dispatch({
+          type: 'photo/query',
+          payload: {},
+        });
+      });
+    }, 2500);
   };
 
   return (
@@ -456,11 +476,20 @@ const Index = (props: PhotoProps) => {
                         {list.map((p: any) => {
                           return (
                             <div className="img-box" key={p.id}>
+                              <div className="img-opts">
+                                <Button
+                                  type="dashed"
+                                  shape="circle"
+                                  onClick={(e) => onSelectChange(p, e)}
+                                  icon={<CheckOutlined />}
+                                />
+                              </div>
                               <Sortable
                                 currentItem={p}
                                 onMove={handleMove}
                                 selected={selected}
                                 disable={selected.length > 1 ? selected : []}
+                                canDrop={() => selected.length <= 1}
                               >
                                 <div
                                   className={classNames(
@@ -471,19 +500,19 @@ const Index = (props: PhotoProps) => {
                                     },
                                   )}
                                   data-id={p.id}
+                                  onClick={() => setActiveItem(p)}
+                                  onDoubleClick={previewImage(p)}
                                 >
                                   {p.file.type === 'image' ? (
                                     <img
                                       alt={p.id}
                                       className="pic"
                                       src={`http://local-egos?fileId=${p.objectId}&type=image`}
-                                      onDoubleClick={previewImage(p)}
                                       onContextMenu={handleContextMenu(p)}
                                     />
                                   ) : (
                                     <video
                                       className="media"
-                                      onDoubleClick={previewImage(p)}
                                       onContextMenu={handleContextMenu(p)}
                                       controls={true}
                                     >
@@ -493,15 +522,6 @@ const Index = (props: PhotoProps) => {
                                       />
                                     </video>
                                   )}
-
-                                  <div className="img-opts">
-                                    <Button
-                                      type="dashed"
-                                      shape="circle"
-                                      onClick={(e) => onSelectChange(p, e)}
-                                      icon={<CheckOutlined />}
-                                    />
-                                  </div>
                                 </div>
                               </Sortable>
                               <div className="photo-info">
@@ -536,9 +556,56 @@ const Index = (props: PhotoProps) => {
         <Item onClick={setAlbumCover}>设为封面</Item>
         <Item onClick={openExternal}>打开</Item>
         <Item onClick={deletePhotos}>编辑</Item>
-        <Item onClick={handleItemClick}>下载</Item>
+        <Item onClick={download}>下载</Item>
+        <Item>
+          <div
+            style={{ width: '100%', border: '1px solid #999' }}
+            onClick={(ev) => {
+              ev.stopPropagation();
+            }}
+          >
+            <Select
+              mode="tags"
+              allowClear={false}
+              size="small"
+              bordered={false}
+              placeholder="choose tags"
+              defaultValue={
+                tags && currentItem
+                  ? tags
+                      .filter((item) => item.sourceId === currentItem.id)
+                      .map((t: any) => t.name)
+                  : []
+              }
+              options={tags.map((tag) => {
+                return {
+                  key: tag.name,
+                  label: (
+                    <div key={tag.name}>
+                      <span
+                        className="netdisk-tag-color"
+                        style={{ background: tag.color }}
+                      ></span>
+                      <span className="netdisk-tag-text">{tag.name}</span>
+                    </div>
+                  ),
+                  value: tag.name,
+                };
+              })}
+              style={{ width: '80%' }}
+              onSearch={(tagName: string) => handleTagSearch(tagName)}
+              onChange={(tags: string[]) => {
+                console.log('on select tags', tags);
+                handleTagChange(tags);
+              }}
+              notFoundContent={tagFetching ? <Spin size="small" /> : null}
+              loading={!!tagFetching}
+            />
+          </div>
+        </Item>
         <Item onClick={handleItemClick}>分享</Item>
-        <Item onClick={handleItemClick}>删除</Item>
+        <Item onClick={handleItemClick}>收藏</Item>
+        <Item onClick={deletePhotos}>删除</Item>
       </ContextMenu>
       {imgVisible && (
         <Viewer

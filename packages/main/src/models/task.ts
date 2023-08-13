@@ -151,13 +151,15 @@ export class TaskModel extends Base {
     return true;
   }
   async download({ ids, type }: { ids: number[]; type: string }) {
-    const files = await File.findByIds(ids);
+    const model = type === 'image' ? Photo : File;
+    const files = await model.findByIds(ids);
     for (const file of files) {
       const task = {
         action: 'download',
-        type: type,
+        type,
         retry: 0,
         status: 'pending',
+        payload: {},
         maxRetry: 10,
         err: '',
         sourceId: file.id,
@@ -171,6 +173,11 @@ export class TaskModel extends Base {
       const last = await Photo.findOne(
         { albumId },
         { order: { rank: ORDER_TYPE.DESC } },
+      );
+      console.log(
+        'fffuck ----> ',
+        file,
+        dayjs(file.photoDate).format('YYYY-MM-DD'),
       );
       const rank = last ? last.rank + 1 : 1;
       const photo = {

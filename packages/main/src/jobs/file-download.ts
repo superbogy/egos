@@ -1,23 +1,23 @@
-import Locker from 'await-lock';
 import { getNoneExistedFilename } from '@egos/storage';
-import fs, { promises as fsp } from 'fs';
+import { promises as fsp } from 'fs';
 import path from 'path';
 
 import { getDriverByBucket } from '../lib/bucket';
 import { getDownloadPath } from '../lib/helper';
 import { File } from '../models/file';
-import { FileObject } from '../models/file-object';
-import { Task, TaskModel, TaskSchema } from '../models/task';
+import { FileObject, FileObjectSchema } from '../models/file-object';
+import { Task, TaskSchema } from '../models/task';
 import { IpcMainEvent } from 'electron';
-import { ServiceError } from '../error';
 import { FileJob } from './file.job';
-import { DownloadPayload, JobOptions, UploadPayload } from './interfaces';
+import { DownloadPayload } from './interfaces';
 import { getTaskPassword } from './helper';
 
 export class FileDownloadJob extends FileJob {
-  async getTask() {
-    return Task.find({ type: 'file', action: 'download' });
-  }
+  protected type = 'file';
+  // async getTasks() {
+  //   console.log('ffffuck', { type: this.type, action: 'download' });
+  //   return Task.find({ type: this.type, action: 'download' }, { limit: 10 });
+  // }
 
   async buildPayload(task: TaskSchema): Promise<any> {
     const sourceId = task.sourceId;
@@ -36,11 +36,11 @@ export class FileDownloadJob extends FileJob {
   async process(
     event: IpcMainEvent,
     payload: DownloadPayload,
-  ): Promise<boolean> {
+  ): Promise<FileObjectSchema | undefined> {
     const { fileId, savePath } = payload;
     const fileItem = await File.findById(fileId as number);
     if (!fileItem) {
-      return false;
+      return;
     }
     if (fileItem.isDiectory) {
       const curDir = path.join(savePath, fileItem.filename);
@@ -84,6 +84,6 @@ export class FileDownloadJob extends FileJob {
       crypto: '',
     };
     await this.write(event, writeParams);
-    return true;
+    return fileObj.toJSON() as FileObjectSchema;
   }
 }

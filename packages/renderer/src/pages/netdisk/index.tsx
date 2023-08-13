@@ -36,7 +36,7 @@ import Modal from './components/Modal';
 import { DropBox } from '@/components/DnD';
 import Provider from '@/components/DnD/Provider';
 import { Remote } from '@/lib/remote';
-import SelectionArea, { SelectionEvent } from '@viselect/react';
+import { SelectionEvent } from '@viselect/react';
 
 import { useCallback } from 'react';
 import { DiskState } from './model';
@@ -604,7 +604,7 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
                       paddingLeft: 4,
                       borderLeft: '4px solid #12b562',
                     },
-                    onUpload: handleNativeDrop,
+                    onDrop: handleNativeDrop,
                   };
                   return (
                     <Menu.Item key={item.id}>
@@ -663,9 +663,9 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       </div>
       <Share {...shareProps} />
       <QRUploader
-        visible={qrUpload}
-        url={netdisk.uploadUrl}
+        info={{ url: netdisk.uploadUrl }}
         onCancel={() => setQrUpload(false)}
+        genQrCode={showQrUpload}
       />
     </>
   );

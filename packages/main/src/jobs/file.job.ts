@@ -47,7 +47,7 @@ export abstract class FileJob {
     const where = {
       $and: [
         {
-          type: 'file',
+          type: this.type,
         },
         { action: this.action },
         { status: 'pending' },
@@ -57,7 +57,7 @@ export abstract class FileJob {
         // },
       ],
     };
-    const tasks = await Task.find(where, { limit: 50 });
+    const tasks = await Task.find(where, { limit: 10 });
     return tasks.filter((t) => {
       return t.retry < t.maxRetry;
     });
@@ -199,7 +199,7 @@ export abstract class FileJob {
         message: 'progress',
         type: this.type,
         action: this.action,
-        status: 'uploading',
+        status: 'processing',
         payload: task.payload,
         taskId,
         size,

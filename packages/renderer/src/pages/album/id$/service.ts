@@ -1,9 +1,10 @@
 import { Album } from '@/services/album';
 import { Photo, PhotoSchema } from '@/services/photo';
 import Share from '@/services/share';
-import { message } from 'antd';
 import { RcFile } from 'antd/lib/upload';
 import * as albumService from '../service';
+import { Remote } from '@/lib/remote';
+import { Task } from '@/services/task';
 
 export const fetchPhoto = async ({ albumId }: { albumId: number }) => {
   const album = await Album.findById(albumId);
@@ -35,57 +36,21 @@ export const getShare = async ({ albumId }: { albumId: number }) => {
   return Share.getShareByAlbumId(albumId);
 };
 export const setCover = async ({ id }: { id: number }) => {
-  const media = await Photo.findById(id);
-  const album = await Album.findById(media.albumId);
-  await Album.update({ id: album.id }, { cover: id });
+  const photo = await Photo.findById(id);
+  const album = await Album.findById(photo.albumId);
+  await Album.update({ id: album.id }, { coverId: photo.objectId });
 };
 
 export const removePhotos = async ({ ids, albumId = 1 }: any) => {
-  const photos = await Photo.findByIds(ids);
-  const album = await Album.findById(albumId);
-  if (ids.includes(album.cover)) {
-    await Album.update({ id: albumId }, { cover: '' });
-  }
-  photos.map((media: any) => {
-    return media.remove();
-  });
-  return true;
+  return Photo.removePhotos({ ids, albumId });
 };
 
 export const move = async ({ sourceId, targetId }: any) => {
-  const source = await Photo.findById(sourceId);
-  const target = await Photo.findById(targetId);
-  if (!source || !target) {
-    message.error('Invalid Photo');
-    return false;
-  }
-  console.log('move rank', source.rank, target.rank);
-  await Photo.update(
-    { id: sourceId },
-    { rank: target.rank, photoDate: source.photoDate },
-  );
-  await Photo.update({ id: targetId }, { rank: source.rank });
-  return true;
+  return Photo.move({ sourceId, targetId });
 };
 
 export const moveToDay = async ({ sourceId, day }: any) => {
-  if (!day) {
-    return false;
-  }
-  const source = await Photo.findById(sourceId);
-  if (!source) {
-    return false;
-  }
-  const dayStr = new Date(day).toISOString();
-  if (dayStr === source.photoDate) {
-    return false;
-  }
-  // const last = await Photo.findOne({
-  //   albumId: source.albumId,
-  //   photoDate: dayStr,
-  // });
-  await Photo.update({ id: sourceId }, { photoDate: dayStr });
-  return true;
+  return Photo.moveToDay({ sourceId, day });
 };
 
 export const searchPhoto = async (payload: any) => {
@@ -95,4 +60,10 @@ export const searchPhoto = async (payload: any) => {
 
 export const genQrUpload = async ({ id, expiry }: any) => {
   return await Share.genAlbumUploadUrl({ id, expiry });
+};
+
+export const download = async ({ ids }: { ids: number[] }) => {
+  const { ipcRenderer } = Remote.Electron;
+  await Task.download({ ids, type: 'image' });
+  return ipcRenderer.send('image:download:start', { type: 'image' });
 };
