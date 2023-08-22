@@ -5,6 +5,10 @@ class TagService extends Base {
     return this.exec('searchTags', name);
   }
 
+  async getTagsBySourceId(sourceId: number, type: string) {
+    return this.exec('getTagsWithSourceId', sourceId, type);
+  }
+
   async setTags(params: { ids: number[]; tags: string[]; type: string }) {
     return this.exec('setTags', params);
   }

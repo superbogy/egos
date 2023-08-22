@@ -14,7 +14,7 @@ import { DragBox, DropBox } from '@/components/DnD';
 import Viewer from '@/components/Viewer';
 import Exhibit from '@/components/Viewer/exhibit';
 import { FileSchema } from '@/services/file';
-import { TriggerEvent } from 'react-contexify';
+import { TriggerEvent } from 'egos-contexify';
 import classNames from 'classnames';
 
 const dataIndex = [
@@ -65,6 +65,7 @@ export default (props: CardProps) => {
         currentItem: item,
         onUpload: props.onUpload,
         style: { height: '100%' },
+        onDrop: console.log,
       };
       return (
         <DropBox {...dropProps}>
@@ -99,6 +100,7 @@ export default (props: CardProps) => {
           file={item}
           boxClass="visible-file"
           className="card-img"
+          type="file"
           onDoubleClick={() => handleImagePreview(item)}
           controls={false}
         />

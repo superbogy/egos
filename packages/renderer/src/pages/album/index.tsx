@@ -19,7 +19,7 @@ import {
   Menu as ContextMenu,
   Separator,
   useContextMenu,
-} from 'react-contexify';
+} from 'egos-contexify';
 import { connect, useLocation, history } from 'umi';
 
 import Provider from '@/components/DnD/Provider';
@@ -34,7 +34,7 @@ import { AlbumState } from './model';
 
 const Index = (props: any) => {
   const { dispatch, album } = props;
-  const { albums, total, searchAlbums, buckets } = album;
+  const { albums, total, searchAlbums } = album;
   const [currentItem, setCurrentItem] = useState<AlbumSchema | null>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [isDragging, setDragging] = useState<boolean>(false);

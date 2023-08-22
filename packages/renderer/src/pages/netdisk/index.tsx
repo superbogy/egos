@@ -26,7 +26,7 @@ import {
 import Share from '@/components/Share';
 import QRUploader from '@/components/Uploader/qrUpload';
 import { Dispatch, history } from 'umi';
-import { TriggerEvent } from 'react-contexify';
+import { TriggerEvent } from 'egos-contexify';
 import { connect, useIntl, useLocation } from 'umi';
 import Card from './components/Card';
 import Edit from './components/Edit';
@@ -239,7 +239,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       cmdKeyActive: any,
       shiftKeyActive: any,
     ) {
-      console.log('00000onSelectChange---->>>');
       let selectedIds = [];
       const activeId = currentItem ? currentItem.id : null;
       if (cmdKeyActive) {
@@ -261,7 +260,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
       setSelect(selectedIds);
     },
     onDrag(item: FileSchema) {
-      console.log('?????????on drag');
       if (!selected.includes(item.id)) {
         setSelect([item.id]);
       }
@@ -363,7 +361,6 @@ const Index: FC<NetDiskProps> = (props: NetDiskProps) => {
   };
   const cancelSelected = (e: any) => {
     if (!e.defaultPrevented && !isDragging) {
-      console.log('ddddddd? cancel', e);
       setSelect([]);
     } else {
       setDragging(false);

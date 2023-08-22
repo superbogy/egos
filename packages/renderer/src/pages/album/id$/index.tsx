@@ -7,11 +7,11 @@ import {
   StarFilled,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Button, DatePicker, Radio, Select, Space, Spin } from 'antd';
+import { Badge, Button, DatePicker, Radio, Space } from 'antd';
 import classNames from 'classnames';
 import moment from 'moment';
 import { useEffect, useState } from 'react';
-import { Item, Menu as ContextMenu, useContextMenu } from 'react-contexify';
+import { Item, Menu as ContextMenu, useContextMenu } from 'egos-contexify';
 import {
   AnyAction,
   Dispatch,
@@ -34,8 +34,8 @@ import { PhotoState } from './model';
 import qs from 'query-string';
 import { Selection, SelectionProps } from '@/components/Selection';
 import { SelectionEvent } from '@viselect/react';
-import { searchTags } from '@/pages/netdisk/service';
 import { Tag } from '@/services/tag';
+import { TagItem } from '../components/TagItem';
 
 const { RangePicker } = DatePicker;
 
@@ -55,24 +55,31 @@ const Index = (props: PhotoProps) => {
   const { dispatch, photo } = props;
   const { photos, meta, share } = photo;
   const { album, tags } = meta;
-  console.log('photo tags', tags);
   const location = useLocation();
   const params = useParams();
   const MENU_ID = 'album-photos';
   const { show } = useContextMenu<any>({
     id: MENU_ID,
   });
+  window.addEventListener(
+    'keydown',
+    function (e) {
+      if (e.code === 'Space') {
+        console.log('keydown1', e);
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    false,
+  );
 
   const [selected, setSelected] = useState<number[]>([]);
   const [currentItem, setCurrentItem] = useState<PhotoSchema | null>(null);
   const [isDragging, setDragging] = useState<boolean>(false);
   const [uploadVisible, setUploadVisible] = useState<boolean>(false);
   const toggleUpload = () => setUploadVisible(!uploadVisible);
-  const [pendingTags, setPendingTags] = useState<any[]>([]);
-  const [tagFetching, setTagFetching] = useState<boolean>();
   useEffect(() => {
     const query = qs.parse(location.search);
-    console.log(location, params);
     dispatch({
       type: 'photo/query',
       payload: { ...query, albumId: params.id },
@@ -86,17 +93,17 @@ const Index = (props: PhotoProps) => {
       });
     }
   }, [album.id]);
-  const setActiveItem = (item: PhotoSchema) => {
-    if (!selected.includes(item.id)) {
+  const setActiveItem = (curItem: PhotoSchema) => {
+    if (!selected.includes(curItem.id)) {
       setSelected((pre) => {
-        if (pre.includes(item.id)) {
+        if (pre.includes(curItem.id)) {
           return pre;
         }
-        pre.push(item.id);
+        pre.push(curItem.id);
         return pre;
       });
     }
-    setCurrentItem(item);
+    setCurrentItem(curItem);
   };
   const handleContextMenu = (p: PhotoSchema) => (event: any) => {
     event.preventDefault();
@@ -153,7 +160,7 @@ const Index = (props: PhotoProps) => {
 
   const onSelectChange = (activeItem: PhotoSchema, e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentItem(activeItem);
+    setActiveItem(activeItem);
     if (selected.includes(activeItem.id)) {
       return;
     }
@@ -277,7 +284,6 @@ const Index = (props: PhotoProps) => {
       background: '#e2e1e194',
     },
     onMove: (dayCol: any, photo: PhotoSchema) => {
-      console.log('onDropOnmOve>>>?', dayCol, photo);
       dispatch({
         type: 'photo/moveToDay',
         payload: {
@@ -366,7 +372,6 @@ const Index = (props: PhotoProps) => {
         }
         return false;
       });
-      console.log('0000 start?', event);
       if (!event?.ctrlKey && !event?.metaKey && !hasSelected) {
         selection.clearSelection();
         setSelected([]);
@@ -394,41 +399,25 @@ const Index = (props: PhotoProps) => {
             }
             next.splice(idx, 1);
           });
-          console.log(next);
           return next;
         });
       }
     },
   };
-  let tagSearchTimer: NodeJS.Timeout;
-  const handleTagSearch = (name: string) => {
-    console.log('ctx search tag', name, pendingTags);
-    setTagFetching(true);
-    if (tagSearchTimer) {
-      clearTimeout(tagSearchTimer);
-    }
-    tagSearchTimer = setTimeout(() => {
-      searchTags(name).then((res) => {
-        console.log('tags res--->', res);
-        setPendingTags(res);
-        setTagFetching(false);
-      });
-    }, 800);
+
+  const handleTagChange = (ids: number[], newtags: string[]) => {
+    const removeItems: any[] = [];
+    ids.map((id: number) => {
+      return tags
+        .filter((t) => t.sourceId === id)
+        .filter((t) => !newtags.includes(t.name))
+        .forEach((i) => removeItems.push(i.mapId));
+    });
+    // setTagNames(newtags);
+    // form.setFieldValue('tags', tags);
+    return Tag.setTags({ ids, tags: newtags, type: 'photo' });
   };
-  let tagTimer: NodeJS.Timeout;
-  const handleTagChange = (tags: string[]) => {
-    if (!tagTimer) {
-      clearTimeout(tagTimer);
-    }
-    tagTimer = setTimeout(() => {
-      Tag.setTags({ ids: selected, tags, type: 'photo' }).then(() => {
-        dispatch({
-          type: 'photo/query',
-          payload: {},
-        });
-      });
-    }, 2500);
-  };
+  // const curTags = tags.filter((t) => t.sourceId === currentItem?.id);
 
   return (
     <>
@@ -502,20 +491,17 @@ const Index = (props: PhotoProps) => {
                                   data-id={p.id}
                                   onClick={() => setActiveItem(p)}
                                   onDoubleClick={previewImage(p)}
+                                  onContextMenu={handleContextMenu(p)}
                                 >
                                   {p.file.type === 'image' ? (
                                     <img
                                       alt={p.id}
                                       className="pic"
                                       src={`http://local-egos?fileId=${p.objectId}&type=image`}
-                                      onContextMenu={handleContextMenu(p)}
+                                      // onContextMenu={handleContextMenu(p)}
                                     />
                                   ) : (
-                                    <video
-                                      className="media"
-                                      onContextMenu={handleContextMenu(p)}
-                                      controls={true}
-                                    >
+                                    <video className="media" controls={true}>
                                       <source
                                         src={`atom://local-egos?fileId=${p.objectId}&type=image#t=0.5`}
                                         type="video/mp4"
@@ -537,8 +523,27 @@ const Index = (props: PhotoProps) => {
                                 />
                               </div>
                               <div className="photo-extra">
-                                <StarFilled />
-                                <ShareAltOutlined />
+                                <span>
+                                  {tags
+                                    .filter((t) => t.sourceId === p.id)
+                                    .map((i) => (
+                                      <Badge
+                                        key={i.color}
+                                        color={i.color}
+                                        style={{
+                                          width: 8,
+                                          height: 8,
+                                        }}
+                                      />
+                                    ))}
+                                </span>
+
+                                <span>
+                                  <StarFilled />
+                                </span>
+                                <span>
+                                  <ShareAltOutlined />
+                                </span>
                               </div>
                             </div>
                           );
@@ -552,57 +557,21 @@ const Index = (props: PhotoProps) => {
           </Provider>
         </div>
       </div>
-      <ContextMenu id={MENU_ID}>
+      <ContextMenu id={MENU_ID} preventDefaultOnKeydown={false}>
         <Item onClick={setAlbumCover}>设为封面</Item>
         <Item onClick={openExternal}>打开</Item>
         <Item onClick={deletePhotos}>编辑</Item>
         <Item onClick={download}>下载</Item>
-        <Item>
-          <div
-            style={{ width: '100%', border: '1px solid #999' }}
-            onClick={(ev) => {
-              ev.stopPropagation();
-            }}
-          >
-            <Select
-              mode="tags"
-              allowClear={false}
-              size="small"
-              bordered={false}
-              placeholder="choose tags"
-              defaultValue={
-                tags && currentItem
-                  ? tags
-                      .filter((item) => item.sourceId === currentItem.id)
-                      .map((t: any) => t.name)
-                  : []
-              }
-              options={tags.map((tag) => {
-                return {
-                  key: tag.name,
-                  label: (
-                    <div key={tag.name}>
-                      <span
-                        className="netdisk-tag-color"
-                        style={{ background: tag.color }}
-                      ></span>
-                      <span className="netdisk-tag-text">{tag.name}</span>
-                    </div>
-                  ),
-                  value: tag.name,
-                };
-              })}
-              style={{ width: '80%' }}
-              onSearch={(tagName: string) => handleTagSearch(tagName)}
-              onChange={(tags: string[]) => {
-                console.log('on select tags', tags);
-                handleTagChange(tags);
-              }}
-              notFoundContent={tagFetching ? <Spin size="small" /> : null}
-              loading={!!tagFetching}
+        <Item closeOnClick={false}>
+          <div style={{ width: '100%', background: '1px solid #999' }}>
+            <TagItem
+              tags={tags.filter((t) => t.sourceId === currentItem?.id)}
+              setTags={handleTagChange}
+              sourceId={currentItem?.id as number}
             />
           </div>
         </Item>
+
         <Item onClick={handleItemClick}>分享</Item>
         <Item onClick={handleItemClick}>收藏</Item>
         <Item onClick={deletePhotos}>删除</Item>

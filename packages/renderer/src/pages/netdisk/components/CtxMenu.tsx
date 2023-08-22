@@ -26,7 +26,7 @@ import {
   Separator,
   useContextMenu,
   ItemParams,
-} from 'react-contexify';
+} from 'egos-contexify';
 import PasswordForm from './PasswordForm';
 import { TagSchema } from '@/services/schema';
 import { searchTags } from '../service';
