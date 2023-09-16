@@ -124,6 +124,20 @@ export class FileModel extends Base {
     return Object.assign({}, file.toJSON(), info);
   }
 
+  async getFileUrl(id: number) {
+    const file = await this.findById(id);
+    if (!file) {
+      return '';
+    }
+    const fileObj = await FileObject.findById(file.objectId);
+    if (!fileObj) {
+      return '';
+    }
+    const driver = getDriverByBucket(fileObj.bucket) as Driver;
+    const url = await driver.getUrl(fileObj.remote);
+    return url;
+  }
+
   async getFileInfo(item: this) {
     let file = await FileObject.findById(item.objectId);
     if (!file) {

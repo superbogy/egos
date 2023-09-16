@@ -28,7 +28,6 @@ interface BoxProps {
 
 export default memo((props: BoxProps) => {
   const { selected, currentItem, onUpload } = props;
-  console.log('album box', props);
   const handleMove = (source: AlbumSchema, target: AlbumSchema) => {
     props.onMove(source.id, target.id);
   };
@@ -56,7 +55,7 @@ export default memo((props: BoxProps) => {
         dropType={NativeTypes.FILE}
         currentItem={currentItem}
         onMove={handleMove}
-        onUpload={handleUpload}
+        onDrop={handleUpload}
         selected={selected}
         disable={selected.length > 1 ? selected : []}
       >
@@ -79,8 +78,8 @@ export default memo((props: BoxProps) => {
               className="album-cover-img"
               alt={currentItem.name}
               src={
-                currentItem.coverId
-                  ? `${fileHost}?fileId=${currentItem.coverId}&type=image`
+                currentItem.objectId
+                  ? `${fileHost}?fileId=${currentItem.objectId}&type=image`
                   : DefaultImg
               }
               style={{ width: '100%' }}

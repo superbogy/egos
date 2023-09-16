@@ -14,16 +14,15 @@ class TagModel extends Base {
 
   async findAndCreate(tagName: string, sourceId: number, type = 'file') {
     let tag = await this.findOne({ name: tagName });
-    console.log('fffuckl findAndCreate --->', tag);
     if (!tag) {
       const color = '#' + Math.floor(Math.random() * 16777215).toString(16);
       tag = await this.create({ name: tagName, color });
     }
-    const linked = await TagMap.findOne({ tagId: tag.id, sourceId, type });
+    let linked: any = await TagMap.findOne({ tagId: tag.id, sourceId, type });
     if (!linked) {
-      await TagMap.create({ sourceId, tagId: tag.id, type });
+      linked = await TagMap.create({ sourceId, tagId: tag.id, type });
     }
-    return tag;
+    return { ...tag.toJSON(), sourceId, mapId: linked.id };
   }
 
   async setTags({
@@ -35,7 +34,6 @@ class TagModel extends Base {
     tags: string[];
     type: string;
   }) {
-    console.log('----- set fucking tags', ids, tags, type);
     for (const id of ids) {
       const related = await this.getTagsWithSourceId([id], 'photo');
       const notFound = related.filter(
@@ -46,10 +44,12 @@ class TagModel extends Base {
           return TagMap.deleteById(item.mapId);
         }),
       );
-
+      const res = [];
       for (const tag of tags) {
-        await this.findAndCreate(tag, id, type);
+        const t = await this.findAndCreate(tag, id, type);
+        res.push(t);
       }
+      return res;
     }
   }
 

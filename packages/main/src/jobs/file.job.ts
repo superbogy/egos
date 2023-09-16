@@ -64,7 +64,9 @@ export abstract class FileJob {
   }
 
   watch() {
+    console.log('channel>>>>', this.channel);
     ipcMain.on(`${this.channel}:start`, (event: IpcMainEvent) => {
+      console.log('job start', this.type);
       this.run(event)
         .then(() => {
           event.reply(this.channel, {
@@ -103,8 +105,11 @@ export abstract class FileJob {
   }
 
   async getSourceInfo(fileId: number) {
-    const model = this.type === 'file' ? File : Photo;
-    const file = await model.findById(fileId);
+    if (this.type === 'image') {
+      const photo = await Photo.findByIdOrError(fileId);
+      fileId = photo.fileId;
+    }
+    const file = await File.findById(fileId);
     if (!file) {
       throw new Error('File not found');
     }
@@ -153,9 +158,12 @@ export abstract class FileJob {
       }
       payload.password = md5(password);
     }
-    const fileId = task.sourceId;
-    const model = this.type === 'file' ? File : Photo;
-    const file = await model.findById(fileId);
+    let fileId = task.sourceId;
+    if (this.type === 'image') {
+      const photo = await Photo.findByIdOrError(fileId);
+      fileId = photo.fileId;
+    }
+    const file = await File.findById(fileId);
     if (!file) {
       throw new Error('File not found');
     }
@@ -380,6 +388,7 @@ export abstract class FileJob {
       await this.locker.acquireAsync();
       // make sure only one task in running
       const tasks = await this.getTasks();
+      console.log('fuck tasks', tasks);
       for (const task of tasks) {
         const payload = await this.buildPayload(task.toJSON() as TaskSchema);
         if (!payload) {

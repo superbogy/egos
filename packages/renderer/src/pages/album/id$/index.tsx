@@ -7,7 +7,17 @@ import {
   StarFilled,
   UploadOutlined,
 } from '@ant-design/icons';
-import { Badge, Button, DatePicker, Radio, Space } from 'antd';
+import {
+  Badge,
+  Button,
+  DatePicker,
+  Form,
+  Modal,
+  Radio,
+  Select,
+  Space,
+  Switch,
+} from 'antd';
 import classNames from 'classnames';
 import moment from 'moment';
 import { useEffect, useState } from 'react';
@@ -54,6 +64,7 @@ const dataIndex = [
 const Index = (props: PhotoProps) => {
   const { dispatch, photo } = props;
   const { photos, meta, share } = photo;
+  console.log('fucking meta tags', meta.tags);
   const { album, tags } = meta;
   const location = useLocation();
   const params = useParams();
@@ -61,18 +72,8 @@ const Index = (props: PhotoProps) => {
   const { show } = useContextMenu<any>({
     id: MENU_ID,
   });
-  window.addEventListener(
-    'keydown',
-    function (e) {
-      if (e.code === 'Space') {
-        console.log('keydown1', e);
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    },
-    false,
-  );
-
+  const [shareForm] = Form.useForm();
+  const [isShareModal, setShareModal] = useState<boolean>(false);
   const [selected, setSelected] = useState<number[]>([]);
   const [currentItem, setCurrentItem] = useState<PhotoSchema | null>(null);
   const [isDragging, setDragging] = useState<boolean>(false);
@@ -266,10 +267,10 @@ const Index = (props: PhotoProps) => {
       // if (uploadVisible) {
       //   toggleUpload();
       // }
-      // dispatch({
-      //   type: 'photo/query',
-      //   payload: { albumId: album.id },
-      // });
+      dispatch({
+        type: 'photo/query',
+        payload: { albumId: album.id },
+      });
     },
   };
   const dropProps = {
@@ -405,7 +406,7 @@ const Index = (props: PhotoProps) => {
     },
   };
 
-  const handleTagChange = (ids: number[], newtags: string[]) => {
+  const handleTagChange = async (ids: number[], newtags: string[]) => {
     const removeItems: any[] = [];
     ids.map((id: number) => {
       return tags
@@ -413,11 +414,36 @@ const Index = (props: PhotoProps) => {
         .filter((t) => !newtags.includes(t.name))
         .forEach((i) => removeItems.push(i.mapId));
     });
-    // setTagNames(newtags);
-    // form.setFieldValue('tags', tags);
-    return Tag.setTags({ ids, tags: newtags, type: 'photo' });
+    const newTags = await Tag.setTags({ ids, tags: newtags, type: 'photo' });
+    dispatch({
+      type: 'photo/updateTagsItem',
+      payload: { ids: ids, tags: newTags },
+    });
   };
-  // const curTags = tags.filter((t) => t.sourceId === currentItem?.id);
+  const handleStar = (id: number) => {
+    dispatch({
+      type: 'photo/star',
+      payload: {
+        id,
+      },
+    });
+  };
+  const handleShare = () => {
+    const values = shareForm.getFieldsValue();
+    console.log('form values --->', values);
+    Promise.resolve(
+      dispatch({
+        type: 'photo/share',
+        payload: {
+          ids: selected,
+          expiry: values.expiry,
+          isExternal: Boolean(values.isExternal),
+        },
+      }),
+    ).then(() => {
+      setShareModal(!isShareModal);
+    });
+  };
 
   return (
     <>
@@ -464,7 +490,7 @@ const Index = (props: PhotoProps) => {
                       <Space size={8} wrap={true}>
                         {list.map((p: any) => {
                           return (
-                            <div className="img-box" key={p.id}>
+                            <div className="img-box" key={p.id} data-id={p.id}>
                               <div className="img-opts">
                                 <Button
                                   type="dashed"
@@ -497,7 +523,7 @@ const Index = (props: PhotoProps) => {
                                     <img
                                       alt={p.id}
                                       className="pic"
-                                      src={`http://local-egos?fileId=${p.objectId}&type=image`}
+                                      src={`http://local-egos?fileId=${p.file?.objectId}&type=image`}
                                       // onContextMenu={handleContextMenu(p)}
                                     />
                                   ) : (
@@ -512,11 +538,11 @@ const Index = (props: PhotoProps) => {
                               </Sortable>
                               <div className="photo-info">
                                 <ContentEditable
-                                  text={p.name}
+                                  text={p.file.filename}
                                   className="photo-name"
                                   onChange={(name: string) => {
                                     return dispatch({
-                                      type: 'photo/update',
+                                      type: 'photo/rename',
                                       payload: { id: p.id, name: name },
                                     });
                                   }}
@@ -537,12 +563,21 @@ const Index = (props: PhotoProps) => {
                                       />
                                     ))}
                                 </span>
-
-                                <span>
-                                  <StarFilled />
+                                <span onClick={() => handleStar(p.id)}>
+                                  <StarFilled
+                                    className="star"
+                                    style={{
+                                      color: p.starred ? 'red' : '#b2b2b2',
+                                    }}
+                                  />
                                 </span>
                                 <span>
-                                  <ShareAltOutlined />
+                                  <ShareAltOutlined
+                                    className="star"
+                                    style={{
+                                      color: p.shared ? 'blue' : '#b2b2b2',
+                                    }}
+                                  />
                                 </span>
                               </div>
                             </div>
@@ -572,7 +607,7 @@ const Index = (props: PhotoProps) => {
           </div>
         </Item>
 
-        <Item onClick={handleItemClick}>分享</Item>
+        <Item onClick={() => setShareModal(true)}>分享</Item>
         <Item onClick={handleItemClick}>收藏</Item>
         <Item onClick={deletePhotos}>删除</Item>
       </ContextMenu>
@@ -590,6 +625,50 @@ const Index = (props: PhotoProps) => {
         />
       )}
       <Uploader {...uploadProps} />
+      <Modal
+        open={isShareModal}
+        onOk={handleShare}
+        onCancel={() => setShareModal(false)}
+        title="photo share"
+      >
+        <Form
+          name="photo-share-form"
+          form={shareForm}
+          labelCol={{ span: 8 }}
+          wrapperCol={{ span: 16 }}
+          initialValues={{ expiry: 7 }}
+          onFinish={handleShare}
+          onFinishFailed={console.log}
+          autoComplete="off"
+        >
+          <Form.Item
+            label="expiry"
+            name="expiry"
+            rules={[{ required: true, message: 'Please choose expiry time' }]}
+          >
+            <Select
+              options={[
+                { value: 1, label: '1 day' },
+                { value: 7, label: '1 week' },
+                { value: 30, label: '1 month' },
+                { value: -1, label: 'forever' },
+              ]}
+            ></Select>
+          </Form.Item>
+
+          <Form.Item
+            label="isExternal"
+            name="isExternal"
+            rules={[{ required: false }]}
+          >
+            <Switch
+              checkedChildren="internal"
+              unCheckedChildren="external"
+              defaultChecked
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 };

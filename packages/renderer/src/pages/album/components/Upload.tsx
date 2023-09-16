@@ -5,10 +5,10 @@ import { Col, DatePicker, Form, Modal, Row, Select, Upload } from 'antd';
 import moment from 'moment';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
-import { ipcEvent } from '@/lib/event';
 import { getBase64 } from '@/lib/helper';
 import { AlbumSchema } from '@/services/album';
 import type { RcFile, UploadProps } from 'antd/lib/upload';
+import { Remote } from '@/lib/remote';
 
 export interface UploaderProps {
   visible: boolean;
@@ -91,38 +91,39 @@ export default (props: UploaderProps) => {
   );
   const beforeUpload = async (file: RcFile, list: any[]) => {
     const { albumId, photoDate } = await form.validateFields();
-    console.log(photoDate);
     setFileList(
-      list.map((file: any) => {
-        file.albumId = albumId;
-        file.photoDate = photoDate?.toISOString();
-        return file;
+      fileList.concat(list).map((f: any) => {
+        f.albumId = albumId;
+        f.photoDate = photoDate?.toISOString();
+        return f;
       }),
     );
     return false;
   };
 
   useEffect(() => {
-    ipcEvent.register('image:upload', eventHandler);
+    Remote.Electron.ipcRenderer.removeListener('image:upload', console.log);
+    Remote.Electron.ipcRenderer.on('image:upload', eventHandler);
   }, []);
 
-  const uploadChange = ({ fileList: photoList }: any) => {
-    const newList = photoList.map((item: any) => {
-      console.log('upload change item', item, photoList);
-      const { originFileObj } = item;
-      if (!item.status) {
-        item.status = 'initial';
-        item.percent = 0;
-      }
-      if (originFileObj && !item.albumId) {
-        item.albumId = originFileObj.albumId;
-        item.bucket = originFileObj.bucket;
-        item.shootAt = originFileObj.shootAt;
-      }
+  const uploadChange = ({ fileList: photoList, ...p }: any) => {
+    const newList = photoList
+      .filter((item: { status: string }) => item.status !== 'removed')
+      .map((item: any) => {
+        const { originFileObj } = item;
+        if (!item.status) {
+          item.status = 'initial';
+          item.percent = 0;
+        }
+        if (originFileObj && !item.albumId) {
+          item.albumId = originFileObj.albumId;
+          item.bucket = originFileObj.bucket;
+          item.shootAt = originFileObj.shootAt;
+        }
 
-      return item;
-    });
-    setFileList(newList);
+        return item;
+      });
+    setFileList([...newList]);
   };
 
   const handleRemove = (file: any) => {
@@ -144,7 +145,6 @@ export default (props: UploaderProps) => {
     const files = fileList
       .filter((file: any) => file.status === 'initial')
       .map((item: any) => {
-        console.log('start upload item', item);
         return {
           uid: item.uid,
           path: item.path || item.originFileObj.path,
@@ -154,8 +154,7 @@ export default (props: UploaderProps) => {
       });
     props.onUpload({ files });
   };
-  const eventHandler = (_: any, params: any) => {
-    console.log('eventHandler success', params, fileRef.current);
+  const eventHandler = async (_: any, params: any) => {
     // action: 'upload';
     // file: '/Users/tomwei/Pictures/90f33047fe2c1beda220e615e1df2d20cb1275b8d6394-ludeX9_fw1200webp.webp';
     // message: 'progress';
@@ -165,14 +164,13 @@ export default (props: UploaderProps) => {
     // status: 'uploading';
     // taskId: 24;
     // type: 'image';
-    const { action, status, message, level, percent, speed, payload } = params;
+    const { status, message, level, percent, speed, payload } = params;
     if (level === 'job') {
       return;
     }
     let files = fileRef.current;
-    console.log('ref files', files);
     if (!files.length) {
-      props.onFinish();
+      // props.onFinish();
     }
     const current = files.find((item: any) => item.uid === payload.uid);
     if (!current) {
@@ -215,7 +213,7 @@ export default (props: UploaderProps) => {
   const modalProps = {
     title: 'media upload',
     open: visible,
-    onSave: console.log,
+    onSave: () => undefined,
     onCancel,
     wrapClassName: 'upload-box',
   };
@@ -229,7 +227,6 @@ export default (props: UploaderProps) => {
     onChange: uploadChange,
     beforeUpload: beforeUpload,
     previewFile: async (file: any) => {
-      console.log('preview file --', file);
       if (!file.thumbUrl) {
         const dataUrl = await getBase64(file);
         return dataUrl;
@@ -241,7 +238,7 @@ export default (props: UploaderProps) => {
         height: '100%',
         width: '100%',
       };
-      // console.log('item render', file);
+      console.log('item render', file.status);
       if (file.status === 'done') {
         style.border = '1px solid cyan';
       }
@@ -253,6 +250,14 @@ export default (props: UploaderProps) => {
           </div>
         </div>
       );
+    },
+    progress: {
+      strokeColor: {
+        '0%': '#108ee9',
+        '100%': '#87d068',
+      },
+      strokeWidth: 3,
+      format: (percent) => percent && `${parseFloat(percent.toFixed(2))}%`,
     },
   };
 

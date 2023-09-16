@@ -138,8 +138,7 @@ export const parseFileRequest = async (request: any) => {
   }
   const driver = getDriverByBucket(fileObj.bucket);
   const p = driver.getPath(fileObj.remote);
-  const model = type === 'image' ? Photo : File;
-  const file = await model.findOne({ objectId: fileObj.id });
+  const file = await File.findOne({ objectId: fileObj.id });
   if (!file) {
     return null;
   }

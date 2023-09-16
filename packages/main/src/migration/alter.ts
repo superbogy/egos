@@ -11,16 +11,16 @@ export default class AlterJob extends Job {
     //   type:
     // })
     // await this.dropColumn(Task.table, 'sourceId');
-    await this.addColumn(Photo.table, {
-      name: 'photo_date',
-      type: FieldTypes.TEXT,
-      default: '',
-    });
-    await this.addColumn(Photo.table, {
-      name: 'shooted_at',
-      type: FieldTypes.TEXT,
-      default: '',
-    });
+    // await this.addColumn(Photo.table, {
+    //   name: 'photo_date',
+    //   type: FieldTypes.TEXT,
+    //   default: '',
+    // });
+    // await this.addColumn(Photo.table, {
+    //   name: 'shooted_at',
+    //   type: FieldTypes.TEXT,
+    //   default: '',
+    // });
     // await this.dropColumn(Task.table, 'payload');
     // await this.modifyColumn(File.table, {
     //   name: 'sourceId',

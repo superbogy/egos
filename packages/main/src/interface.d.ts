@@ -4,3 +4,12 @@ export interface FileMeta {
   mime: string;
   endings?: string;
 }
+
+export interface AlbumQuery {
+  name?: string;
+  order?: any;
+}
+export interface Pagination {
+  offset?: number;
+  limit?: number;
+}

@@ -1,44 +1,25 @@
-import {
-  Builder,
-  FindOpts,
-  ORDER_TYPE,
-  column,
-  schema,
-  table,
-} from '@egos/lite';
+import { FindOpts, ORDER_TYPE, column, schema, table } from '@egos/lite';
 import { FieldTypes } from '@egos/lite/dist/schema';
 import Base from './base';
 import { Album } from './album';
-import { FileObject } from './file-object';
-import { getDriverByBucket } from '../lib/bucket';
-import humanFormat from 'human-format';
 import { ServiceError } from '../error';
-import { TagMap } from './tag-source';
 import { Tag } from './tag';
+import { RANK_STEP } from '../constants';
+import { File } from './file';
+import { Favorite } from './favorite';
+import { Share } from './share';
 
 export class PhotoSchema {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
   id: number;
-  @column({ type: FieldTypes.TEXT })
-  name: string;
   @column({ type: FieldTypes.INT })
   albumId: number;
   @column({ type: FieldTypes.INT })
-  objectId: number;
-  @column({ type: FieldTypes.INT })
+  fileId: number;
+  @column({ type: FieldTypes.REAL })
   rank: number;
   @column({ type: FieldTypes.TEXT })
   location: string;
-  @column({ type: FieldTypes.TEXT })
-  description: number;
-  @column({ type: FieldTypes.TEXT })
-  status: string;
-  @column({ type: FieldTypes.INT })
-  isEncrypt: number;
-  @column({ type: FieldTypes.TEXT })
-  password: string;
-  @column({ type: FieldTypes.TEXT })
-  url: string;
   @column({ type: FieldTypes.TEXT })
   photoDate: string;
 }
@@ -69,8 +50,8 @@ class PhotoModel extends Base {
       options.order = order;
     } else {
       options.order = {
-        photoDate: ORDER_TYPE.DESC,
         rank: ORDER_TYPE.DESC,
+        photoDate: ORDER_TYPE.DESC,
       };
     }
     if (start) {
@@ -83,15 +64,6 @@ class PhotoModel extends Base {
         where.updatedAt = { $lte: end };
       }
     }
-    // const builder = new Builder(this.table);
-    // const r = builder
-    //   .LeftJoin(FileObject.table, { object_id: 'id' })
-    //   .fields(['*'], Photo.table)
-    //   .fields(['*'], FileObject.table)
-    //   .where(Photo.toRowData(where))
-    //   .select();
-    // const rr = await Photo.query(r.sql, r.params);
-    // console.log('rr------->', rr);
     const album = await Album.findByIdOrError(albumId);
     const photos = await this.find(where, options);
     const total = await this.count(where);
@@ -100,20 +72,31 @@ class PhotoModel extends Base {
     for (const item of photos) {
       ids.push(item.id);
       const media = item.toJSON();
-      const file = await FileObject.findById(item.objectId);
+      const file = await File.getFileInfoById(item.fileId);
       if (!file) {
         await this.deleteById(item.id);
         continue;
       }
-      const driver = getDriverByBucket(file.bucket);
-      const url = await driver.getUrl(file.remote);
+      // const driver = getDriverByBucket(file.bucket);
+      // const url = await driver.getUrl(file.remote);
       // if (media.type === 'image') {
       //   if (!existsSync(media.local)) {
       //     console.log('123123');
       //     media.local = await driver.getCacheFile(media);
       //   }
       // }
-      media.file = { ...file.toObject(), url, size: humanFormat(file.size) };
+      const starred = await Favorite.findOne({
+        sourceId: item.id,
+        type: 'photo',
+      });
+      const shared = await Share.findOne({
+        sourceId: item.id,
+        type: 'photo',
+      });
+      media.starred = !!starred;
+      media.shared =
+        shared && new Date(shared.expiredAt) > new Date() ? true : false;
+      media.file = file;
       data.push(media);
     }
     const tags = await Tag.getTagsWithSourceId(ids, 'photo');
@@ -130,7 +113,7 @@ class PhotoModel extends Base {
   async setCover({ id }: { id: number }) {
     const photo = await Photo.findByIdOrError(id);
     const album = await Album.findByIdOrError(photo.albumId);
-    await Album.update({ id: album.id }, { coverId: photo.objectId });
+    await Album.update({ id: album.id }, { coverId: photo.id });
   }
 
   async removePhotos({ ids, albumId = 1 }: any) {
@@ -156,9 +139,13 @@ class PhotoModel extends Base {
     if (!source || !target) {
       return false;
     }
+    // const next = await Photo.findOne(
+    //   { rank: { gt: target.rank } },
+    //   { order: { rank: ORDER_TYPE.ASC } },
+    // );
     await Photo.update(
       { id: sourceId },
-      { rank: target.rank, photoDate: target.photoDate },
+      { rank: source.rank + RANK_STEP, photoDate: target.photoDate },
     );
     await Photo.update({ id: targetId }, { rank: source.rank });
     return true;
@@ -168,7 +155,7 @@ class PhotoModel extends Base {
     if (!day) {
       return false;
     }
-    const source = await Photo.findById(sourceId);
+    const source = await this.findById(sourceId);
     if (!source) {
       return false;
     }
@@ -176,8 +163,47 @@ class PhotoModel extends Base {
     if (dayStr === source.photoDate) {
       return false;
     }
-    await Photo.update({ id: sourceId }, { photoDate: dayStr });
+    const last = await this.findOne(
+      { photoDate: day },
+      { order: { rank: ORDER_TYPE.DESC } },
+    );
+    await this.update(
+      { id: sourceId },
+      { photoDate: dayStr, rank: last ? last.rank + 1 : 1 },
+    );
     return true;
+  }
+
+  async getPhotoUrl(id: number) {
+    const photo = await this.findById(id);
+    if (!photo) {
+      return '';
+    }
+    return File.getFileUrl(photo?.fileId);
+  }
+
+  async getFileObjectId(id: number) {
+    const photo = await this.findById(id);
+    if (!photo) {
+      return;
+    }
+    const file = await File.findById(photo.fileId);
+    return file?.objectId;
+  }
+
+  async rename(id: number, name: string) {
+    const photo = await this.findById(id);
+    if (!photo) {
+      return false;
+    }
+    const file = await File.findByIdOrError(photo.fileId);
+    file.filename = name;
+    await file.save();
+    return true;
+  }
+
+  async star(id: number) {
+    return Favorite.star(id, 'photo');
   }
 }
 

@@ -105,12 +105,12 @@ app.whenReady().then(async () => {
     respond({ path: filePath });
   });
   protocol.registerFileProtocol('egos', async (request, callback) => {
-    const stream = await parseFileRequest(request);
-    console.log('sssss', stream);
-    if (!stream) {
+    const res = await parseFileRequest(request);
+    console.log('sssss', res);
+    if (!res) {
       return callback({ statusCode: 404 });
     }
-    callback({ data: stream, statusCode: 200 });
+    callback(res);
   });
   protocol.registerStreamProtocol('atom', async (request, callback) => {
     // const params = new URL(request.url);

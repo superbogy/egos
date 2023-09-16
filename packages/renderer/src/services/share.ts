@@ -29,7 +29,7 @@ class Share extends Model {
   getShareByAlbumId(...args: any[]) {
     return this.exec('getAlbumUploadShareById', ...args);
   }
-
+  // @todo share multi files
   shareFile(...args: any[]) {
     return this.exec('shareFile', ...args);
   }
@@ -46,6 +46,9 @@ class Share extends Model {
   }
   genAlbumUploadUrl(...args: any[]) {
     return this.exec('genAlbumUploadUrl', ...args);
+  }
+  sharePhotos(params: { ids: number[]; expiry: number; isExternal: boolean }) {
+    return this.exec('sharePhotos', params);
   }
 }
 

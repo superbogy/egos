@@ -8,7 +8,7 @@ import { File } from './file';
 import fs from 'fs';
 import path from 'path';
 import { getAvailablePath } from '../lib/helper';
-import { Photo } from './photo';
+import { Photo, PhotoSchema } from './photo';
 import dayjs from 'dayjs';
 
 export enum QueueStatus {
@@ -170,31 +170,36 @@ export class TaskModel extends Base {
   async buildImageUploadTasks(payload: any) {
     const { albumId, files } = payload;
     for (const file of files) {
+      const filename = path.basename(file.path);
+      const p = await getAvailablePath(file.path);
+      const newFile = await File.create({
+        parentId: payload.parentId || 0,
+        filename,
+        path: p,
+        size: 0,
+        type: 'image',
+        isFolder: 0,
+        url: file.path,
+        objectId: 0,
+        description: '',
+        password: '',
+        status: 'uploading',
+      });
       const last = await Photo.findOne(
         { albumId },
         { order: { rank: ORDER_TYPE.DESC } },
-      );
-      console.log(
-        'fffuck ----> ',
-        file,
-        dayjs(file.photoDate).format('YYYY-MM-DD'),
       );
       const rank = last ? last.rank + 1 : 1;
       const photo = {
         albumId: albumId || file.albumId,
         rank,
-        name: path.basename(file.path),
-        objectId: 0,
-        status: 'uploading',
-        description: '',
+        fileId: newFile.id,
         location: '',
-        password: '',
-        isEncrypt: 0,
-        url: file.path,
         photoDate: new Date(
           dayjs(file.photoDate).format('YYYY-MM-DD'),
         ).toISOString(),
       };
+      console.log(photo, newFile);
       const item = await Photo.create(photo);
       await Task.create({
         action: 'upload',

@@ -103,6 +103,34 @@ class ShareModel extends Base {
     return this.shareByType({ source, expiry, isExternal, type: 'file' });
   }
 
+  async sharePhotos({
+    ids,
+    expiry,
+    isExternal,
+  }: {
+    ids: number[];
+    expiry: number;
+    isExternal: boolean;
+  }) {
+    const res = [];
+    const token = uuid();
+    for (const id of ids) {
+      const source = await Photo.findById(id);
+      if (!source) {
+        return;
+      }
+      const shared = await this.shareByType({
+        source,
+        expiry,
+        isExternal,
+        type: 'photo',
+        token,
+      });
+      res.push(shared);
+    }
+    return res;
+  }
+
   async shareAlbum({
     id,
     expiry,
@@ -124,32 +152,35 @@ class ShareModel extends Base {
     expiry,
     isExternal,
     type,
+    token,
   }: {
     source: Base;
     expiry: number;
     isExternal: boolean;
     type: string;
+    token?: string;
   }) {
     if (!source) {
       return;
     }
-    const shared = await this.findOne({
-      sourceId: source.id,
-      type,
-      action: 'view',
-    });
+    // const shared = await this.findOne({
+    //   sourceId: source.id,
+    //   type,
+    //   action: 'view',
+    // });
     const expDays = (expiry || 1) * 86400 * 1000;
-    if (shared) {
-      shared.expiredAt = new Date(Date.now() + expDays).toISOString();
-      const cur = await shared.save();
-      const url = await this.getUrl(cur);
-      return { ...cur.toJSON(), url };
-    }
-    const token = uuid();
+    // if (shared) {
+    //   shared.expiredAt = new Date(Date.now() + expDays).toISOString();
+    //   const cur = await shared.save();
+    //   const url = await this.getUrl(cur);
+    //   return { ...cur.toJSON(), url };
+    // }
+    console.log('expiry', expDays);
+    const t = token || uuid();
 
     const data = {
       type,
-      token,
+      token: t,
       isExternal: isExternal ? 1 : 0,
       sourceId: source.id,
       expiredAt: new Date(Date.now() + expDays).toISOString(),

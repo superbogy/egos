@@ -1,7 +1,6 @@
 import { message } from 'antd';
 
 import { Album } from '@/services/album';
-import { Photo } from '@/services/photo';
 import Share from '@/services/share';
 import { Task } from '@/services/task';
 import { Remote } from '@/lib/remote';
@@ -19,36 +18,37 @@ export const fetchAlbums = async (
   query: AlbumQuery = {},
   page: Pagination = {},
 ) => {
-  const { name, order } = query;
-  const { offset = 0, limit = 25 } = page;
-  const where: Record<string, any> = {};
-  const options = {
-    order: order || { rank: 'desc' },
-    offset,
-    limit,
-  };
-  if (name) {
-    where.name = { $like: `%${name}%` };
-  }
-  const albums = await Album.find(where, options);
-  const res = await Promise.all(
-    albums.map(async (item: any) => {
-      const data = item;
-      if (item.cover) {
-        const photo = await Photo.findById(item.cover);
-        if (photo) {
-          data.cover = photo.local;
-        } else {
-          data.cover = '';
-        }
-      } else {
-        data.cover = '';
-      }
+  const res = await Album.fetchAlbums(query, page);
+  // const { name, order } = query;
+  // const { offset = 0, limit = 25 } = page;
+  // const where: Record<string, any> = {};
+  // const options = {
+  //   order: order || { rank: 'desc' },
+  //   offset,
+  //   limit,
+  // };
+  // if (name) {
+  //   where.name = { $like: `%${name}%` };
+  // }
+  // const albums = await Album.find(where, options);
+  // const res = await Promise.all(
+  //   albums.map(async (item: any) => {
+  //     const data = item;
+  //     if (item.cover) {
+  //       const photo = await Photo.findById(item.cover);
+  //       if (photo) {
+  //         data.cover = photo.local;
+  //       } else {
+  //         data.cover = '';
+  //       }
+  //     } else {
+  //       data.cover = '';
+  //     }
 
-      return data;
-    }),
-  );
-  Remote.Electron.ipcRenderer.send('image:upload:start', { type: 'image' });
+  //     return data;
+  //   }),
+  // );
+  // Remote.Electron.ipcRenderer.send('image:upload:start', { type: 'image' });
   return res;
 };
 
@@ -99,7 +99,6 @@ export const upload = async (payload: any) => {
   await Task.buildImageUploadTasks({ files, albumId });
   const { ipcRenderer } = Remote.Electron;
   return ipcRenderer.send('image:upload:start', { type: 'image' });
-  // Remote.Electron.
 };
 
 // export const loadBuckets = async () => getBuckets({ type: 'public' });

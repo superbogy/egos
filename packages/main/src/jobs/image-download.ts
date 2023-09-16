@@ -5,7 +5,7 @@ import { getDriverByBucket } from '../lib/bucket';
 import { FileObject, FileObjectSchema } from '../models/file-object';
 import { IpcMainEvent } from 'electron';
 import { DownloadPayload } from './interfaces';
-import { Photo, TaskSchema } from '../models';
+import { File, Photo, TaskSchema } from '../models';
 import { getTaskPassword } from './helper';
 import { getDownloadPath } from '../lib/helper';
 import fs from 'fs';
@@ -30,9 +30,13 @@ export class ImageDownloadJob extends FileDownloadJob {
     if (!photo) {
       return;
     }
-    const fileObj = await FileObject.findByIdOrError(photo?.objectId as number);
+    const file = await File.findByIdOrError(photo.fileId);
+    const fileObj = await FileObject.findByIdOrError(file.objectId as number);
     const driver = getDriverByBucket(fileObj.bucket);
-    const dest = await getNoneExistedFilename(photo.name as string, savePath);
+    const dest = await getNoneExistedFilename(
+      file.filename as string,
+      savePath,
+    );
     const source = driver.getPath(fileObj.remote);
     const writeParams = {
       source,

@@ -16,3 +16,5 @@ export const enum Drivers {
 }
 
 export const APP_NAME = 'egos';
+
+export const RANK_STEP = 1e-7;

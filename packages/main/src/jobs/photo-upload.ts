@@ -1,7 +1,7 @@
 import fs from 'fs';
 
 import { ServiceError } from '../error';
-import { Album, FileObject, Photo, Task, TaskModel } from '../models';
+import { Album, File, FileObject, Photo, Task, TaskModel } from '../models';
 import { IpcMainEvent } from 'electron';
 import { FileJob } from './file.job';
 import { UploadPayload } from './interfaces';
@@ -51,7 +51,8 @@ export class PhotoUploadJob extends FileJob {
         message: 'Upload failed',
       });
     }
-    const current = await Photo.findByIdOrError(payload.fileId);
+
+    const current = await File.findByIdOrError(photo.fileId);
     const driver = getDriverByBucket(fileObj.bucket);
     const url = await driver.getUrl(fileObj.remote);
     await current.updateAttributes({
@@ -62,8 +63,19 @@ export class PhotoUploadJob extends FileJob {
       size: fileObj.size,
       url,
     });
+    // const current = await Photo.findByIdOrError(payload.fileId);
+    // const driver = getDriverByBucket(fileObj.bucket);
+    // const url = await driver.getUrl(fileObj.remote);
+    // await current.updateAttributes({
+    //   objectId: fileObj.id,
+    //   password,
+    //   isEncrypt: payload.action === 'encrypt' ? 1 : 0,
+    //   status: 'done',
+    //   size: fileObj.size,
+    //   url,
+    // });
     if (!album.coverId) {
-      await album.updateAttributes({ coverId: current.id });
+      await album.updateAttributes({ coverId: photo.id });
     }
 
     return fileObj;
