@@ -4,7 +4,6 @@ import path from 'path';
 import { promisify } from 'util';
 import { getAvailableBucket, getDriverByBucket } from '../lib/bucket';
 import { File } from '../models/file';
-import { Task, TaskSchema } from '../models/task';
 import { SynchronizeJob } from './synchronize';
 import { IpcMainEvent } from 'electron';
 import { FileJob } from './file.job';

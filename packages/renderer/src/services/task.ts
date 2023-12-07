@@ -60,6 +60,10 @@ class TaskService extends Base {
   }) {
     return this.exec('buildImageUploadTasks', { files, albumId });
   }
+
+  async buildAlbumDownloadTask({ albumId }: { albumId: number }) {
+    return this.exec('buildAlbumDownloadTask', { albumId });
+  }
 }
 export const Task = new TaskService('tasks');
 

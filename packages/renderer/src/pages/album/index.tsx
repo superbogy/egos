@@ -31,6 +31,8 @@ import NewForm from './components/NewAlbum';
 import UploadForm, { UploaderProps } from './components/Upload';
 import { AlbumSchema } from '@/services/album';
 import { AlbumState } from './model';
+import { Selection, SelectionProps } from '@/components/Selection';
+import { SelectionEvent } from '@viselect/react';
 
 const Index = (props: any) => {
   const { dispatch, album } = props;
@@ -101,6 +103,7 @@ const Index = (props: any) => {
       selectedIds = [activeItem.id];
     }
     setCurrentItem(activeItem);
+    console.log(456, selectedIds);
     setSelected(selectedIds);
   };
   const headerProps = {
@@ -225,6 +228,8 @@ const Index = (props: any) => {
   const onCtx = (p: any) => (ev: any) => {
     ev.preventDefault();
     show({ event: ev, props: p });
+    setSelected([p.id]);
+    console.log('????? on ctx', p);
   };
   const [shareItem, setShareItem] = useState({
     visible: false,
@@ -248,10 +253,26 @@ const Index = (props: any) => {
     detail: console.log,
     rename: console.log,
     delete: console.log,
-    download: console.log,
+    download: () => {
+      if (!currentItem) {
+        return;
+      }
+      dispatch({
+        type: 'album/download',
+        payload: {
+          albumId: currentItem.id,
+        },
+      });
+    },
     like: console.log,
-    getLikedStyle: () => {
-      return {};
+    star: () => {
+      console.log('star', selected);
+      dispatch({
+        type: 'album/star',
+        payload: {
+          ids: selected,
+        },
+      });
     },
     share: (params: any) => {
       dispatch({
@@ -261,6 +282,62 @@ const Index = (props: any) => {
       shareItem.visible = true;
       shareItem.file = params.props;
       setShareItem(shareItem);
+    },
+  };
+  const extractIds = (els: Element[]): number[] =>
+    els
+      .map((v) => {
+        return v.getAttribute('data-id');
+      })
+      .filter(Boolean)
+      .map(Number);
+  const selectProps: SelectionProps = {
+    selectables: '.select-item',
+    onBeforeDrag: ({ event }: SelectionEvent) => {
+      const elm = event?.target as Element;
+      if (elm.classList.contains('content-input')) {
+        return false;
+      }
+      return true;
+    },
+    onStart: ({ event, selection }: SelectionEvent) => {
+      const hasSelected = (event as any).path.find((p: any) => {
+        if (p.classList?.contains('selected')) {
+          return true;
+        }
+        return false;
+      });
+      if (!event?.ctrlKey && !event?.metaKey && !hasSelected) {
+        selection.clearSelection();
+        // setSelected([]);
+      }
+      setDragging(true);
+    },
+    onMove: ({
+      store: {
+        changed: { added, removed },
+      },
+      event,
+    }: SelectionEvent) => {
+      if (event && (added.length || removed.length)) {
+        console.log('234');
+        setSelected((prev) => {
+          const next = prev;
+          extractIds(added).forEach((id) => {
+            if (!next.includes(id)) {
+              next.push(id);
+            }
+          });
+          extractIds(removed).forEach((id) => {
+            const idx = next.indexOf(id);
+            if (idx === -1) {
+              return;
+            }
+            next.splice(idx, 1);
+          });
+          return next;
+        });
+      }
     },
   };
   return (
@@ -285,19 +362,21 @@ const Index = (props: any) => {
       </Header>
       <div className="album-main">
         <Provider>
-          <Space size={8} wrap={true}>
-            {albums.map((item: AlbumSchema) => {
-              return (
-                <AlbumBox
-                  {...boxProps}
-                  onContextMenu={onCtx(item)}
-                  currentItem={item}
-                  selected={selected}
-                  key={item.id}
-                />
-              );
-            })}
-          </Space>
+          <Selection {...selectProps}>
+            <Space size={8} wrap={true}>
+              {albums.map((item: AlbumSchema) => {
+                return (
+                  <AlbumBox
+                    {...boxProps}
+                    onContextMenu={onCtx(item)}
+                    currentItem={item}
+                    selected={selected}
+                    key={item.id}
+                  />
+                );
+              })}
+            </Space>
+          </Selection>
         </Provider>
         {total ? (
           <Row>
@@ -312,44 +391,44 @@ const Index = (props: any) => {
       </div>
       <ContextMenu id={menuId}>
         <Item onClick={contextHandlers.detail}>
-          <div className="disk-ctx-text">
+          <div className="album-ctx-item">
             <span>view</span>
             <FundViewOutlined />
           </div>
         </Item>
         <Item onClick={contextHandlers.rename}>
-          <div className="disk-ctx-text">
+          <div className="album-ctx-item">
             <span>rename</span>
             <EditOutlined />
           </div>
         </Item>
         <Item onClick={console.log}>
-          <div className="disk-ctx-text">
-            <span>move</span>
+          <div className="album-ctx-item">
+            <span>encrypt</span>
             <ExportOutlined />
           </div>
         </Item>
         <Item onClick={contextHandlers.delete}>
-          <div className="disk-ctx-text">
+          <div className="album-ctx-item">
             <span>delete</span>
             <DeleteOutlined />
           </div>
         </Item>
         <Item onClick={contextHandlers.download}>
-          <div className="disk-ctx-text">
+          <div className="album-ctx-item">
             <span>download</span>
             <DownloadOutlined />
           </div>
         </Item>
         <Separator />
-        <Item onClick={contextHandlers.like}>
-          <div className="disk-ctx-text">
+        <Item onClick={contextHandlers.star}>
+          <div className="album-ctx-item">
             <span>star</span>
-            <StarFilled style={contextHandlers.getLikedStyle()} />
+            <StarFilled style={{}} />
           </div>
         </Item>
         <Item onClick={contextHandlers.share}>
-          <div className="disk-ctx-text">
+          <div className="album-ctx-item">
             <span>share</span>
             <ShareAltOutlined />
           </div>

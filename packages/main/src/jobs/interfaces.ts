@@ -35,3 +35,8 @@ export interface JobOptions {
 export interface DownloadPayload extends UploadPayload {
   savePath: string;
 }
+
+export interface AlbumDownloadPayload extends Omit<DownloadPayload, 'fileId'> {
+  savePath: string;
+  albumId: number;
+}

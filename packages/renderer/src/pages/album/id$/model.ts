@@ -162,7 +162,7 @@ export default {
         payload: { id, data: { starred } },
       });
     },
-    *share({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
+    *share({ payload }: AnyAction, { call }: EffectsCommandMap) {
       yield call(service.share, payload);
     },
   },

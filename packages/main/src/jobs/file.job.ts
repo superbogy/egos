@@ -64,7 +64,6 @@ export abstract class FileJob {
   }
 
   watch() {
-    console.log('channel>>>>', this.channel);
     ipcMain.on(`${this.channel}:start`, (event: IpcMainEvent) => {
       console.log('job start', this.type);
       this.run(event)
@@ -388,7 +387,6 @@ export abstract class FileJob {
       await this.locker.acquireAsync();
       // make sure only one task in running
       const tasks = await this.getTasks();
-      console.log('fuck tasks', tasks);
       for (const task of tasks) {
         const payload = await this.buildPayload(task.toJSON() as TaskSchema);
         if (!payload) {

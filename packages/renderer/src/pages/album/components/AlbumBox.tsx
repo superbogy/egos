@@ -9,6 +9,8 @@ import { v4 as uuid } from 'uuid';
 // import ContentEditor from './ContentEditor';
 import { AlbumSchema } from '@/services/album';
 import { Remote } from '@/lib/remote';
+import './album.less';
+import { LockFilled, StarOutlined } from '@ant-design/icons';
 
 export const ItemTypes = {
   CARD: 'card',
@@ -60,6 +62,7 @@ export default memo((props: BoxProps) => {
         disable={selected.length > 1 ? selected : []}
       >
         <div
+          data-id={currentItem.id}
           onContextMenu={props.onContextMenu}
           className={classNames('album-wrapper', {
             'album-selected': selected.includes(currentItem.id),
@@ -84,6 +87,15 @@ export default memo((props: BoxProps) => {
               }
               style={{ width: '100%' }}
             />
+            <div className="album-sum">
+              <span className="photo-no">123</span>
+              <span className="album-star">
+                <StarOutlined />
+              </span>
+              <span className="album-hidden">
+                <LockFilled />
+              </span>
+            </div>
           </div>
           <div className="meta">
             <div className="filename">

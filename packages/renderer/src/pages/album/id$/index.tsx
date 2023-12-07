@@ -534,6 +534,24 @@ const Index = (props: PhotoProps) => {
                                       />
                                     </video>
                                   )}
+                                  <div className="photo-extra">
+                                    <span onClick={() => handleStar(p.id)}>
+                                      <StarFilled
+                                        className="star"
+                                        style={{
+                                          color: p.starred ? 'red' : '#b2b2b2',
+                                        }}
+                                      />
+                                    </span>
+                                    <span>
+                                      <ShareAltOutlined
+                                        className="star"
+                                        style={{
+                                          color: p.shared ? 'blue' : '#b2b2b2',
+                                        }}
+                                      />
+                                    </span>
+                                  </div>
                                 </div>
                               </Sortable>
                               <div className="photo-info">
@@ -548,7 +566,7 @@ const Index = (props: PhotoProps) => {
                                   }}
                                 />
                               </div>
-                              <div className="photo-extra">
+                              <div className="photo-tag">
                                 <span>
                                   {tags
                                     .filter((t) => t.sourceId === p.id)
@@ -562,22 +580,6 @@ const Index = (props: PhotoProps) => {
                                         }}
                                       />
                                     ))}
-                                </span>
-                                <span onClick={() => handleStar(p.id)}>
-                                  <StarFilled
-                                    className="star"
-                                    style={{
-                                      color: p.starred ? 'red' : '#b2b2b2',
-                                    }}
-                                  />
-                                </span>
-                                <span>
-                                  <ShareAltOutlined
-                                    className="star"
-                                    style={{
-                                      color: p.shared ? 'blue' : '#b2b2b2',
-                                    }}
-                                  />
                                 </span>
                               </div>
                             </div>

@@ -4,6 +4,7 @@ import Base from './base';
 import { ServiceError } from '../error';
 import { Photo } from './photo';
 import { AlbumQuery, Pagination } from '../interface';
+import { Favorite } from './favorite';
 
 export class AlbumSchema {
   @column({ type: FieldTypes.INT, pk: true, autoIncrement: true })
@@ -61,6 +62,19 @@ class AlbumModel extends Base {
       coverId: 0,
     };
     const res = await Album.insert(album);
+    return res;
+  }
+
+  async star({ ids }: { ids: number[] }) {
+    const res: number[] = [];
+    for (const id of ids) {
+      const album = await this.findById(id);
+      if (!album) {
+        continue;
+      }
+      res.push(id);
+      await Favorite.star(id, 'album');
+    }
     return res;
   }
 }

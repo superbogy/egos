@@ -213,6 +213,18 @@ export class TaskModel extends Base {
       });
     }
   }
+  async buildAlbumDownTask(payload: any) {
+    await Task.create({
+      action: 'download',
+      type: 'photo',
+      retry: 0,
+      status: 'pending',
+      payload: { isAlbum: true },
+      maxRetry: 10,
+      err: '',
+      sourceId: payload.albumId,
+    });
+  }
 }
 
 export const Task = new TaskModel();

@@ -4,6 +4,7 @@ import { AnyAction } from 'umi';
 import { EffectsCommandMap } from 'dva';
 import { AlbumSchema } from '@/services/album';
 import { ShareSchema } from '@/services/share';
+import { Tag } from '@/services/tag';
 
 export interface AlbumState {
   files: any[];
@@ -93,6 +94,9 @@ export default {
       console.log('model upload>>>', payload);
       yield call(service.upload, payload);
     },
+    *download({ payload }: AnyAction, { call }: EffectsCommandMap) {
+      yield call(service.download, payload);
+    },
     // *getPending({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
     //   const pending = yield call(service.getPendingUpload);
     //   yield put({
@@ -110,11 +114,21 @@ export default {
     },
     *share({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
       const res: ShareSchema = yield call(service.share, payload);
-      console.log('share result', res);
       yield put({
         type: 'updateState',
         payload: { shareDetail: res },
       });
+    },
+    *star({ payload }: AnyAction, { call, put }: EffectsCommandMap) {
+      const { ids } = payload;
+      const starred: boolean = yield call(service.star, ids);
+      yield put({
+        type: 'updateAlbumListItem',
+        payload: { ids, data: { starred } },
+      });
+    },
+    *setTag({ payload }: AnyAction, { call }: EffectsCommandMap) {
+      yield call(Tag.setTags, payload);
     },
   },
   reducers: {

@@ -203,6 +203,7 @@ class PhotoModel extends Base {
   }
 
   async star(id: number) {
+    await this.findByIdOrError(id);
     return Favorite.star(id, 'photo');
   }
 }

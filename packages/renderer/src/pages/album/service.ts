@@ -136,3 +136,11 @@ export const share = async ({
 export const getShare = async ({ id }: { id: number }) => {
   return await Share.getShareBySource(id, 'album');
 };
+
+export const download = async ({ albumId }: { albumId: number }) => {
+  return Task.buildAlbumDownloadTask({ albumId });
+};
+
+export const star = async (ids: number[]) => {
+  return Album.star({ ids });
+};

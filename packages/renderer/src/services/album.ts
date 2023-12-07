@@ -21,6 +21,9 @@ export class AlbumService extends Model {
   fetchAlbums(query: AlbumQuery, page: Pagination) {
     return this.exec('fetchAlbums', query, page);
   }
+  async star({ ids }: { ids: number[] }) {
+    return this.exec('star', { ids });
+  }
 }
 
 export const Album = new AlbumService('albums');
